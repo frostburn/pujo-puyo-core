@@ -1,4 +1,4 @@
-import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clearGarbage, clearGroups, emptyPuyos, fallOne, fromArray, merge, puyoAt} from "./bitboard";
+import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, merge, puyoAt, singlePuyo} from "./bitboard";
 
 // Indices of types of puyos in the grid
 export const RED = 0;
@@ -14,8 +14,8 @@ export type PuyoScreen = {
   score: number,
 };
 
-const NUM_PUYO_COLORS = 5;
-const NUM_PUYO_TYPES = 6;
+export const NUM_PUYO_COLORS = 5;
+export const NUM_PUYO_TYPES = 6;
 
 // Scoring
 const MAX_CLEAR_BONUS = 999;
@@ -134,4 +134,13 @@ export function tick(screen: PuyoScreen) {
   }
 
   return didClear;
+}
+
+export function insertPuyo(screen: PuyoScreen, x: number, y: number, color: number) {
+  const puyo = singlePuyo(x, y);
+  if (collides(puyo, ...screen.grid)) {
+    return true;
+  }
+  merge(screen.grid[color], puyo);
+  return false;
 }

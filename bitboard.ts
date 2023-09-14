@@ -107,6 +107,14 @@ export function puyoAt(puyos: Puyos, x: number, y: number) {
   return !!(puyos[y / SLICE_HEIGHT] & (1 << (x + slice_y * WIDTH)));
 }
 
+export function singlePuyo(x: number, y: number): Puyos {
+  const slice_y = y % SLICE_HEIGHT;
+  y -= slice_y;
+  const result = emptyPuyos();
+  result[y / SLICE_HEIGHT] |= 1 << (x + slice_y * WIDTH);
+  return result;
+}
+
 /**
  * Population count (aka hamming weight) function. Counts the number of set (i.e. 1-valued) bits in a 32-bit integer.
  * @param x 32-bit integer.
@@ -229,36 +237,6 @@ export function puyoCount(puyos: Puyos): number {
   return popcount(puyos[0]) + popcount(puyos[1]) + popcount(puyos[2]);
 }
 
-/*
-export function clearGroups(puyos: Puyos): number {
-  let num_cleared = 0;
-  const temp = clone(puyos);
-  const group = emptyPuyos();
-  // Clear from the bottom up hoping for an early exit.
-  for (let i = NUM_SLICES - 1; i >= 0; i--) {
-      for (let j = WIDTH * SLICE_HEIGHT - 2; j >= 0; j -= 2) {
-          group[i] = 3 << j;
-          // There's an opportunity for loop unrolling optimization here because legal groups cannot extend over all three slices.
-          flood(group, temp);
-          temp[0] ^= group[0];
-          temp[1] ^= group[1];
-          temp[2] ^= group[2];
-          const group_size = puyoCount(group);
-          if (group_size >= CLEAR_THRESHOLD) {
-              puyos[0] ^= group[0];
-              puyos[1] ^= group[1];
-              puyos[2] ^= group[2];
-              num_cleared += group_size;
-          }
-          if (isEmpty(temp)) {
-            return num_cleared;
-          }
-      }
-  }
-  return num_cleared;
-}
-*/
-
 function getGroupBonus(group_size: number) {
   group_size -= CLEAR_THRESHOLD;
   if (group_size >= GROUP_BONUS.length) {
@@ -334,4 +312,13 @@ export function clearGarbage(garbage: Puyos, cleared: Puyos) {
     (cleared[2] << V_SHIFT) |
     (cleared[2] >> V_SHIFT)
   );
+}
+
+export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
+  for (let i = 0; i < rest.length; ++i) {
+    if ((testPuyos[0] & rest[i][0]) || (testPuyos[1] & rest[i][1]) || (testPuyos[2] & rest[i][2])) {
+      return true;
+    }
+  }
+  return false;
 }
