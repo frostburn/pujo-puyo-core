@@ -1,5 +1,6 @@
+import { sleep } from "bun";
 import {emptyPuyos, randomPuyos, logPuyos, flood, NUM_SLICES, fallOne} from "./bitboard";
-import { logScreen, randomScreen } from "./screen";
+import { logScreen, randomScreen, tick } from "./screen";
 
 console.log("Hello via Bun!");
 
@@ -7,16 +8,18 @@ const puyos = randomPuyos();
 
 logPuyos(puyos);
 
-for (let i = 0; i < 9; ++i) {
-  fallOne([puyos]);
+while(fallOne([puyos])){
+  await sleep(100);
   logPuyos(puyos);
 }
+
+await sleep(500);
 
 const screen = randomScreen();
 
 logScreen(screen);
 
-for (let i = 0; i < 9; ++i) {
-  fallOne(screen.grid);
+while (tick(screen)) {
+  await sleep(200);
   logScreen(screen);
 }

@@ -19,6 +19,9 @@ const INVALID = (-1) ^ FULL;
 export const NUM_SLICES = 3;
 export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
 
+// Rules
+export const CLEAR_THRESHOLD = 4;
+
 /**
  * Obtain an empty bitboard stack of puyos.
  * @returns A screenful of air.
@@ -37,6 +40,10 @@ export function randomPuyos(): Puyos {
     puyos[i] = Math.random() * (FULL + 1);
   }
   return puyos;
+}
+
+export function clone(puyos: Puyos) {
+  return new Uint32Array(puyos);
 }
 
 /**
@@ -175,7 +182,7 @@ function merge(a: Puyos, b: Puyos) {
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
  */
-export function fallOne(grid: Puyos[]): void {
+export function fallOne(grid: Puyos[]): boolean {
   const supported = emptyPuyos();
   grid.forEach(puyos => merge(supported, puyos));
 
@@ -193,10 +200,16 @@ export function fallOne(grid: Puyos[]): void {
     supported[0] &= ~((FULL & ~supported[0]) >> V_SHIFT);
   }
 
+  // TODO: Investigate if inverting the logic saves a few ops
+  let didFall = false;
+
   grid.forEach(puyos => {
     const unsupported0 = puyos[0] & ~supported[0];
     const unsupported1 = puyos[1] & ~supported[1];
     const unsupported2 = puyos[2] & ~supported[2];
+
+    didFall = didFall || !!(unsupported0 | unsupported1 | unsupported2);
+
     puyos[0] ^= unsupported0;
     puyos[0] ^= FULL & (unsupported0 << V_SHIFT);
     puyos[1] ^= unsupported1;
@@ -204,4 +217,38 @@ export function fallOne(grid: Puyos[]): void {
     puyos[2] ^= unsupported2;
     puyos[2] ^= (unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM);
   });
+
+  return didFall;
+}
+
+export function puyoCount(puyos: Puyos): number {
+  return popcount(puyos[0]) + popcount(puyos[1]) + popcount(puyos[2]);
+}
+
+export function clearGroups(puyos: Puyos): number {
+  let num_cleared = 0;
+  const temp = clone(puyos);
+  const group = emptyPuyos();
+  // Clear from the bottom up hoping for an early exit.
+  for (let i = NUM_SLICES - 1; i >= 0; i--) {
+      for (let j = WIDTH * SLICE_HEIGHT - 2; j >= 0; j -= 2) {
+          group[i] = 3 << j;
+          // There's an opportunity for loop unrolling optimization here because legal groups cannot extend over all three slices.
+          flood(group, temp);
+          temp[0] ^= group[0];
+          temp[1] ^= group[1];
+          temp[2] ^= group[2];
+          const group_size = puyoCount(group);
+          if (group_size >= CLEAR_THRESHOLD) {
+              puyos[0] ^= group[0];
+              puyos[1] ^= group[1];
+              puyos[2] ^= group[2];
+              num_cleared += group_size;
+          }
+          if (isEmpty(temp)) {
+            return num_cleared;
+          }
+      }
+  }
+  return num_cleared;
 }

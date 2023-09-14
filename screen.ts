@@ -1,4 +1,4 @@
-import {HEIGHT, Puyos, WIDTH, emptyPuyos, fallOne, fromArray, puyoAt} from "./bitboard";
+import {HEIGHT, Puyos, WIDTH, clearGroups, emptyPuyos, fallOne, fromArray, puyoAt} from "./bitboard";
 
 // Indices of types of puyos in the grid
 export const RED = 0;
@@ -12,6 +12,7 @@ export type PuyoScreen = {
   grid: Puyos[],
 };
 
+const NUM_PUYO_COLORS = 5;
 const NUM_PUYO_TYPES = 6;
 
 /**
@@ -81,4 +82,19 @@ export function logScreen(screen: PuyoScreen): void {
     console.log(line);
   }
   console.log("╚════════════╝");
+}
+
+export function tick(screen: PuyoScreen) {
+  if (fallOne(screen.grid)) {
+    return true;
+  }
+  let didClear = false;
+  // TODO: Clear splashes, scoring and garbage clearing.
+  for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
+    const num_cleared = clearGroups(screen.grid[i]);
+    if (num_cleared) {
+      didClear = true;
+    }
+  }
+  return didClear;
 }
