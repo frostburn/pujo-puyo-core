@@ -23,3 +23,6 @@ while (tick(screen)) {
   await sleep(200);
   logScreen(screen);
 }
+
+await sleep(500);
+logScreen(screen);

@@ -15,12 +15,16 @@ const FULL = TOP | (TOP << V_SHIFT) | (TOP << (V_SHIFT * 2)) | (TOP << (V_SHIFT 
 const LEFT_WALL = 1 | (1 << V_SHIFT) | (1 << (V_SHIFT * 2)) | (1 << (V_SHIFT * 3)) | (1 << (V_SHIFT * 4));
 const RIGHT_BLOCK = FULL ^ LEFT_WALL;
 const INVALID = (-1) ^ FULL;
+const LIFE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
 // Large scale structure
 export const NUM_SLICES = 3;
 export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
+export const LIFE_HEIGHT = 12;
 
 // Rules
-export const CLEAR_THRESHOLD = 4;
+const CLEAR_THRESHOLD = 4;
+// Scoring
+const GROUP_BONUS = [0, 2, 3, 4, 5, 6, 7, 10];
 
 /**
  * Obtain an empty bitboard stack of puyos.
@@ -172,7 +176,7 @@ export function flood(source: Puyos, target: Puyos) {
  * @param a Puyos to merge into.
  * @param b Puyos to merge.
  */
-function merge(a: Puyos, b: Puyos) {
+export function merge(a: Puyos, b: Puyos) {
   a[0] |= b[0];
   a[1] |= b[1];
   a[2] |= b[2];
@@ -225,6 +229,7 @@ export function puyoCount(puyos: Puyos): number {
   return popcount(puyos[0]) + popcount(puyos[1]) + popcount(puyos[2]);
 }
 
+/*
 export function clearGroups(puyos: Puyos): number {
   let num_cleared = 0;
   const temp = clone(puyos);
@@ -251,4 +256,82 @@ export function clearGroups(puyos: Puyos): number {
       }
   }
   return num_cleared;
+}
+*/
+
+function getGroupBonus(group_size: number) {
+  group_size -= CLEAR_THRESHOLD;
+  if (group_size >= GROUP_BONUS.length) {
+    group_size = GROUP_BONUS.length - 1;
+  }
+  return GROUP_BONUS[group_size];
+}
+
+export type ClearResult = {
+  numCleared: number,
+  groupBonus: number,
+  cleared: Puyos,
+};
+
+export function clearGroups(puyos: Puyos): ClearResult {
+  let numCleared = 0;
+  let groupBonus = 0;
+  const cleared = emptyPuyos();
+  const group = emptyPuyos();
+  const temp = clone(puyos);
+  temp[0] &= LIFE_BLOCK;
+  // Clear from the bottom up hoping for an early exit.
+  for (let i = NUM_SLICES - 1; i >= 0; i--) {
+    // TODO: Don't iterate outside of life block
+    for (let j = WIDTH * SLICE_HEIGHT - 2; j >= 0; j -= 2) {
+      group[i] = 3 << j;
+      flood(group, temp);
+      temp[0] ^= group[0];
+      temp[1] ^= group[1];
+      temp[2] ^= group[2];
+      const groupSize = puyoCount(group);
+      if (groupSize >= CLEAR_THRESHOLD) {
+        merge(cleared, group);
+        groupBonus += getGroupBonus(groupSize);
+        numCleared += groupSize;
+      }
+      if (isEmpty(temp)) {
+        // TODO: full break
+        break;
+      }
+    }
+  }
+
+  puyos[0] ^= cleared[0];
+  puyos[1] ^= cleared[1];
+  puyos[2] ^= cleared[2];
+
+  return {
+    numCleared,
+    groupBonus,
+    cleared
+  };
+}
+
+export function clearGarbage(garbage: Puyos, cleared: Puyos) {
+  garbage[0] &= ~((
+    ((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
+    ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
+    (cleared[0] << V_SHIFT) |
+    (cleared[0] >> V_SHIFT)
+  ) & LIFE_BLOCK);
+
+  garbage[1] &= ~(
+    ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
+    ((cleared[1] << H_SHIFT) & RIGHT_BLOCK) |
+    (cleared[1] << V_SHIFT) |
+    (cleared[1] >> V_SHIFT)
+  );
+
+  garbage[2] &= ~(
+    ((cleared[2] & RIGHT_BLOCK) >> H_SHIFT) |
+    ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
+    (cleared[2] << V_SHIFT) |
+    (cleared[2] >> V_SHIFT)
+  );
 }
