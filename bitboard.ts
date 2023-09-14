@@ -3,7 +3,7 @@
 export type Puyos = Uint32Array;
 
 // Bitboard constants
-const WIDTH = 6;
+export const WIDTH = 6;
 const SLICE_HEIGHT = 5;
 const H_SHIFT = 1;
 const V_SHIFT = 6;
@@ -17,11 +17,20 @@ const RIGHT_BLOCK = FULL ^ LEFT_WALL;
 const INVALID = (-1) ^ FULL;
 // Large scale structure
 export const NUM_SLICES = 3;
+export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
 
+/**
+ * Obtain an empty bitboard stack of puyos.
+ * @returns A screenful of air.
+ */
 export function emptyPuyos(): Puyos {
   return new Uint32Array(NUM_SLICES);
 }
 
+/**
+ * Obtain a random collection of puyos.
+ * @returns A screenful with 50% chance of air or puyos.
+ */
 export function randomPuyos(): Puyos {
   const puyos = emptyPuyos();
   for (let i = 0; i < NUM_SLICES; ++i) {
@@ -30,8 +39,30 @@ export function randomPuyos(): Puyos {
   return puyos;
 }
 
+/**
+ * Test if a collection of puyos is all air.
+ * @param puyos A collection of puyos.
+ * @returns `true` if there aren't any puyos present.
+ */
 export function isEmpty(puyos: Puyos) {
   return !puyos[0] && !puyos[1] && !puyos[2];
+}
+
+/**
+ * Convert a boolean array to a collection of puyos
+ * @param array An array indicating the presence of puyos.
+ * @returns A collection of puyos.
+ */
+export function fromArray(array: boolean[]): Puyos {
+  const puyos = emptyPuyos();
+  for (let j = 0; j < NUM_SLICES; ++j) {
+    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
+      if (array[i + j * WIDTH * SLICE_HEIGHT]) {
+        puyos[j] |= 1 << i;
+      }
+    }
+  }
+  return puyos;
 }
 
 /**
@@ -57,6 +88,12 @@ export function logPuyos(puyos: Puyos): void {
     }
   }
   console.log("└─────────────┘");
+}
+
+export function puyoAt(puyos: Puyos, x: number, y: number) {
+  const slice_y = y % SLICE_HEIGHT;
+  y -= slice_y;
+  return !!(puyos[y / SLICE_HEIGHT] & (1 << (x + slice_y * WIDTH)));
 }
 
 /**
