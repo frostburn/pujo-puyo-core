@@ -16,6 +16,7 @@ const LEFT_WALL = 1 | (1 << V_SHIFT) | (1 << (V_SHIFT * 2)) | (1 << (V_SHIFT * 3
 const RIGHT_BLOCK = FULL ^ LEFT_WALL;
 const INVALID = (-1) ^ FULL;
 const LIFE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
+const SEMI_LIFE_BLOCK = LIFE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
 // Large scale structure
 export const NUM_SLICES = 3;
 export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
@@ -321,4 +322,8 @@ export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
     }
   }
   return false;
+}
+
+export function vanishTop(puyos: Puyos) {
+  puyos[0] &= SEMI_LIFE_BLOCK;
 }

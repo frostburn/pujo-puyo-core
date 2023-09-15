@@ -1,9 +1,11 @@
 import { sleep } from "bun";
 import { WIDTH} from "./bitboard";
-import { GREEN, RED, colorOf, emptyScreen, insertPuyo, logScreen, tick } from "./screen";
+import { GREEN, PuyoScreen, RED, colorOf } from "./screen";
 import { stdin, stdout } from "process";
 
 console.log("Hello via Bun!");
+
+// TODO: Fix cursor erasing ghosts
 
 const UP = "\u001b[A";
 const DOWN = "\u001b[B";
@@ -15,11 +17,13 @@ stdin.resume();
 
 stdin.setEncoding('utf8');
 
-const screen = emptyScreen();
+const screen = new PuyoScreen();
+let score = 0;
 
-logScreen(screen);
+screen.log();
+stdout.write(`Score: ${score}\r`);
 
-for (let i = 0; i < 18; ++i) {
+for (let i = 0; i < 17; ++i) {
   stdout.write(UP);
 }
 stdout.write(RIGHT + RIGHT + RIGHT + RIGHT + RIGHT);
@@ -30,6 +34,7 @@ let color2 = RED;
 let x = 2;
 let rot = 0;
 let busy = false;
+let needsRedraw = false;
 
 function clearPrimary() {
   stdout.write(" " + LEFT);
@@ -119,39 +124,67 @@ stdin.on('data', function(key: string){
   }
   if (key == DOWN) {
     console.log("\x1b[0m");
-    insertPuyo(screen, x, 1, color1);
+    screen.insertPuyo(x, 1, color1);
     if (rot == 0) {
-      insertPuyo(screen, x, 0, color2);
+      screen.insertPuyo(x, 0, color2);
     }
     if (rot == 1) {
-      insertPuyo(screen, x - 1, 1, color2);
+      screen.insertPuyo(x - 1, 1, color2);
     }
     if (rot == 2) {
-      insertPuyo(screen, x, 2, color2);
+      screen.insertPuyo(x, 2, color2);
     }
     if (rot == 3) {
-      insertPuyo(screen, x + 1, 1, color2);
+      screen.insertPuyo(x + 1, 1, color2);
     }
     color1 = Math.floor(Math.random() * 4);
     color2 = Math.floor(Math.random() * 4);
+    needsRedraw = true;
   }
 });
 
-while(true) {
-  if(tick(screen)) {
-    logScreen(screen);
-    busy = true;
-  } else if (busy){
-    for (let i = 0; i < 17; ++i) {
+function drawScreen() {
+  if (!busy) {
+    stdout.write("\r");
+    for (let i = 0; i < 3; ++i) {
       stdout.write(UP);
     }
-    stdout.write(RIGHT);
-    for (let i = 0; i < x; ++i) {
-      stdout.write(RIGHT + RIGHT);
+  } else {
+    for (let i = 0; i < 18; ++i) {
+      stdout.write(UP);
     }
-    writePrimary();
-    writeSecondary();
+  }
+  screen.log();
+  stdout.write(`Score: ${score}\r`);
+  needsRedraw = false;
+}
+
+function drawCursor() {
+  for (let i = 0; i < 16; ++i) {
+    stdout.write(UP);
+  }
+  stdout.write(RIGHT);
+  for (let i = 0; i < x; ++i) {
+    stdout.write(RIGHT + RIGHT);
+  }
+  writePrimary();
+  writeSecondary();
+}
+
+while(true) {
+  const tickResult = screen.tick();
+  score += tickResult.score;
+  if(tickResult.busy) {
+    drawScreen();
+    busy = true;
+  } else if (busy){
+    drawCursor();
     busy = false;
+  }
+
+  if (needsRedraw) {
+    drawScreen();
+    drawCursor();
   }
   await sleep(70);
 }

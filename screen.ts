@@ -1,4 +1,12 @@
-import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, merge, puyoAt, singlePuyo} from "./bitboard";
+import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, merge, puyoAt, singlePuyo, vanishTop} from "./bitboard";
+
+/**
+ * Result of advancing the screen one step.
+ */
+type TickResult = {
+  score: number,
+  busy: boolean,
+};
 
 // Indices of types of puyos in the grid
 export const RED = 0;
@@ -7,13 +15,6 @@ export const YELLOW = 2;
 export const BLUE = 3;
 export const PURPLE = 4;
 export const GARBAGE = 5;
-
-// TODO: Convert into a class
-export type PuyoScreen = {
-  grid: Puyos[],
-  chainNumber: number,
-  score: number,
-};
 
 export const NUM_PUYO_COLORS = 5;
 export const NUM_PUYO_TYPES = 6;
@@ -27,32 +28,11 @@ const CHAIN_POWERS = [
 ];
 
 /**
- * Obtain an empty 6x15 screen of puyos.
+ * Convert puyo grid index to an ANSI color code.
+ * @param n Grid index to convert.
+ * @param dark Return a darkened version of the color.
+ * @returns A string with the ANSI color switch instruction.
  */
-export function emptyScreen(): PuyoScreen {
-  const grid: Puyos[] = [];
-  for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
-    grid.push(emptyPuyos());
-  }
-  return {grid, chainNumber: 0, score: 0};
-}
-
-export function randomScreen(): PuyoScreen {
-  const array = [];
-  for (let i = 0; i < WIDTH * HEIGHT; ++i) {
-    if (Math.random() < .5) {
-      array.push(-1);
-    } else {
-      array.push(Math.floor(Math.random() * NUM_PUYO_TYPES));
-    }
-  }
-  const grid: Puyos[] = [];
-  for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
-    grid.push(fromArray(array.map(a => a == i)));
-  }
-  return {grid, chainNumber: 0, score: 0};
-}
-
 export function colorOf(n: number, dark = false) {
   if (dark) {
     return `\x1b[3${n+1}m`;
@@ -60,88 +40,153 @@ export function colorOf(n: number, dark = false) {
   return `\x1b[3${n+1};1m`;
 }
 
-export function logScreen(screen: PuyoScreen): void {
-  console.log("╔════════════╗");
-  for (let y = 0; y < HEIGHT; ++y) {
-    let line = "║";
-    for (let x = 0; x < WIDTH; ++x) {
-      if (x > 0) {
-        line += " ";
+/**
+ * A 6x15 screen of puyos.
+ * Only the bottom 6x12 area is chainable.
+ * The 13th row acts as a ghost line which holds puyos that do not yet participate in chains.
+ * The 14th and 15th rows are vanished once everything has landed.
+ * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
+ */
+export class PuyoScreen {
+  grid: Puyos[];
+  chainNumber: number;
+
+  constructor() {
+    this.grid = [];
+    for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
+      this.grid.push(emptyPuyos());
+    }
+    this.chainNumber = 0;
+  }
+
+  /**
+   * Replace the screen with random material.
+   */
+  randomize() {
+    const array = [];
+    for (let i = 0; i < WIDTH * HEIGHT; ++i) {
+      if (Math.random() < .5) {
+        array.push(-1);
+      } else {
+        array.push(Math.floor(Math.random() * NUM_PUYO_TYPES));
       }
-      let any = false;
-      let many = false;
-      for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
-        if (puyoAt(screen.grid[i], x, y)) {
-          if (any) {
-            many = true;
-          } else {
-            line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
-            if (i == GARBAGE) {
-              line += "◎";
+    }
+    this.grid = [];
+    for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
+      this.grid.push(fromArray(array.map(a => a == i)));
+    }
+  }
+
+  /**
+   * An array of strings suitable for rendering the screen in the console.
+   */
+  displayLines(): string[] {
+    const result = ["╔════════════╗"];
+    for (let y = 0; y < HEIGHT; ++y) {
+      let line = "║";
+      for (let x = 0; x < WIDTH; ++x) {
+        if (x > 0) {
+          line += " ";
+        }
+        let any = false;
+        let many = false;
+        for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
+          if (puyoAt(this.grid[i], x, y)) {
+            if (any) {
+              many = true;
             } else {
-              line += "●";
+              line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
+              if (i == GARBAGE) {
+                line += "◎";
+              } else {
+                line += "●";
+              }
             }
+            any = true;
           }
-          any = true;
+        }
+        if (many) {
+          line = line.slice(0, -1) + "X";
+        }
+        if (!any) {
+          line += " ";
         }
       }
-      if (many) {
-        line = line.slice(0, -1) + "X";
-      }
-      if (!any) {
-        line += " ";
+      line += "\x1b[0m ║";
+      result.push(line);
+    }
+    result.push("╚════════════╝");
+    result.push(`Chain: ${this.chainNumber}`);
+    return result;
+  }
+
+  /**
+   * Render the screen in the console.
+   */
+  log(): void {
+    this.displayLines().forEach(line => console.log(line));
+  }
+
+  /**
+   * Advance the state of the screen by one step.
+   * @returns The score accumulated and a busy signal to discourage interaction.
+   */
+  tick(): TickResult {
+    if (fallOne(this.grid)) {
+      return {score: 0, busy: true};
+    }
+
+    this.grid.forEach(vanishTop);
+
+    let numColors = 0;
+    let didClear = false;
+    let totalNumCleared = 0;
+    let totalGroupBonus = 0;
+    const totalCleared = emptyPuyos();
+    // TODO: Splashes from clearing
+    for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
+      const {numCleared, groupBonus, cleared} = clearGroups(this.grid[i]);
+      totalNumCleared += numCleared;
+      totalGroupBonus += groupBonus;
+      merge(totalCleared, cleared);
+      if (numCleared) {
+        numColors++;
+        didClear = true;
       }
     }
-    line += "\x1b[0m ║";
-    console.log(line);
-  }
-  console.log("╚════════════╝");
-  console.log(`Chain: ${screen.chainNumber}`);
-  console.log(`Score: ${screen.score}`);
-}
 
-export function tick(screen: PuyoScreen) {
-  if (fallOne(screen.grid)) {
-    return true;
-  }
-  let numColors = 0;
-  let didClear = false;
-  let totalNumCleared = 0;
-  let totalGroupBonus = 0;
-  const totalCleared = emptyPuyos();
-  // TODO: Splashes from clearing, clear everything beyond ghost line
-  for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
-    const {numCleared, groupBonus, cleared} = clearGroups(screen.grid[i]);
-    totalNumCleared += numCleared;
-    totalGroupBonus += groupBonus;
-    merge(totalCleared, cleared);
-    if (numCleared) {
-      numColors++;
-      didClear = true;
+    clearGarbage(this.grid[GARBAGE], totalCleared);
+  
+    const colorBonus = COLOR_BONUS[numColors];
+    const chainPower = CHAIN_POWERS[this.chainNumber];
+    const clearBonus = Math.max(1, Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus));
+    const score = (10 * totalNumCleared) * clearBonus;
+
+    if (didClear) {
+      this.chainNumber++;
+    } else {
+      this.chainNumber = 0;
     }
+
+    return {
+      score,
+      busy: didClear
+    };
   }
 
-  clearGarbage(screen.grid[GARBAGE], totalCleared);
-
-  const colorBonus = COLOR_BONUS[numColors];
-  const chainPower = CHAIN_POWERS[screen.chainNumber];
-  const clearBonus = Math.max(1, Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus));
-  screen.score += (10 * totalNumCleared) * clearBonus;
-
-  if (didClear) {
-    screen.chainNumber++;
-  } else {
-    screen.chainNumber = 0;
+  /**
+   * Insert a single puyo into the screen.
+   * @param x Horizontal coordinate, 0-indexed, left to right.
+   * @param y Vertical coordinate, 0-indexed, top to bottom.
+   * @param color Color of the puyo to insert.
+   * @returns `true` if the space was already occupied.
+   */
+  insertPuyo(x: number, y: number, color: number) {
+    const puyo = singlePuyo(x, y);
+    if (collides(puyo, ...this.grid)) {
+      return true;
+    }
+    merge(this.grid[color], puyo);
+    return false;
   }
-
-  return didClear;
-}
-
-export function insertPuyo(screen: PuyoScreen, x: number, y: number, color: number) {
-  const puyo = singlePuyo(x, y);
-  if (collides(puyo, ...screen.grid)) {
-    return true;
-  }
-  merge(screen.grid[color], puyo);
-  return false;
 }
