@@ -350,3 +350,9 @@ export function clear(puyos: Puyos) {
   puyos[1] = 0;
   puyos[2] = 0;
 }
+
+export function topLine(): Puyos {
+  const result = emptyPuyos();
+  result[0] = TOP;
+  return result;
+}

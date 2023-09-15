@@ -1,6 +1,6 @@
 import {expect, test} from "bun:test";
 import { BLUE, GARBAGE, GREEN, PURPLE, PuyoScreen, RED, YELLOW } from "./screen";
-import { isEmpty, isNonEmpty, puyoAt } from "./bitboard";
+import { isEmpty, isNonEmpty, puyoAt, puyoCount } from "./bitboard";
 
 test("Gravity", () => {
   const screen = new PuyoScreen();
@@ -62,4 +62,29 @@ test("Ghost garbage elimination", () => {
   screen.insertPuyo(5, 2, GARBAGE);
   while(screen.tick().busy);
   expect(isEmpty(screen.grid[GARBAGE])).toBeTruthy();
+});
+
+test("Stones of garbage", () => {
+  const screen = new PuyoScreen();
+  screen.insertPuyo(0, 1, RED);
+  screen.insertPuyo(1, 1, GREEN);
+  screen.tick(30);
+  while(screen.tick().busy);
+  screen.insertPuyo(1, 1, BLUE);
+  screen.insertPuyo(1, 2, YELLOW);
+  screen.tick(30);
+  while(screen.tick().busy);
+  screen.insertPuyo(5, 1, PURPLE);
+  screen.insertPuyo(5, 2, PURPLE);
+  screen.tick(6);
+  while(screen.tick().busy);
+
+  expect(puyoAt(screen.grid[RED], 0, 14)).toBeTruthy();
+  expect(puyoAt(screen.grid[GREEN], 1, 14)).toBeTruthy();
+  expect(puyoAt(screen.grid[BLUE], 1, 7)).toBeTruthy();
+  expect(puyoAt(screen.grid[YELLOW], 1, 8)).toBeTruthy();
+  expect(puyoAt(screen.grid[PURPLE], 5, 4)).toBeTruthy();
+  expect(puyoAt(screen.grid[PURPLE], 5, 3)).toBeTruthy();
+  // Two stones and a line of garbage with one garbage puyo vanishing beyond the ghost line.
+  expect(puyoCount(screen.grid[GARBAGE])).toBe(30 + 30 + 6  - 1);
 });

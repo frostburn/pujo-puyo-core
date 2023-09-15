@@ -44,4 +44,19 @@ export class JKISS32 {
     this.state[4] = this.state[0] + this.state[1] + this.state[2];
     return this.state[4];
   }
+
+  shuffle(array: any[]) {
+    let entropy = 0;
+    let juice = 4294967296;
+    for (let i = array.length - 1; i > 0; i--) {
+      if (juice >= 4294967296) {
+        entropy = this.step();
+        juice = 1;
+      }
+      const j = entropy % (i+1);
+      entropy = Math.floor(entropy / (i+1));
+      juice *= i+1;
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
 }

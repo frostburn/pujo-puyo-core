@@ -67,3 +67,27 @@ test("Natural run length", () => {
   }
   expect(longest).toBeGreaterThan(20);
 });
+
+test("Shuffle", () => {
+  const jkiss = new JKISS32(1);
+  const array = [1, "two", null, {}, NaN];
+  jkiss.shuffle(array);
+  expect(array[0]).toBe(1);
+  expect(array[1]).toBe("two");
+  expect(array[2]).toBeNaN();
+  expect(array[3]).toBeNull();
+  expect(array[4]).toMatchObject({});
+
+  // This tests that only one step was used.
+  expect(jkiss.step()).toBe(1114502333);
+});
+
+test("Big shuffle", () => {
+  const jkiss = new JKISS32(1);
+
+  const array = [...Array(14).keys()];
+  jkiss.shuffle(array);
+
+  // This tests that now two steps were required to generate enough pseudo-entropy.
+  expect(jkiss.step()).toBe(3867156467);
+});

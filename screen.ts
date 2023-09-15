@@ -1,4 +1,5 @@
-import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clear, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, isNonEmpty, merge, puyoAt, singlePuyo, vanishTop} from "./bitboard";
+import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clear, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, isNonEmpty, merge, puyoAt, singlePuyo, topLine, vanishTop} from "./bitboard";
+import { JKISS32 } from "./jkiss";
 
 /**
  * Result of advancing the screen one step.
@@ -51,8 +52,11 @@ export class PuyoScreen {
   grid: Puyos[];
   sparks: Puyos[];
   chainNumber: number;
+  bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
+  garbageSlots: number[];  // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
+  jkiss: JKISS32;  // Replays and netcode benefit from deterministic randomness.
 
-  constructor() {
+  constructor(seed? : number) {
     this.grid = [];
     this.sparks = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
@@ -60,6 +64,9 @@ export class PuyoScreen {
       this.sparks.push(emptyPuyos());
     }
     this.chainNumber = 0;
+    this.bufferedGarbage = 0;
+    this.garbageSlots = [];
+    this.jkiss = new JKISS32(seed);
   }
 
   /**
@@ -143,18 +150,41 @@ export class PuyoScreen {
    * Advance the state of the screen by one step.
    * @returns The score accumulated and a busy signal to discourage interaction.
    */
-  tick(): TickResult {
+  tick(releasedGarbage = 0): TickResult {
+    this.bufferedGarbage += releasedGarbage;
+
+    // Pause for a step to clear sparks.
     if (this.sparks.some(isNonEmpty)) {
       this.sparks.forEach(clear);
       return {score: 0, busy: true}
     }
 
+    // Create (up to) one line of garbage.
+    if (this.bufferedGarbage >= WIDTH) {
+      merge(this.grid[GARBAGE], topLine());
+      this.bufferedGarbage -= WIDTH;
+    } else if (this.bufferedGarbage) {
+      const line = Array(WIDTH).fill(false);
+      while(this.bufferedGarbage) {
+        if (!this.garbageSlots.length) {
+          this.garbageSlots = [...Array(WIDTH).keys()];
+          this.jkiss.shuffle(this.garbageSlots);
+        }
+        line[this.garbageSlots.pop()!] = true;
+        this.bufferedGarbage--;
+      }
+      merge(this.grid[GARBAGE], fromArray(line));
+    }
+
+    // Make everything unsupported fall down one grid unit.
     if (fallOne(this.grid)) {
       return {score: 0, busy: true};
     }
 
+    // Make everything above the ghost line disappear.
     this.grid.forEach(vanishTop);
 
+    // Clear groups and give score accordingly.
     let numColors = 0;
     let didClear = false;
     let totalNumCleared = 0;

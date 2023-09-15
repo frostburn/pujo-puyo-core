@@ -19,6 +19,7 @@ const screen = new PuyoScreen();
 let score = 0;
 let busy = false;
 let needsRedraw = false;
+let pendingGarbage = 0;
 
 // Line the bottom with garbage to debug clearing.
 if (process.argv.length >= 3) {
@@ -149,21 +150,33 @@ stdin.on('data', function(key: string){
     clearPrimary();
     clearSecondary();
     console.log("\x1b[0m");
-    screen.insertPuyo(x, 1, color1);
+    // Potentially inserts at the ghost line.
+    // The top line is reserved for garbage generation.
+    if (rot == 2) {
+      screen.insertPuyo(x, 1, color1);
+    } else {
+      screen.insertPuyo(x, 2, color1);
+    }
     if (rot == 0) {
-      screen.insertPuyo(x, 0, color2);
+      screen.insertPuyo(x, 1, color2);
     }
     if (rot == 1) {
-      screen.insertPuyo(x - 1, 1, color2);
+      screen.insertPuyo(x - 1, 2, color2);
     }
     if (rot == 2) {
       screen.insertPuyo(x, 2, color2);
     }
     if (rot == 3) {
-      screen.insertPuyo(x + 1, 1, color2);
+      screen.insertPuyo(x + 1, 2, color2);
     }
     color1 = Math.floor(Math.random() * 4);
     color2 = Math.floor(Math.random() * 4);
+    if (Math.random() < 0.1) {
+      pendingGarbage = Math.floor(Math.random() * 3 + 1);
+    }
+    if (Math.random() < 0.01) {
+      pendingGarbage = 30;
+    }
     needsRedraw = true;
   }
 });
@@ -181,7 +194,8 @@ function drawCursor() {
 }
 
 while(true) {
-  const tickResult = screen.tick();
+  const tickResult = screen.tick(pendingGarbage);
+  pendingGarbage = 0;
   score += tickResult.score;
   if(tickResult.busy) {
     drawScreen();
