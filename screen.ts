@@ -8,6 +8,7 @@ export const BLUE = 3;
 export const PURPLE = 4;
 export const GARBAGE = 5;
 
+// TODO: Convert into a class
 export type PuyoScreen = {
   grid: Puyos[],
   chainNumber: number,

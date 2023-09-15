@@ -1,48 +1,157 @@
 import { sleep } from "bun";
-import { randomPuyos, logPuyos, fallOne, WIDTH} from "./bitboard";
-import { NUM_PUYO_COLORS, insertPuyo, logScreen, randomScreen, tick } from "./screen";
+import { WIDTH} from "./bitboard";
+import { GREEN, RED, colorOf, emptyScreen, insertPuyo, logScreen, tick } from "./screen";
+import { stdin, stdout } from "process";
 
 console.log("Hello via Bun!");
 
-const puyos = randomPuyos();
+const UP = "\u001b[A";
+const DOWN = "\u001b[B";
+const RIGHT = "\u001b[C";
+const LEFT = "\u001b[D";
 
-logPuyos(puyos);
+stdin.setRawMode(true);
+stdin.resume();
 
-while(fallOne([puyos])){
-  await sleep(50);
-  logPuyos(puyos);
-}
+stdin.setEncoding('utf8');
 
-await sleep(500);
-
-const screen = randomScreen();
+const screen = emptyScreen();
 
 logScreen(screen);
 
-while (tick(screen)) {
-  await sleep(100);
-  logScreen(screen);
+for (let i = 0; i < 18; ++i) {
+  stdout.write(UP);
+}
+stdout.write(RIGHT + RIGHT + RIGHT + RIGHT + RIGHT);
+stdout.write(colorOf(RED) + "●" + LEFT + DOWN + colorOf(GREEN) + "●" + LEFT);
+
+let color1 = GREEN;
+let color2 = RED;
+let x = 2;
+let rot = 0;
+let busy = false;
+
+function clearPrimary() {
+  stdout.write(" " + LEFT);
 }
 
-await sleep(500);
-logScreen(screen);
+function writePrimary() {
+  stdout.write(colorOf(color1) + "●" + LEFT);
+}
 
-while (true) {
-  const x = Math.floor(Math.random() * WIDTH);
-  const y = 2;
-  const color = Math.floor(Math.random() * NUM_PUYO_COLORS);
-  if (insertPuyo(screen, x, y, color)) {
-    break;
+function clearSecondary() {
+  if (rot == 0) {
+    stdout.write(UP + " " + LEFT + DOWN);
   }
-  const x2 = Math.max(0, Math.min(WIDTH - 1, x + Math.floor(3*Math.random() - 1)));
-  const y2 = (x2 == x) ? 3 : 2;
-  const color2 = Math.floor(Math.random() * NUM_PUYO_COLORS);
-  if (insertPuyo(screen, x2, y2, color2)) {
-    break;
+  if (rot == 1) {
+    stdout.write(LEFT + LEFT + " " + RIGHT);
+  }
+  if (rot == 2) {
+    stdout.write(DOWN + " " + LEFT + UP);
+  }
+  if (rot == 3) {
+    stdout.write(RIGHT + RIGHT + " " + LEFT + LEFT + LEFT);
+  }
+}
+
+function writeSecondary() {
+  if (rot == 0) {
+    stdout.write(UP + colorOf(color2) + "●" + LEFT + DOWN);
+  }
+  if (rot == 1) {
+    stdout.write(LEFT + LEFT + colorOf(color2) + "●" + RIGHT);
+  }
+  if (rot == 2) {
+    stdout.write(DOWN + colorOf(color2) + "●" + LEFT + UP);
+  }
+  if (rot == 3) {
+    stdout.write(RIGHT + RIGHT + colorOf(color2) + "●" + LEFT + LEFT + LEFT);
+  }
+}
+
+stdin.on('data', function(key: string){
+  // ctrl-c ( end of text )
+  if ( key === '\u0003' ) {
+    console.log("\x1b[0m");
+    for (let i = 0; i < 18; ++i) {
+      console.log("");
+    }
+    console.log("Thank you for playing!");
+    process.exit();
   }
 
-  while (tick(screen)) {
-    await sleep(100);
+  if (busy) {
+    return;
+  }
+
+  if (key == UP) {
+    clearSecondary();
+    rot = (rot + 1) % 4;
+    if (rot == 1 && x == 0) {
+      clearPrimary();
+      x++;
+      stdout.write(RIGHT + RIGHT);
+      writePrimary();
+    }
+    if (rot == 3 && x == WIDTH - 1) {
+      clearPrimary();
+      x--;
+      stdout.write(LEFT + LEFT);
+      writePrimary();
+    }
+    writeSecondary();
+  }
+  if (key == LEFT && x > 0 && (x > 1 || rot != 1)) {
+    clearPrimary();
+    clearSecondary();
+    x--;
+    stdout.write(LEFT + LEFT);
+    writePrimary();
+    writeSecondary();
+  }
+  if (key == RIGHT && x < WIDTH - 1 && (x < WIDTH - 2 || rot != 3)) {
+    clearPrimary();
+    clearSecondary();
+    x++;
+    stdout.write(RIGHT + RIGHT);
+    writePrimary();
+    writeSecondary();
+  }
+  if (key == DOWN) {
+    console.log("\x1b[0m");
+    insertPuyo(screen, x, 1, color1);
+    if (rot == 0) {
+      insertPuyo(screen, x, 0, color2);
+    }
+    if (rot == 1) {
+      insertPuyo(screen, x - 1, 1, color2);
+    }
+    if (rot == 2) {
+      insertPuyo(screen, x, 2, color2);
+    }
+    if (rot == 3) {
+      insertPuyo(screen, x + 1, 1, color2);
+    }
+    color1 = Math.floor(Math.random() * 4);
+    color2 = Math.floor(Math.random() * 4);
+  }
+});
+
+while(true) {
+  if(tick(screen)) {
     logScreen(screen);
+    busy = true;
+  } else if (busy){
+    for (let i = 0; i < 17; ++i) {
+      stdout.write(UP);
+    }
+    stdout.write(RIGHT);
+    for (let i = 0; i < x; ++i) {
+      stdout.write(RIGHT + RIGHT);
+    }
+    writePrimary();
+    writeSecondary();
+    busy = false;
   }
+  await sleep(70);
 }
