@@ -309,7 +309,7 @@ export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
     ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[0] << V_SHIFT) |
     (cleared[0] >> V_SHIFT)
-  ) & LIFE_BLOCK);
+  ) & SEMI_LIFE_BLOCK);
 
   eliminated[1] &= (
     ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
