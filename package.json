@@ -1,11 +1,23 @@
 {
   "name": "pujo-puyo-core",
   "module": "index.ts",
-  "type": "module",
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "gts": "^5.0.1",
+    "typescript": "~5.1.6",
+    "@types/node": "20.4.6"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
-  }
+  },
+  "scripts": {
+    "lint": "gts lint",
+    "clean": "gts clean",
+    "compile": "bun build index.ts --outdir=build --target=bun",
+    "fix": "gts fix",
+    "prepare": "bun run compile",
+    "pretest": "bun run compile",
+    "posttest": "bun run lint"
+  },
+  "type": "module"
 }

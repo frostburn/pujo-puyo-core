@@ -1,5 +1,8 @@
 {
+  "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "build",
     "lib": ["ESNext"],
     "module": "esnext",
     "target": "esnext",
@@ -18,5 +21,8 @@
     "types": [
       "bun-types" // add Bun global
     ]
-  }
+  },
+  "include": [
+    "*.ts" // TODO: Move to src/ and test/
+  ]
 }

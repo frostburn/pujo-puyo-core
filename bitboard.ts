@@ -7,14 +7,24 @@ export const WIDTH = 6;
 const SLICE_HEIGHT = 5;
 const H_SHIFT = 1;
 const V_SHIFT = 6;
-const TOP_TO_BOTTOM = (V_SHIFT * (SLICE_HEIGHT - 1));
+const TOP_TO_BOTTOM = V_SHIFT * (SLICE_HEIGHT - 1);
 // Bitboard patterns
 const TOP = (1 << WIDTH) - 1;
 const BOTTOM = TOP << ((SLICE_HEIGHT - 1) * V_SHIFT);
-const FULL = TOP | (TOP << V_SHIFT) | (TOP << (V_SHIFT * 2)) | (TOP << (V_SHIFT * 3)) | BOTTOM;
-const LEFT_WALL = 1 | (1 << V_SHIFT) | (1 << (V_SHIFT * 2)) | (1 << (V_SHIFT * 3)) | (1 << (V_SHIFT * 4));
+const FULL =
+  TOP |
+  (TOP << V_SHIFT) |
+  (TOP << (V_SHIFT * 2)) |
+  (TOP << (V_SHIFT * 3)) |
+  BOTTOM;
+const LEFT_WALL =
+  1 |
+  (1 << V_SHIFT) |
+  (1 << (V_SHIFT * 2)) |
+  (1 << (V_SHIFT * 3)) |
+  (1 << (V_SHIFT * 4));
 const RIGHT_BLOCK = FULL ^ LEFT_WALL;
-const INVALID = (-1) ^ FULL;
+const INVALID = -1 ^ FULL;
 const LIFE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
 const SEMI_LIFE_BLOCK = LIFE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
 // Large scale structure
@@ -90,25 +100,25 @@ export function fromArray(array: boolean[]): Puyos {
  * Render puyos of a single color in ASCII using @ for puyos and . for empty space.
  */
 export function logPuyos(puyos: Puyos): void {
-  console.log("┌─────────────┐");
+  console.log('┌─────────────┐');
   for (let i = 0; i < NUM_SLICES; ++i) {
     for (let y = 0; y < SLICE_HEIGHT; ++y) {
-      let line = "│";
+      let line = '│';
       for (let x = 0; x < WIDTH; ++x) {
         if (puyos[i] & (1 << (x * H_SHIFT + y * V_SHIFT))) {
-          line += " @";
+          line += ' @';
         } else {
-          line += " .";
+          line += ' .';
         }
       }
-      line += " │";
-      if (y == (SLICE_HEIGHT - 1) && (puyos[i] & INVALID)) {
-        line += "!";
+      line += ' │';
+      if (y === SLICE_HEIGHT - 1 && puyos[i] & INVALID) {
+        line += '!';
       }
       console.log(line);
     }
   }
-  console.log("└─────────────┘");
+  console.log('└─────────────┘');
 }
 
 export function puyoAt(puyos: Puyos, x: number, y: number) {
@@ -130,14 +140,14 @@ export function singlePuyo(x: number, y: number): Puyos {
  * @param x 32-bit integer.
  * @returns The number of set bits in the input.
  */
-function popcount (x: number) {
-  x -= x >> 1 & 0x55555555
-  x = (x & 0x33333333) + (x >> 2 & 0x33333333)
-  x = x + (x >> 4) & 0x0f0f0f0f
-  x += x >> 8
-  x += x >> 16
+function popcount(x: number) {
+  x -= (x >> 1) & 0x55555555;
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+  x = (x + (x >> 4)) & 0x0f0f0f0f;
+  x += x >> 8;
+  x += x >> 16;
 
-  return x & 0x7f
+  return x & 0x7f;
 }
 
 /**
@@ -151,42 +161,46 @@ export function flood(source: Puyos, target: Puyos) {
   source[2] &= target[2];
 
   if (!(source[0] || source[1] || source[2])) {
-      return;
+    return;
   }
   const temp = emptyPuyos();
   do {
-      temp[0] = source[0];
-      temp[1] = source[1];
-      temp[2] = source[2];
+    temp[0] = source[0];
+    temp[1] = source[1];
+    temp[2] = source[2];
 
-      // Top slice
-      source[0] |= (
-          ((source[0] & RIGHT_BLOCK) >> H_SHIFT) |
-          ((source[0] << H_SHIFT) & RIGHT_BLOCK) |
-          (source[0] << V_SHIFT) |
-          (source[0] >> V_SHIFT) |
-          ((source[1] & TOP) << TOP_TO_BOTTOM)
-      ) & target[0];
+    // Top slice
+    source[0] |=
+      (((source[0] & RIGHT_BLOCK) >> H_SHIFT) |
+        ((source[0] << H_SHIFT) & RIGHT_BLOCK) |
+        (source[0] << V_SHIFT) |
+        (source[0] >> V_SHIFT) |
+        ((source[1] & TOP) << TOP_TO_BOTTOM)) &
+      target[0];
 
-      // Middle slice
-      source[1] |= (
-          ((source[1] & RIGHT_BLOCK) >> H_SHIFT) |
-          ((source[1] << H_SHIFT) & RIGHT_BLOCK) |
-          (source[1] << V_SHIFT) |
-          (source[1] >> V_SHIFT) |
-          ((source[0] & BOTTOM) >> TOP_TO_BOTTOM) |
-          ((source[2] & TOP) << TOP_TO_BOTTOM)
-      ) & target[1];
+    // Middle slice
+    source[1] |=
+      (((source[1] & RIGHT_BLOCK) >> H_SHIFT) |
+        ((source[1] << H_SHIFT) & RIGHT_BLOCK) |
+        (source[1] << V_SHIFT) |
+        (source[1] >> V_SHIFT) |
+        ((source[0] & BOTTOM) >> TOP_TO_BOTTOM) |
+        ((source[2] & TOP) << TOP_TO_BOTTOM)) &
+      target[1];
 
-      // Bottom slice
-      source[2] |= (
-        ((source[2] & RIGHT_BLOCK) >> H_SHIFT) |
+    // Bottom slice
+    source[2] |=
+      (((source[2] & RIGHT_BLOCK) >> H_SHIFT) |
         ((source[2] << H_SHIFT) & RIGHT_BLOCK) |
         (source[2] << V_SHIFT) |
         (source[2] >> V_SHIFT) |
-        ((source[1] & BOTTOM) >> TOP_TO_BOTTOM)
-      ) & target[2];
-  } while (temp[0] != source[0] || temp[1] != source[1] || temp[2] != source[2]);
+        ((source[1] & BOTTOM) >> TOP_TO_BOTTOM)) &
+      target[2];
+  } while (
+    temp[0] !== source[0] ||
+    temp[1] !== source[1] ||
+    temp[2] !== source[2]
+  );
 }
 
 /**
@@ -235,9 +249,12 @@ export function fallOne(grid: Puyos[]): boolean {
     puyos[0] ^= unsupported0;
     puyos[0] ^= FULL & (unsupported0 << V_SHIFT);
     puyos[1] ^= unsupported1;
-    puyos[1] ^= (FULL & (unsupported1 << V_SHIFT)) | ((unsupported0 & BOTTOM) >> TOP_TO_BOTTOM);
+    puyos[1] ^=
+      (FULL & (unsupported1 << V_SHIFT)) |
+      ((unsupported0 & BOTTOM) >> TOP_TO_BOTTOM);
     puyos[2] ^= unsupported2;
-    puyos[2] ^= (unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM);
+    puyos[2] ^=
+      (unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM);
   });
 
   return didFall;
@@ -256,9 +273,9 @@ function getGroupBonus(group_size: number) {
 }
 
 export type ClearResult = {
-  numCleared: number,
-  groupBonus: number,
-  cleared: Puyos,
+  numCleared: number;
+  groupBonus: number;
+  cleared: Puyos;
 };
 
 export function clearGroups(puyos: Puyos): ClearResult {
@@ -297,33 +314,31 @@ export function clearGroups(puyos: Puyos): ClearResult {
   return {
     numCleared,
     groupBonus,
-    cleared
+    cleared,
   };
 }
 
 export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
   const eliminated = clone(garbage);
 
-  eliminated[0] &= ((
-    ((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
-    ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
-    (cleared[0] << V_SHIFT) |
-    (cleared[0] >> V_SHIFT)
-  ) & SEMI_LIFE_BLOCK);
+  eliminated[0] &=
+    (((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
+      ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
+      (cleared[0] << V_SHIFT) |
+      (cleared[0] >> V_SHIFT)) &
+    SEMI_LIFE_BLOCK;
 
-  eliminated[1] &= (
+  eliminated[1] &=
     ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[1] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[1] << V_SHIFT) |
-    (cleared[1] >> V_SHIFT)
-  );
+    (cleared[1] >> V_SHIFT);
 
-  eliminated[2] &= (
+  eliminated[2] &=
     ((cleared[2] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[2] << V_SHIFT) |
-    (cleared[2] >> V_SHIFT)
-  );
+    (cleared[2] >> V_SHIFT);
 
   garbage[0] ^= eliminated[0];
   garbage[1] ^= eliminated[1];
@@ -334,7 +349,11 @@ export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
 
 export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
   for (let i = 0; i < rest.length; ++i) {
-    if ((testPuyos[0] & rest[i][0]) || (testPuyos[1] & rest[i][1]) || (testPuyos[2] & rest[i][2])) {
+    if (
+      testPuyos[0] & rest[i][0] ||
+      testPuyos[1] & rest[i][1] ||
+      testPuyos[2] & rest[i][2]
+    ) {
       return true;
     }
   }

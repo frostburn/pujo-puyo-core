@@ -1,12 +1,30 @@
-import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clear, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, isNonEmpty, merge, puyoAt, singlePuyo, topLine, vanishTop} from "./bitboard";
-import { JKISS32 } from "./jkiss";
+import {
+  HEIGHT,
+  LIFE_HEIGHT,
+  Puyos,
+  WIDTH,
+  clear,
+  clearGarbage,
+  clearGroups,
+  collides,
+  emptyPuyos,
+  fallOne,
+  fromArray,
+  isNonEmpty,
+  merge,
+  puyoAt,
+  singlePuyo,
+  topLine,
+  vanishTop,
+} from './bitboard';
+import {JKISS32} from './jkiss';
 
 /**
  * Result of advancing the screen one step.
  */
 type TickResult = {
-  score: number,
-  busy: boolean,
+  score: number;
+  busy: boolean;
 };
 
 // Indices of types of puyos in the grid
@@ -24,8 +42,8 @@ export const NUM_PUYO_TYPES = 6;
 const MAX_CLEAR_BONUS = 999;
 const COLOR_BONUS = [0, 0, 3, 6, 12, 24];
 const CHAIN_POWERS = [
-  0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288,
-  320, 352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672
+  0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448,
+  480, 512, 544, 576, 608, 640, 672,
 ];
 
 /**
@@ -36,9 +54,9 @@ const CHAIN_POWERS = [
  */
 export function colorOf(n: number, dark = false) {
   if (dark) {
-    return `\x1b[3${n+1}m`;
+    return `\x1b[3${n + 1}m`;
   }
-  return `\x1b[3${n+1};1m`;
+  return `\x1b[3${n + 1};1m`;
 }
 
 /**
@@ -53,10 +71,10 @@ export class PuyoScreen {
   sparks: Puyos[];
   chainNumber: number;
   bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
-  garbageSlots: number[];  // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
-  jkiss: JKISS32;  // Replays and netcode benefit from deterministic randomness.
+  garbageSlots: number[]; // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
+  jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
-  constructor(seed? : number) {
+  constructor(seed?: number) {
     this.grid = [];
     this.sparks = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
@@ -75,7 +93,7 @@ export class PuyoScreen {
   randomize() {
     const array = [];
     for (let i = 0; i < WIDTH * HEIGHT; ++i) {
-      if (Math.random() < .5) {
+      if (Math.random() < 0.5) {
         array.push(-1);
       } else {
         array.push(Math.floor(Math.random() * NUM_PUYO_TYPES));
@@ -83,7 +101,7 @@ export class PuyoScreen {
     }
     this.grid = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
-      this.grid.push(fromArray(array.map(a => a == i)));
+      this.grid.push(fromArray(array.map(a => a === i)));
     }
   }
 
@@ -91,12 +109,12 @@ export class PuyoScreen {
    * An array of strings suitable for rendering the screen in the console.
    */
   displayLines(): string[] {
-    const result = ["╔════════════╗"];
+    const result = ['╔════════════╗'];
     for (let y = 0; y < HEIGHT; ++y) {
-      let line = "║";
+      let line = '║';
       for (let x = 0; x < WIDTH; ++x) {
         if (x > 0) {
-          line += " ";
+          line += ' ';
         }
         let any = false;
         let many = false;
@@ -106,10 +124,10 @@ export class PuyoScreen {
               many = true;
             } else {
               line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
-              if (i == GARBAGE) {
-                line += "◎";
+              if (i === GARBAGE) {
+                line += '◎';
               } else {
-                line += "●";
+                line += '●';
               }
             }
             any = true;
@@ -119,22 +137,22 @@ export class PuyoScreen {
               many = true;
             } else {
               line += colorOf(i);
-              line += "⦻";
+              line += '⦻';
             }
             any = true;
           }
         }
         if (many) {
-          line = line.slice(0, -1) + "?";
+          line = line.slice(0, -1) + '?';
         }
         if (!any) {
-          line += " ";
+          line += ' ';
         }
       }
-      line += "\x1b[0m ║";
+      line += '\x1b[0m ║';
       result.push(line);
     }
-    result.push("╚════════════╝");
+    result.push('╚════════════╝');
     result.push(`Chain: ${this.chainNumber}`);
     return result;
   }
@@ -156,7 +174,7 @@ export class PuyoScreen {
     // Pause for a step to clear sparks.
     if (this.sparks.some(isNonEmpty)) {
       this.sparks.forEach(clear);
-      return {score: 0, busy: true}
+      return {score: 0, busy: true};
     }
 
     // Create (up to) one line of garbage.
@@ -165,7 +183,7 @@ export class PuyoScreen {
       this.bufferedGarbage -= WIDTH;
     } else if (this.bufferedGarbage) {
       const line = Array(WIDTH).fill(false);
-      while(this.bufferedGarbage) {
+      while (this.bufferedGarbage) {
         if (!this.garbageSlots.length) {
           this.garbageSlots = [...Array(WIDTH).keys()];
           this.jkiss.shuffle(this.garbageSlots);
@@ -207,8 +225,11 @@ export class PuyoScreen {
 
     const colorBonus = COLOR_BONUS[numColors];
     const chainPower = CHAIN_POWERS[this.chainNumber];
-    const clearBonus = Math.max(1, Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus));
-    const score = (10 * totalNumCleared) * clearBonus;
+    const clearBonus = Math.max(
+      1,
+      Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus)
+    );
+    const score = 10 * totalNumCleared * clearBonus;
 
     if (didClear) {
       this.chainNumber++;
@@ -218,7 +239,7 @@ export class PuyoScreen {
 
     return {
       score,
-      busy: didClear
+      busy: didClear,
     };
   }
 
