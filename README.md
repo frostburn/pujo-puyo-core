@@ -5,8 +5,12 @@ The name is a pun on the Finnish name for *Artemisia vulgaris*, the common mugwo
 
 ![image](https://github.com/frostburn/pujo-puyo-core/assets/1253499/f83ee34a-5d4d-4e9c-8bb1-40d5e63eaedc)
 
-*Public domain image of Artemisia vulgaris i.e. pujo*
+*Public domain illustration of Artemisia vulgaris i.e. pujo*
 
+## Trademark Notice
+*"Puyo Puyo"* is a registered U.S. trademark of SEGA CORPORATION since 2017. Pujo Puyo is not endorsed or related to SEGA CORPORATION in any way.
+
+## Development setup
 To install dependencies:
 
 ```bash

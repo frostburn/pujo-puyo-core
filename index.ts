@@ -3,9 +3,7 @@ import { WIDTH} from "./bitboard";
 import { GREEN, PuyoScreen, RED, colorOf } from "./screen";
 import { stdin, stdout } from "process";
 
-console.log("Hello via Bun!");
-
-// TODO: Fix cursor erasing ghosts
+console.log("Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!");
 
 const UP = "\u001b[A";
 const DOWN = "\u001b[B";
@@ -19,11 +17,33 @@ stdin.setEncoding('utf8');
 
 const screen = new PuyoScreen();
 let score = 0;
+let busy = false;
+let needsRedraw = false;
 
-screen.log();
-stdout.write(`Score: ${score}\r`);
+function drawScreen(initial=false) {
+  if (!initial) {
+    if (!busy) {
+      stdout.write("\r");
+      for (let i = 0; i < 3; ++i) {
+        stdout.write(UP);
+      }
+    } else {
+      for (let i = 0; i < 19; ++i) {
+        stdout.write(UP);
+      }
+    }
+  }
+  const lines = screen.displayLines();
+  // Insert an extra line to make space for the cursor.
+  lines.splice(1, 0, "║            ║");
+  lines.forEach(line => console.log(line));
+  stdout.write(`Score: ${score}\r`);
+  needsRedraw = false;
+}
 
-for (let i = 0; i < 17; ++i) {
+drawScreen(true);
+
+for (let i = 0; i < 18; ++i) {
   stdout.write(UP);
 }
 stdout.write(RIGHT + RIGHT + RIGHT + RIGHT + RIGHT);
@@ -33,8 +53,6 @@ let color1 = GREEN;
 let color2 = RED;
 let x = 2;
 let rot = 0;
-let busy = false;
-let needsRedraw = false;
 
 function clearPrimary() {
   stdout.write(" " + LEFT);
@@ -123,6 +141,8 @@ stdin.on('data', function(key: string){
     writeSecondary();
   }
   if (key == DOWN) {
+    clearPrimary();
+    clearSecondary();
     console.log("\x1b[0m");
     screen.insertPuyo(x, 1, color1);
     if (rot == 0) {
@@ -143,24 +163,8 @@ stdin.on('data', function(key: string){
   }
 });
 
-function drawScreen() {
-  if (!busy) {
-    stdout.write("\r");
-    for (let i = 0; i < 3; ++i) {
-      stdout.write(UP);
-    }
-  } else {
-    for (let i = 0; i < 18; ++i) {
-      stdout.write(UP);
-    }
-  }
-  screen.log();
-  stdout.write(`Score: ${score}\r`);
-  needsRedraw = false;
-}
-
 function drawCursor() {
-  for (let i = 0; i < 16; ++i) {
+  for (let i = 0; i < 17; ++i) {
     stdout.write(UP);
   }
   stdout.write(RIGHT);
@@ -178,6 +182,7 @@ while(true) {
     drawScreen();
     busy = true;
   } else if (busy){
+    drawScreen();
     drawCursor();
     busy = false;
   }
@@ -186,5 +191,5 @@ while(true) {
     drawScreen();
     drawCursor();
   }
-  await sleep(70);
+  await sleep(60);
 }
