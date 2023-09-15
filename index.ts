@@ -1,6 +1,6 @@
 import { sleep } from "bun";
 import { WIDTH} from "./bitboard";
-import { GREEN, PuyoScreen, RED, colorOf } from "./screen";
+import { GARBAGE, GREEN, PuyoScreen, RED, colorOf } from "./screen";
 import { stdin, stdout } from "process";
 
 console.log("Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!");
@@ -19,6 +19,11 @@ const screen = new PuyoScreen();
 let score = 0;
 let busy = false;
 let needsRedraw = false;
+
+// Line the bottom with garbage to debug clearing.
+if (process.argv.length >= 3) {
+  screen.grid[GARBAGE][2] = 1056964608;
+}
 
 function drawScreen(initial=false) {
   if (!initial) {

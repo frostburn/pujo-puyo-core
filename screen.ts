@@ -1,4 +1,4 @@
-import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, merge, puyoAt, singlePuyo, vanishTop} from "./bitboard";
+import {HEIGHT, LIFE_HEIGHT, Puyos, WIDTH, clear, clearGarbage, clearGroups, collides, emptyPuyos, fallOne, fromArray, isNonEmpty, merge, puyoAt, singlePuyo, vanishTop} from "./bitboard";
 
 /**
  * Result of advancing the screen one step.
@@ -49,12 +49,15 @@ export function colorOf(n: number, dark = false) {
  */
 export class PuyoScreen {
   grid: Puyos[];
+  sparks: Puyos[];
   chainNumber: number;
 
   constructor() {
     this.grid = [];
+    this.sparks = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
       this.grid.push(emptyPuyos());
+      this.sparks.push(emptyPuyos());
     }
     this.chainNumber = 0;
   }
@@ -104,9 +107,18 @@ export class PuyoScreen {
             }
             any = true;
           }
+          if (puyoAt(this.sparks[i], x, y)) {
+            if (any) {
+              many = true;
+            } else {
+              line += colorOf(i);
+              line += "⦻";
+            }
+            any = true;
+          }
         }
         if (many) {
-          line = line.slice(0, -1) + "X";
+          line = line.slice(0, -1) + "?";
         }
         if (!any) {
           line += " ";
@@ -132,6 +144,11 @@ export class PuyoScreen {
    * @returns The score accumulated and a busy signal to discourage interaction.
    */
   tick(): TickResult {
+    if (this.sparks.some(isNonEmpty)) {
+      this.sparks.forEach(clear);
+      return {score: 0, busy: true}
+    }
+
     if (fallOne(this.grid)) {
       return {score: 0, busy: true};
     }
@@ -143,20 +160,21 @@ export class PuyoScreen {
     let totalNumCleared = 0;
     let totalGroupBonus = 0;
     const totalCleared = emptyPuyos();
-    // TODO: Splashes from clearing
+
     for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
       const {numCleared, groupBonus, cleared} = clearGroups(this.grid[i]);
-      totalNumCleared += numCleared;
-      totalGroupBonus += groupBonus;
-      merge(totalCleared, cleared);
       if (numCleared) {
+        totalNumCleared += numCleared;
+        totalGroupBonus += groupBonus;
+        merge(totalCleared, cleared);
+        this.sparks[i] = cleared;
         numColors++;
         didClear = true;
       }
     }
 
-    clearGarbage(this.grid[GARBAGE], totalCleared);
-  
+    this.sparks[GARBAGE] = clearGarbage(this.grid[GARBAGE], totalCleared);
+
     const colorBonus = COLOR_BONUS[numColors];
     const chainPower = CHAIN_POWERS[this.chainNumber];
     const clearBonus = Math.max(1, Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus));

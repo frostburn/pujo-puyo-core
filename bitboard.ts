@@ -61,6 +61,15 @@ export function isEmpty(puyos: Puyos) {
 }
 
 /**
+ * Test if there is one or more puyos in the collection.
+ * @param puyos A collection of puyos.
+ * @returns `true` if there are puyos present.
+ */
+export function isNonEmpty(puyos: Puyos) {
+  return !!(puyos[0] | puyos[1] | puyos[2]);
+}
+
+/**
  * Convert a boolean array to a collection of puyos
  * @param array An array indicating the presence of puyos.
  * @returns A collection of puyos.
@@ -292,27 +301,35 @@ export function clearGroups(puyos: Puyos): ClearResult {
   };
 }
 
-export function clearGarbage(garbage: Puyos, cleared: Puyos) {
-  garbage[0] &= ~((
+export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
+  const eliminated = clone(garbage);
+
+  eliminated[0] &= ((
     ((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[0] << V_SHIFT) |
     (cleared[0] >> V_SHIFT)
   ) & LIFE_BLOCK);
 
-  garbage[1] &= ~(
+  eliminated[1] &= (
     ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[1] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[1] << V_SHIFT) |
     (cleared[1] >> V_SHIFT)
   );
 
-  garbage[2] &= ~(
+  eliminated[2] &= (
     ((cleared[2] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[2] << V_SHIFT) |
     (cleared[2] >> V_SHIFT)
   );
+
+  garbage[0] ^= eliminated[0];
+  garbage[1] ^= eliminated[1];
+  garbage[2] ^= eliminated[2];
+
+  return eliminated;
 }
 
 export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
@@ -326,4 +343,10 @@ export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
 
 export function vanishTop(puyos: Puyos) {
   puyos[0] &= SEMI_LIFE_BLOCK;
+}
+
+export function clear(puyos: Puyos) {
+  puyos[0] = 0;
+  puyos[1] = 0;
+  puyos[2] = 0;
 }
