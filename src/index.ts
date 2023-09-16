@@ -1,12 +1,13 @@
 import {sleep} from 'bun';
 import {WIDTH} from './bitboard';
-import {GARBAGE, GREEN, PuyoScreen, RED, colorOf} from './screen';
+import {GARBAGE, colorOf} from './screen';
 import {stdin, stdout} from 'process';
+import {SinglePlayerGame} from './game';
 
 // TODO: Target the browser, no bun dependencies.
+// TODO: Fix +10x chains leaving garbage text behind
 
-const ALL_CLEAR_BONUS = 8500;
-
+console.log();
 console.log(
   'Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!'
 );
@@ -21,22 +22,21 @@ stdin.resume();
 
 stdin.setEncoding('utf8');
 
-const screen = new PuyoScreen();
-let score = 0;
+const game = new SinglePlayerGame();
 let busy = false;
 let needsRedraw = false;
 let pendingGarbage = 0;
 
 // Line the bottom with garbage to debug clearing.
 if (process.argv.length >= 3) {
-  screen.grid[GARBAGE][2] = 1056964608;
+  game.screen.grid[GARBAGE][2] = 1056964608;
 }
 
 function drawScreen(initial = false) {
   if (!initial) {
     if (!busy) {
       stdout.write('\r');
-      for (let i = 0; i < 3; ++i) {
+      for (let i = 0; i < 2; ++i) {
         stdout.write(UP);
       }
     } else {
@@ -45,62 +45,63 @@ function drawScreen(initial = false) {
       }
     }
   }
-  const lines = screen.displayLines();
-  // Insert an extra line to make space for the cursor.
-  lines.splice(1, 0, '║            ║');
+  const lines = game.displayLines();
+  // Break open the roof to make space for the cursor.
+  lines[0] = '║            ║' + lines[0].slice(14);
   lines.forEach(line => console.log(line));
-  stdout.write(`Score: ${score}\r`);
   needsRedraw = false;
 }
 
 drawScreen(true);
 
-for (let i = 0; i < 18; ++i) {
+for (let i = 0; i < 19; ++i) {
   stdout.write(UP);
 }
 stdout.write(RIGHT + RIGHT + RIGHT + RIGHT + RIGHT);
-stdout.write(colorOf(RED) + '●' + LEFT + DOWN + colorOf(GREEN) + '●' + LEFT);
+stdout.write(
+  colorOf(game.color2) + '●' + LEFT + DOWN + colorOf(game.color1) + '●' + LEFT
+);
 
-let color1 = GREEN;
-let color2 = RED;
 let x = 2;
-let rot = 0;
+let orientation = 0;
 
 function clearPrimary() {
   stdout.write(' ' + LEFT);
 }
 
 function writePrimary() {
-  stdout.write(colorOf(color1) + '●' + LEFT);
+  stdout.write(colorOf(game.color1) + '●' + LEFT);
 }
 
 function clearSecondary() {
-  if (rot === 0) {
+  if (orientation === 0) {
     stdout.write(UP + ' ' + LEFT + DOWN);
   }
-  if (rot === 1) {
+  if (orientation === 1) {
     stdout.write(LEFT + LEFT + ' ' + RIGHT);
   }
-  if (rot === 2) {
+  if (orientation === 2) {
     stdout.write(DOWN + ' ' + LEFT + UP);
   }
-  if (rot === 3) {
+  if (orientation === 3) {
     stdout.write(RIGHT + RIGHT + ' ' + LEFT + LEFT + LEFT);
   }
 }
 
 function writeSecondary() {
-  if (rot === 0) {
-    stdout.write(UP + colorOf(color2) + '●' + LEFT + DOWN);
+  if (orientation === 0) {
+    stdout.write(UP + colorOf(game.color2) + '●' + LEFT + DOWN);
   }
-  if (rot === 1) {
-    stdout.write(LEFT + LEFT + colorOf(color2) + '●' + RIGHT);
+  if (orientation === 1) {
+    stdout.write(LEFT + LEFT + colorOf(game.color2) + '●' + RIGHT);
   }
-  if (rot === 2) {
-    stdout.write(DOWN + colorOf(color2) + '●' + LEFT + UP);
+  if (orientation === 2) {
+    stdout.write(DOWN + colorOf(game.color2) + '●' + LEFT + UP);
   }
-  if (rot === 3) {
-    stdout.write(RIGHT + RIGHT + colorOf(color2) + '●' + LEFT + LEFT + LEFT);
+  if (orientation === 3) {
+    stdout.write(
+      RIGHT + RIGHT + colorOf(game.color2) + '●' + LEFT + LEFT + LEFT
+    );
   }
 }
 
@@ -122,14 +123,14 @@ stdin.on('data', (key: string) => {
 
   if (key === UP) {
     clearSecondary();
-    rot = (rot + 1) % 4;
-    if (rot === 1 && x === 0) {
+    orientation = (orientation + 1) % 4;
+    if (orientation === 1 && x === 0) {
       clearPrimary();
       x++;
       stdout.write(RIGHT + RIGHT);
       writePrimary();
     }
-    if (rot === 3 && x === WIDTH - 1) {
+    if (orientation === 3 && x === WIDTH - 1) {
       clearPrimary();
       x--;
       stdout.write(LEFT + LEFT);
@@ -137,7 +138,7 @@ stdin.on('data', (key: string) => {
     }
     writeSecondary();
   }
-  if (key === LEFT && x > 0 && (x > 1 || rot !== 1)) {
+  if (key === LEFT && x > 0 && (x > 1 || orientation !== 1)) {
     clearPrimary();
     clearSecondary();
     x--;
@@ -145,7 +146,7 @@ stdin.on('data', (key: string) => {
     writePrimary();
     writeSecondary();
   }
-  if (key === RIGHT && x < WIDTH - 1 && (x < WIDTH - 2 || rot !== 3)) {
+  if (key === RIGHT && x < WIDTH - 1 && (x < WIDTH - 2 || orientation !== 3)) {
     clearPrimary();
     clearSecondary();
     x++;
@@ -157,27 +158,8 @@ stdin.on('data', (key: string) => {
     clearPrimary();
     clearSecondary();
     console.log('\x1b[0m');
-    // Potentially inserts at the ghost line.
-    // The top line is reserved for garbage generation.
-    if (rot === 2) {
-      screen.insertPuyo(x, 1, color1);
-    } else {
-      screen.insertPuyo(x, 2, color1);
-    }
-    if (rot === 0) {
-      screen.insertPuyo(x, 1, color2);
-    }
-    if (rot === 1) {
-      screen.insertPuyo(x - 1, 2, color2);
-    }
-    if (rot === 2) {
-      screen.insertPuyo(x, 2, color2);
-    }
-    if (rot === 3) {
-      screen.insertPuyo(x + 1, 2, color2);
-    }
-    color1 = Math.floor(Math.random() * 4);
-    color2 = Math.floor(Math.random() * 4);
+    game.play(x, 2, orientation);
+    orientation = 0;
     if (Math.random() < 0.1) {
       pendingGarbage = Math.floor(Math.random() * 3 + 1);
     }
@@ -189,7 +171,7 @@ stdin.on('data', (key: string) => {
 });
 
 function drawCursor() {
-  for (let i = 0; i < 17; ++i) {
+  for (let i = 0; i < 18; ++i) {
     stdout.write(UP);
   }
   stdout.write(RIGHT);
@@ -201,11 +183,9 @@ function drawCursor() {
 }
 
 while (true) {
-  const tickResult = screen.tick(pendingGarbage);
+  const gameBusy = game.tick(pendingGarbage);
   pendingGarbage = 0;
-  score += tickResult.score;
-  score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
-  if (tickResult.busy) {
+  if (gameBusy) {
     drawScreen();
     busy = true;
   } else if (busy) {

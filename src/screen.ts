@@ -266,4 +266,10 @@ export class PuyoScreen {
     merge(this.grid[color], puyo);
     return false;
   }
+
+  get mask(): Puyos {
+    const result = emptyPuyos();
+    this.grid.forEach(puyos => merge(result, puyos));
+    return result;
+  }
 }
