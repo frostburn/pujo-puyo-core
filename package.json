@@ -1,5 +1,24 @@
 {
   "name": "pujo-puyo-core",
+  "author": "Lumi Pakkanen",
+  "version": "0.0.1",
+  "description": "Core engine for a Puyo Puyo clone",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frostburn/pujo-puyo-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/frostburn/pujo-puyo-core/issues"
+  },
+  "homepage": "https://github.com/frostburn/pujo-puyo-core#readme",
+  "keywords": [
+    "Puzzle",
+    "Game",
+    "Puyo",
+    "Puyo Puyo",
+    "Mean Bean Machine"
+  ],
   "module": "src/index.ts",
   "devDependencies": {
     "bun-types": "latest",
