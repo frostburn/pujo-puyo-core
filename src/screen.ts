@@ -23,8 +23,9 @@ import {JKISS32} from './jkiss';
 /**
  * Result of advancing the screen one step.
  */
-type TickResult = {
+export type TickResult = {
   score: number;
+  didClear: boolean;
   allClear: boolean;
   busy: boolean;
 };
@@ -172,16 +173,18 @@ export class PuyoScreen {
 
   /**
    * Advance the state of the screen by one step.
-   * @param releasedGarbage How much garbage to generate and release into the playing grid.
    * @returns The score accumulated, all-clear flag and a busy signal to discourage interaction.
    */
-  tick(releasedGarbage = 0): TickResult {
-    this.bufferedGarbage += releasedGarbage;
-
+  tick(): TickResult {
     // Pause for a step to clear sparks.
     if (this.sparks.some(isNonEmpty)) {
       this.sparks.forEach(clear);
-      return {score: 0, allClear: this.grid.every(isEmpty), busy: true};
+      return {
+        score: 0,
+        didClear: false,
+        allClear: this.grid.every(isEmpty),
+        busy: true,
+      };
     }
 
     // Create (up to) one line of garbage.
@@ -203,7 +206,12 @@ export class PuyoScreen {
 
     // Make everything unsupported fall down one grid unit.
     if (fallOne(this.grid)) {
-      return {score: 0, allClear: false, busy: true};
+      return {
+        score: 0,
+        didClear: false,
+        allClear: false,
+        busy: true,
+      };
     }
 
     // Make everything above the ghost line disappear.
@@ -246,6 +254,7 @@ export class PuyoScreen {
 
     return {
       score,
+      didClear,
       allClear: false,
       busy: didClear,
     };

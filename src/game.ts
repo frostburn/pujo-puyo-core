@@ -1,14 +1,21 @@
 import {HEIGHT, WIDTH, puyoAt} from './bitboard';
 import {JKISS32} from './jkiss';
-import {NUM_PUYO_COLORS, PuyoScreen, colorOf} from './screen';
+import {NUM_PUYO_COLORS, PuyoScreen, TickResult, colorOf} from './screen';
 
 const COLOR_SELECTION_SIZE = 4;
 const BAG_QUOTA_PER_COLOR = 4;
 const BAG_SPICE = 8;
 
+// Single player
 const ALL_CLEAR_BONUS = 8500;
 
-export class SinglePlayerGame {
+// Multiplayer
+const TARGET_POINTS = 70;
+const ONE_STONE = WIDTH * 5;
+const ALL_CLEAR_GARBAGE = 30;
+// TODO: Margin time
+
+export class OnePlayerGame {
   score: number;
   active: boolean;
   jkiss: JKISS32;
@@ -111,15 +118,19 @@ export class SinglePlayerGame {
     this.active = true;
   }
 
-  tick(pendingGarbage = 0) {
-    if (this.active || pendingGarbage) {
-      const tickResult = this.screen.tick(pendingGarbage);
+  tick(): TickResult {
+    if (this.active || this.screen.bufferedGarbage) {
+      const tickResult = this.screen.tick();
       this.score += tickResult.score;
-      this.score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
       this.active = tickResult.busy;
-      return tickResult.busy;
+      return tickResult;
     }
-    return false;
+    return {
+      score: 0,
+      didClear: false,
+      allClear: false,
+      busy: false,
+    };
   }
 
   displayLines() {
@@ -140,5 +151,120 @@ export class SinglePlayerGame {
    */
   log(): void {
     this.displayLines().forEach(line => console.log(line));
+  }
+}
+
+export class SinglePlayerGame extends OnePlayerGame {
+  tick(): TickResult {
+    const tickResult = super.tick();
+    this.score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
+    return tickResult;
+  }
+}
+
+const PADDING = [1, 1, 1, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+
+// TODO: True multiplayer
+export class MultiplayerGame {
+  games: OnePlayerGame[];
+  // Buffered gargabe is sent on the next tick.
+  // Stored on games[i].screen.bufferedGarbage.
+  // Pending garbage is received after the next move. At most one stone at a time.
+  pendingGarbage: number[];
+  // These labels are sort of swapped.
+  // Left accumulated garbage comes from the left screen to be sent to the right.
+  accumulatedGarbage: number[];
+  // Points left over from score -> garbage conversion.
+  pointResidues: number[];
+  // All clear bonus is commited on the next chain.
+  allClearQueued: boolean[];
+  allClearBonus: boolean[];
+  // Garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
+  canSend: boolean[];
+
+  constructor(seed?: number) {
+    if (seed === undefined) {
+      seed = Math.floor(Math.random() * 4294967296);
+    }
+    this.games = [new OnePlayerGame(seed), new OnePlayerGame(seed)];
+
+    this.pendingGarbage = [0, 0];
+    this.accumulatedGarbage = [0, 0];
+    this.pointResidues = [0, 0];
+    this.allClearQueued = [false, false];
+    this.allClearBonus = [false, false];
+    this.canSend = [false, false];
+  }
+
+  displayLines() {
+    const lines = this.games[0].displayLines();
+    const rightLines = this.games[1].displayLines();
+    for (let i = 0; i < lines.length; ++i) {
+      if (i < PADDING.length) {
+        for (let j = 0; j < PADDING[i]; j++) {
+          lines[i] += ' ';
+        }
+      } else {
+        while (lines[i].length < 19) {
+          lines[i] += ' ';
+        }
+      }
+      lines[i] += rightLines[i];
+    }
+    return lines;
+  }
+
+  /**
+   * Render the game in the console.
+   */
+  log(): void {
+    this.displayLines().forEach(line => console.log(line));
+  }
+
+  play(player: number, x1: number, y1: number, orientation: number) {
+    this.games[player].play(x1, y1, orientation);
+    const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[player]);
+    this.games[player].screen.bufferedGarbage = releasedGarbage;
+    this.pendingGarbage[player] -= releasedGarbage;
+  }
+
+  tick() {
+    const tickResults = [];
+    for (let i = 0; i < this.games.length; ++i) {
+      const tickResult = this.games[i].tick();
+      this.pointResidues[i] += tickResult.score;
+      let generatedGarbage = Math.floor(this.pointResidues[i] / TARGET_POINTS);
+      this.pointResidues[i] -= generatedGarbage * TARGET_POINTS;
+      // Offset incoming garbage.
+      if (this.pendingGarbage[i] >= generatedGarbage) {
+        this.pendingGarbage[i] -= generatedGarbage;
+        generatedGarbage = 0;
+      } else {
+        generatedGarbage -= this.pendingGarbage[i];
+        this.pendingGarbage[i] = 0;
+      }
+      this.accumulatedGarbage[i] += generatedGarbage;
+
+      this.allClearQueued[i] = this.allClearQueued[i] || tickResult.allClear;
+
+      this.canSend[i] = this.canSend[i] || tickResult.didClear;
+
+      tickResults.push(tickResult);
+    }
+    for (let i = 0; i < tickResults.length; ++i) {
+      // Send accumulated garbage as soon as the chain is over.
+      if (this.canSend[i] && !tickResults[i].busy) {
+        // TODO: True multiplayer distribution.
+        this.pendingGarbage[1 - i] += this.accumulatedGarbage[i];
+        this.accumulatedGarbage[i] = 0;
+        this.pendingGarbage[1 - i] += this.allClearBonus[i]
+          ? ALL_CLEAR_GARBAGE
+          : 0;
+        this.allClearBonus[i] = this.allClearQueued[i];
+        this.allClearQueued[i] = false;
+        this.canSend[i] = false;
+      }
+    }
+    return tickResults;
   }
 }

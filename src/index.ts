@@ -1,16 +1,38 @@
 import {sleep} from 'bun';
 import {WIDTH} from './bitboard';
-import {GARBAGE, colorOf} from './screen';
+import {colorOf} from './screen';
 import {stdin, stdout} from 'process';
-import {SinglePlayerGame} from './game';
+import {MultiplayerGame, SinglePlayerGame} from './game';
 
 // TODO: Target the browser, no bun dependencies.
-// TODO: Fix +10x chains leaving garbage text behind
 
 console.log();
 console.log(
   'Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!'
 );
+
+// Play a random demo game.
+if (process.argv.length >= 3) {
+  const game = new MultiplayerGame();
+  for (let j = 0; j < 1000; ++j) {
+    for (let i = 0; i < 2; ++i) {
+      if (!game.games[i].active) {
+        game.play(
+          i,
+          Math.floor(Math.random() * WIDTH),
+          2,
+          Math.floor(Math.random() * 4)
+        );
+      }
+    }
+    game.tick();
+    game.log();
+    // TODO: Retouch manipulated puyos in.
+    await sleep(100);
+  }
+  // eslint-disable-next-line
+  process.exit();
+}
 
 const UP = '\u001b[A';
 const DOWN = '\u001b[B';
@@ -25,12 +47,6 @@ stdin.setEncoding('utf8');
 const game = new SinglePlayerGame();
 let busy = false;
 let needsRedraw = false;
-let pendingGarbage = 0;
-
-// Line the bottom with garbage to debug clearing.
-if (process.argv.length >= 3) {
-  game.screen.grid[GARBAGE][2] = 1056964608;
-}
 
 function drawScreen(initial = false) {
   if (!initial) {
@@ -48,6 +64,8 @@ function drawScreen(initial = false) {
   const lines = game.displayLines();
   // Break open the roof to make space for the cursor.
   lines[0] = '║            ║' + lines[0].slice(14);
+  // Work around +10x chain taking more display space than 1x chain.
+  lines[lines.length - 2] += ' ';
   lines.forEach(line => console.log(line));
   needsRedraw = false;
 }
@@ -161,10 +179,10 @@ stdin.on('data', (key: string) => {
     game.play(x, 2, orientation);
     orientation = 0;
     if (Math.random() < 0.1) {
-      pendingGarbage = Math.floor(Math.random() * 3 + 1);
+      game.screen.bufferedGarbage = Math.floor(Math.random() * 3 + 1);
     }
-    if (Math.random() < 0.01) {
-      pendingGarbage = 30;
+    if (Math.random() < 0.005) {
+      game.screen.bufferedGarbage = 30;
     }
     needsRedraw = true;
   }
@@ -183,9 +201,8 @@ function drawCursor() {
 }
 
 while (true) {
-  const gameBusy = game.tick(pendingGarbage);
-  pendingGarbage = 0;
-  if (gameBusy) {
+  const tickResult = game.tick();
+  if (tickResult.busy) {
     drawScreen();
     busy = true;
   } else if (busy) {

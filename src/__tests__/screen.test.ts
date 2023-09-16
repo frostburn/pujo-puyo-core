@@ -68,15 +68,18 @@ test('Stones of garbage', () => {
   const screen = new PuyoScreen();
   screen.insertPuyo(0, 1, RED);
   screen.insertPuyo(1, 1, GREEN);
-  screen.tick(30);
+  screen.bufferedGarbage = 30;
+  screen.tick();
   while (screen.tick().busy);
   screen.insertPuyo(1, 1, BLUE);
   screen.insertPuyo(1, 2, YELLOW);
-  screen.tick(30);
+  screen.bufferedGarbage = 30;
+  screen.tick();
   while (screen.tick().busy);
   screen.insertPuyo(5, 1, PURPLE);
   screen.insertPuyo(5, 2, PURPLE);
-  screen.tick(6);
+  screen.bufferedGarbage = 6;
+  screen.tick();
   while (screen.tick().busy);
 
   expect(puyoAt(screen.grid[RED], 0, 14)).toBeTruthy();
