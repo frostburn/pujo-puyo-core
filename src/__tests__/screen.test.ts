@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test';
-import {BLUE, GARBAGE, GREEN, PURPLE, PuyoScreen, RED, YELLOW} from './screen';
-import {isEmpty, isNonEmpty, puyoAt, puyoCount} from './bitboard';
+import {BLUE, GARBAGE, GREEN, PURPLE, PuyoScreen, RED, YELLOW} from '../screen';
+import {isEmpty, isNonEmpty, puyoAt, puyoCount} from '../bitboard';
 
 test('Gravity', () => {
   const screen = new PuyoScreen();

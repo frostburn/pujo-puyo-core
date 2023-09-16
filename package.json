@@ -1,6 +1,6 @@
 {
   "name": "pujo-puyo-core",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "devDependencies": {
     "bun-types": "latest",
     "gts": "^5.0.1",
@@ -13,7 +13,7 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "bun build index.ts --outdir=build --target=bun",
+    "compile": "bun build src/index.ts --outdir=build --target=bun",
     "fix": "gts fix",
     "prepare": "bun run compile",
     "pretest": "bun run compile",

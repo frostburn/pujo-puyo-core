@@ -1,5 +1,5 @@
 import {expect, test} from 'bun:test';
-import {JKISS32} from './jkiss';
+import {JKISS32} from '../jkiss';
 
 test('Determinancy', () => {
   const jkiss = new JKISS32(0);
