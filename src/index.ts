@@ -5,6 +5,8 @@ import {stdin, stdout} from 'process';
 
 // TODO: Target the browser, no bun dependencies.
 
+const ALL_CLEAR_BONUS = 8500;
+
 console.log(
   'Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!'
 );
@@ -202,6 +204,7 @@ while (true) {
   const tickResult = screen.tick(pendingGarbage);
   pendingGarbage = 0;
   score += tickResult.score;
+  score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
   if (tickResult.busy) {
     drawScreen();
     busy = true;

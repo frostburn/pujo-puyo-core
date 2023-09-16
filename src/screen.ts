@@ -10,6 +10,7 @@ import {
   emptyPuyos,
   fallOne,
   fromArray,
+  isEmpty,
   isNonEmpty,
   merge,
   puyoAt,
@@ -24,6 +25,7 @@ import {JKISS32} from './jkiss';
  */
 type TickResult = {
   score: number;
+  allClear: boolean;
   busy: boolean;
 };
 
@@ -74,6 +76,10 @@ export class PuyoScreen {
   garbageSlots: number[]; // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
   jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
+  /**
+   * Construct a new 6x15 screen of puyos.
+   * @param seed Seed for the pseudo random number generator.
+   */
   constructor(seed?: number) {
     this.grid = [];
     this.sparks = [];
@@ -166,7 +172,8 @@ export class PuyoScreen {
 
   /**
    * Advance the state of the screen by one step.
-   * @returns The score accumulated and a busy signal to discourage interaction.
+   * @param releasedGarbage How much garbage to generate and release into the playing grid.
+   * @returns The score accumulated, all-clear flag and a busy signal to discourage interaction.
    */
   tick(releasedGarbage = 0): TickResult {
     this.bufferedGarbage += releasedGarbage;
@@ -174,7 +181,7 @@ export class PuyoScreen {
     // Pause for a step to clear sparks.
     if (this.sparks.some(isNonEmpty)) {
       this.sparks.forEach(clear);
-      return {score: 0, busy: true};
+      return {score: 0, allClear: this.grid.every(isEmpty), busy: true};
     }
 
     // Create (up to) one line of garbage.
@@ -196,7 +203,7 @@ export class PuyoScreen {
 
     // Make everything unsupported fall down one grid unit.
     if (fallOne(this.grid)) {
-      return {score: 0, busy: true};
+      return {score: 0, allClear: false, busy: true};
     }
 
     // Make everything above the ghost line disappear.
@@ -239,6 +246,7 @@ export class PuyoScreen {
 
     return {
       score,
+      allClear: false,
       busy: didClear,
     };
   }
