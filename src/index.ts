@@ -27,7 +27,6 @@ if (process.argv.length >= 3) {
     }
     game.tick();
     game.log();
-    // TODO: Retouch manipulated puyos in.
     await sleep(100);
   }
   // eslint-disable-next-line

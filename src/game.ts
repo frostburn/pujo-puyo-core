@@ -135,12 +135,13 @@ export class OnePlayerGame {
 
   displayLines() {
     const lines = this.screen.displayLines();
+    const i = this.active ? [1, 0, 3, 2] : [3, 2, 5, 4];
     lines[0] += '┌──┐';
-    lines[1] += `│${colorOf(this.bag[3])}● \x1b[0m│`;
-    lines[2] += `│${colorOf(this.bag[2])}● \x1b[0m│`;
+    lines[1] += `│${colorOf(this.bag[i[0]])}● \x1b[0m│`;
+    lines[2] += `│${colorOf(this.bag[i[1]])}● \x1b[0m│`;
     lines[3] += '└┐ └┐';
-    lines[4] += ` │${colorOf(this.bag[5])}● \x1b[0m│`;
-    lines[5] += ` │${colorOf(this.bag[4])}● \x1b[0m│`;
+    lines[4] += ` │${colorOf(this.bag[i[2]])}● \x1b[0m│`;
+    lines[5] += ` │${colorOf(this.bag[i[3]])}● \x1b[0m│`;
     lines[6] += ' └──┘';
     lines.push(`Score: ${this.score}`);
     return lines;
