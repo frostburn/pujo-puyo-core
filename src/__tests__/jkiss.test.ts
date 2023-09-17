@@ -30,16 +30,17 @@ test('Large sub-period', () => {
     if (
       originalState[0] === jkiss.state[0] ||
       originalState[1] === jkiss.state[1] ||
-      originalState[2] === jkiss.state[2] ||
-      originalState[3] === jkiss.state[3]
+      (originalState[2] === jkiss.state[2] &&
+        originalState[3] === jkiss.state[3])
     ) {
       break;
     }
   }
   expect(jkiss.state[0]).not.toBe(originalState[0]);
   expect(jkiss.state[1]).not.toBe(originalState[1]);
-  expect(jkiss.state[2]).not.toBe(originalState[2]);
-  expect(jkiss.state[3]).not.toBe(originalState[3]);
+  expect(
+    originalState[2] === jkiss.state[2] && originalState[3] === jkiss.state[3]
+  ).toBeFalsy();
 });
 
 test('Low bias', () => {

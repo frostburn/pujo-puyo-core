@@ -14,6 +14,7 @@ import {
   isNonEmpty,
   merge,
   puyoAt,
+  resolveGravity,
   singlePuyo,
   topLine,
   vanishTop,
@@ -173,7 +174,7 @@ export class PuyoScreen {
 
   /**
    * Advance the state of the screen by one step.
-   * @returns The score accumulated, all-clear flag and a busy signal to discourage interaction.
+   * @returns The score accumulated, group clearing flag, all-clear flag and a busy signal to discourage interaction.
    */
   tick(): TickResult {
     // Pause for a step to clear sparks.
@@ -258,6 +259,202 @@ export class PuyoScreen {
       allClear: false,
       busy: didClear,
     };
+  }
+
+  /**
+   * Insert a single puyo into the screen.
+   * @param x Horizontal coordinate, 0-indexed, left to right.
+   * @param y Vertical coordinate, 0-indexed, top to bottom.
+   * @param color Color of the puyo to insert.
+   * @returns `true` if the space was already occupied.
+   */
+  insertPuyo(x: number, y: number, color: number) {
+    const puyo = singlePuyo(x, y);
+    if (collides(puyo, ...this.grid)) {
+      return true;
+    }
+    merge(this.grid[color], puyo);
+    return false;
+  }
+
+  get mask(): Puyos {
+    const result = emptyPuyos();
+    this.grid.forEach(puyos => merge(result, puyos));
+    return result;
+  }
+}
+
+// Value all-clears based on the amount of garbage they send.
+const SIMPLE_ALL_CLEAR_BONUS = 2100;
+const ASCII_PUYO = 'RGYBPN';
+
+/**
+ * A 6x15 screen of puyos, optimized for AI planning.
+ * Gravity and chains resolve instantly and there are no sparks.
+ * Only the bottom 6x12 area is chainable.
+ * The 13th row acts as a ghost line which holds puyos that do not yet participate in chains.
+ * The 14th and 15th rows are vanished once everything has landed.
+ * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
+ */
+export class SimplePuyoScreen {
+  grid: Puyos[];
+  chainNumber: number;
+  bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
+  garbageSlots: number[]; // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
+  // No deterministic RNG, knowing the correct seed would be cheating.
+
+  /**
+   * Construct a new 6x15 screen of puyos.
+   */
+  constructor() {
+    this.grid = [];
+    for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
+      this.grid.push(emptyPuyos());
+    }
+    this.chainNumber = 0;
+    this.bufferedGarbage = 0;
+    this.garbageSlots = [];
+  }
+
+  static fromLines(lines: string[]) {
+    const result = new SimplePuyoScreen();
+    for (let j = 0; j < NUM_PUYO_TYPES; ++j) {
+      const array: boolean[] = [];
+      lines.forEach(line => {
+        for (let i = 0; i < WIDTH; ++i) {
+          array.push(line[i] === ASCII_PUYO[j]);
+        }
+      });
+      result.grid[j] = fromArray(array);
+    }
+    return result;
+  }
+
+  /**
+   * An array of strings suitable for rendering the screen in the console.
+   */
+  displayLines(): string[] {
+    const result = ['╔════════════╗'];
+    for (let y = 0; y < HEIGHT; ++y) {
+      let line = '║';
+      for (let x = 0; x < WIDTH; ++x) {
+        if (x > 0) {
+          line += ' ';
+        }
+        let any = false;
+        let many = false;
+        for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
+          if (puyoAt(this.grid[i], x, y)) {
+            if (any) {
+              many = true;
+            } else {
+              line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
+              if (i === GARBAGE) {
+                line += '◎';
+              } else {
+                line += '●';
+              }
+            }
+            any = true;
+          }
+        }
+        if (many) {
+          line = line.slice(0, -1) + '?';
+        }
+        if (!any) {
+          line += ' ';
+        }
+      }
+      line += '\x1b[0m ║';
+      result.push(line);
+    }
+    result.push('╚════════════╝');
+    result.push(`Chain: ${this.chainNumber}`);
+    return result;
+  }
+
+  /**
+   * Render the screen in the console.
+   */
+  log(): void {
+    this.displayLines().forEach(line => console.log(line));
+  }
+
+  /**
+   * Resolve the screen of all spontaneous activity.
+   * @returns The score accumulated.
+   */
+  tick(): number {
+    // Commit garbage buffer.
+    while (this.bufferedGarbage) {
+      // Create (up to) one line of garbage.
+      if (this.bufferedGarbage >= WIDTH) {
+        merge(this.grid[GARBAGE], topLine());
+        this.bufferedGarbage -= WIDTH;
+      } else if (this.bufferedGarbage) {
+        const line = Array(WIDTH).fill(false);
+        while (this.bufferedGarbage) {
+          if (!this.garbageSlots.length) {
+            this.garbageSlots = [...Array(WIDTH).keys()];
+            this.garbageSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
+          }
+          line[this.garbageSlots.pop()!] = true;
+          this.bufferedGarbage--;
+        }
+        merge(this.grid[GARBAGE], fromArray(line));
+      }
+      fallOne(this.grid);
+    }
+
+    let score = 0;
+    let active = true;
+    while (active) {
+      // Make everything fall down.
+      active = resolveGravity(this.grid);
+
+      // Make everything above the ghost line disappear.
+      this.grid.forEach(vanishTop);
+
+      // Clear groups and give score accordingly.
+      let numColors = 0;
+      let didClear = false;
+      let totalNumCleared = 0;
+      let totalGroupBonus = 0;
+      const totalCleared = emptyPuyos();
+
+      for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
+        const {numCleared, groupBonus, cleared} = clearGroups(this.grid[i]);
+        if (numCleared) {
+          totalNumCleared += numCleared;
+          totalGroupBonus += groupBonus;
+          merge(totalCleared, cleared);
+          numColors++;
+          didClear = true;
+        }
+      }
+
+      clearGarbage(this.grid[GARBAGE], totalCleared);
+
+      const colorBonus = COLOR_BONUS[numColors];
+      const chainPower = CHAIN_POWERS[this.chainNumber];
+      const clearBonus = Math.max(
+        1,
+        Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus)
+      );
+      score += 10 * totalNumCleared * clearBonus;
+
+      if (didClear) {
+        active = true;
+        this.chainNumber++;
+      } else {
+        this.chainNumber = 0;
+      }
+    }
+    if (this.grid.every(isEmpty)) {
+      score += SIMPLE_ALL_CLEAR_BONUS;
+    }
+
+    return score;
   }
 
   /**

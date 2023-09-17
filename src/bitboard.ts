@@ -246,6 +246,7 @@ export function fallOne(grid: Puyos[]): boolean {
 
     didFall = didFall || !!(unsupported0 | unsupported1 | unsupported2);
 
+    // TODO: Combine xors
     puyos[0] ^= unsupported0;
     puyos[0] ^= FULL & (unsupported0 << V_SHIFT);
     puyos[1] ^= unsupported1;
@@ -258,6 +259,54 @@ export function fallOne(grid: Puyos[]): boolean {
   });
 
   return didFall;
+}
+
+/**
+ * Make puyos fall as far as they go.
+ * @param grid An array of puyos to apply gravity to.
+ */
+export function resolveGravity(grid: Puyos[]): boolean {
+  const all = emptyPuyos();
+  grid.forEach(puyos => merge(all, puyos));
+
+  let didSomething = false;
+  let didFall = true;
+  while (didFall) {
+    let unsupported: number;
+
+    unsupported = all[2] & ~((all[2] >> V_SHIFT) | BOTTOM);
+    didFall = !!unsupported;
+    all[2] ^= unsupported ^ (unsupported << V_SHIFT);
+    grid.forEach(puyos => {
+      const falling = puyos[2] & unsupported;
+      puyos[2] ^= falling ^ (falling << V_SHIFT);
+    });
+
+    unsupported =
+      all[1] & ~((all[1] >> V_SHIFT) | ((all[2] & TOP) << TOP_TO_BOTTOM));
+    didFall = didFall || !!unsupported;
+    all[2] |= (unsupported & BOTTOM) >> TOP_TO_BOTTOM;
+    all[1] ^= unsupported ^ ((unsupported << V_SHIFT) & FULL);
+    grid.forEach(puyos => {
+      const falling = puyos[1] & unsupported;
+      puyos[2] |= (falling & BOTTOM) >> TOP_TO_BOTTOM;
+      puyos[1] ^= falling ^ ((falling << V_SHIFT) & FULL);
+    });
+
+    unsupported =
+      all[0] & ~((all[0] >> V_SHIFT) | ((all[1] & TOP) << TOP_TO_BOTTOM));
+    didFall = didFall || !!unsupported;
+    all[1] |= (unsupported & BOTTOM) >> TOP_TO_BOTTOM;
+    all[0] ^= unsupported ^ ((unsupported << V_SHIFT) & FULL);
+    grid.forEach(puyos => {
+      const falling = puyos[0] & unsupported;
+      puyos[1] |= (falling & BOTTOM) >> TOP_TO_BOTTOM;
+      puyos[0] ^= falling ^ ((falling << V_SHIFT) & FULL);
+    });
+
+    didSomething = didSomething || didFall;
+  }
+  return didSomething;
 }
 
 export function puyoCount(puyos: Puyos): number {

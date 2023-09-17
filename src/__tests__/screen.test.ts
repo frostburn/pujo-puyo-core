@@ -1,5 +1,14 @@
 import {expect, test} from 'bun:test';
-import {BLUE, GARBAGE, GREEN, PURPLE, PuyoScreen, RED, YELLOW} from '../screen';
+import {
+  BLUE,
+  GARBAGE,
+  GREEN,
+  PURPLE,
+  PuyoScreen,
+  RED,
+  SimplePuyoScreen,
+  YELLOW,
+} from '../screen';
 import {isEmpty, isNonEmpty, puyoAt, puyoCount} from '../bitboard';
 
 test('Gravity', () => {
@@ -90,4 +99,34 @@ test('Stones of garbage', () => {
   expect(puyoAt(screen.grid[PURPLE], 5, 3)).toBeTruthy();
   // Two stones and a line of garbage with one garbage puyo vanishing beyond the ghost line.
   expect(puyoCount(screen.grid[GARBAGE])).toBe(30 + 30 + 6 - 1);
+});
+
+test('Simple screen gravity resolution', () => {
+  const screen = new SimplePuyoScreen();
+  screen.insertPuyo(0, 0, RED);
+  screen.tick();
+  expect(puyoAt(screen.grid[RED], 0, 14)).toBeTruthy();
+});
+
+test('Simple screen chain resolution', () => {
+  const lines = [
+    '  RR P',
+    ' YYGRR',
+    'BGYGGR',
+    'GRRBBG',
+    'GGRYRB',
+    'BRGYRB',
+    'BBRGYR',
+    'RRGGYR',
+  ];
+  const screen = SimplePuyoScreen.fromLines(lines);
+  const zero = screen.tick();
+  expect(zero).toBe(0);
+
+  screen.insertPuyo(0, 0, YELLOW);
+  const score = screen.tick();
+  expect(score).toBe(
+    40 * (1 + 8 + 16 + 32 + 64 + 96 + 128 + 160 + 192 + 224 + 256)
+  );
+  expect(puyoAt(screen.grid[PURPLE], 5, 14)).toBeTruthy();
 });
