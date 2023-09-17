@@ -31,6 +31,7 @@ const SEMI_LIFE_BLOCK = LIFE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
 export const NUM_SLICES = 3;
 export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
 export const LIFE_HEIGHT = 12;
+export const GHOST_Y = 2;
 
 // Rules
 const CLEAR_THRESHOLD = 4;

@@ -6,6 +6,7 @@ import {
   clear,
   clearGarbage,
   clearGroups,
+  clone,
   collides,
   emptyPuyos,
   fallOne,
@@ -26,6 +27,7 @@ import {JKISS32} from './jkiss';
  */
 export type TickResult = {
   score: number;
+  chainNumber: number;
   didClear: boolean;
   allClear: boolean;
   busy: boolean;
@@ -51,10 +53,6 @@ const CHAIN_POWERS = [
   0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448,
   480, 512, 544, 576, 608, 640, 672,
 ];
-
-// TODO: Move to game class.
-// Value all-clears based on the amount of garbage they send.
-// const SIMPLE_ALL_CLEAR_BONUS = 2100;
 
 /**
  * Convert puyo grid index to an ANSI color code.
@@ -219,6 +217,7 @@ export class SimplePuyoScreen {
   tick(): TickResult {
     const result: TickResult = {
       score: 0,
+      chainNumber: 0,
       didClear: false,
       allClear: false,
       busy: false,
@@ -285,6 +284,7 @@ export class SimplePuyoScreen {
         result.didClear = true;
         active = true;
         this.chainNumber++;
+        result.chainNumber = this.chainNumber;
       } else {
         this.chainNumber = 0;
       }
@@ -318,6 +318,18 @@ export class SimplePuyoScreen {
   get mask(): Puyos {
     const result = emptyPuyos();
     this.grid.forEach(puyos => merge(result, puyos));
+    return result;
+  }
+
+  /**
+   * Clone this screen as a SimplePuyoScreen.
+   * @returns Copy of the screen with simplified mechanics.
+   */
+  toSimpleScreen() {
+    const result = new SimplePuyoScreen();
+    result.grid = this.grid.map(clone);
+    result.chainNumber = this.chainNumber;
+    result.garbageSlots = [...this.garbageSlots];
     return result;
   }
 }
@@ -419,6 +431,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       this.sparks.forEach(clear);
       return {
         score: 0,
+        chainNumber: this.chainNumber,
         didClear: false,
         allClear: this.grid.every(isEmpty),
         busy: true,
@@ -446,6 +459,7 @@ export class PuyoScreen extends SimplePuyoScreen {
     if (fallOne(this.grid)) {
       return {
         score: 0,
+        chainNumber: this.chainNumber,
         didClear: false,
         allClear: false,
         busy: true,
@@ -492,6 +506,7 @@ export class PuyoScreen extends SimplePuyoScreen {
 
     return {
       score,
+      chainNumber: this.chainNumber,
       didClear,
       allClear: false,
       busy: didClear,

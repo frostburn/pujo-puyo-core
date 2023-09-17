@@ -1,6 +1,12 @@
-import {HEIGHT, WIDTH, puyoAt} from './bitboard';
+import {GHOST_Y, HEIGHT, WIDTH, puyoAt} from './bitboard';
 import {JKISS32} from './jkiss';
-import {NUM_PUYO_COLORS, PuyoScreen, TickResult, colorOf} from './screen';
+import {
+  NUM_PUYO_COLORS,
+  PuyoScreen,
+  SimplePuyoScreen,
+  TickResult,
+  colorOf,
+} from './screen';
 
 const COLOR_SELECTION_SIZE = 4;
 const BAG_QUOTA_PER_COLOR = 4;
@@ -109,9 +115,13 @@ export class OnePlayerGame {
       y2--;
     }
 
-    // Play the move.
-    this.screen.insertPuyo(x1, y1, this.color1);
-    this.screen.insertPuyo(x2, y2, this.color2);
+    // Play the move if possible, while making sure buffered garbage can still be generated.
+    if (y1 > 0) {
+      this.screen.insertPuyo(x1, y1, this.color1);
+    }
+    if (y2 > 0) {
+      this.screen.insertPuyo(x2, y2, this.color2);
+    }
 
     this.advanceColors();
 
@@ -127,10 +137,15 @@ export class OnePlayerGame {
     }
     return {
       score: 0,
+      chainNumber: this.screen.chainNumber,
       didClear: false,
       allClear: false,
       busy: false,
     };
+  }
+
+  get visibleBag() {
+    return this.bag.slice(0, this.active ? 4 : 6);
   }
 
   displayLines() {
@@ -267,5 +282,165 @@ export class MultiplayerGame {
       }
     }
     return tickResults;
+  }
+
+  toSimpleGame(player: number) {
+    const opponent = 1 - player;
+    let lateGarbage = this.accumulatedGarbage[opponent];
+    let lateTimeRemaining = 0.5; // As far as I can figure out this value will always be overwritten when there's late garbage.
+    if (this.games[opponent].active) {
+      const opponentScreen = this.games[opponent].screen.toSimpleScreen();
+      const tickResult = opponentScreen.tick();
+      lateGarbage += Math.floor(
+        (tickResult.score + this.pointResidues[opponent]) / TARGET_POINTS
+      );
+      lateTimeRemaining =
+        tickResult.chainNumber - this.games[opponent].screen.chainNumber;
+    }
+    return new SimpleGame(
+      this.games[player].screen.toSimpleScreen(),
+      this.pendingGarbage[player],
+      lateGarbage,
+      lateTimeRemaining,
+      this.games[player].colorSelection,
+      this.games[player].visibleBag
+    );
+  }
+}
+
+// All possible locations and orientations right below the garbage buffer line.
+export const MOVES = [
+  // Orientation = 0
+  {x1: 0, y1: 2, x2: 0, y2: 1, orientation: 0},
+  {x1: 1, y1: 2, x2: 1, y2: 1, orientation: 0},
+  {x1: 2, y1: 2, x2: 2, y2: 1, orientation: 0},
+  {x1: 3, y1: 2, x2: 3, y2: 1, orientation: 0},
+  {x1: 4, y1: 2, x2: 4, y2: 1, orientation: 0},
+  {x1: 5, y1: 2, x2: 5, y2: 1, orientation: 0},
+  // Orientation = 1
+  {x1: 1, y1: 1, x2: 0, y2: 1, orientation: 1},
+  {x1: 2, y1: 1, x2: 1, y2: 1, orientation: 1},
+  {x1: 3, y1: 1, x2: 2, y2: 1, orientation: 1},
+  {x1: 4, y1: 1, x2: 3, y2: 1, orientation: 1},
+  {x1: 5, y1: 1, x2: 4, y2: 1, orientation: 1},
+  // Orientation = 2
+  {x1: 0, y1: 1, x2: 0, y2: 2, orientation: 2},
+  {x1: 1, y1: 1, x2: 1, y2: 2, orientation: 2},
+  {x1: 2, y1: 1, x2: 2, y2: 2, orientation: 2},
+  {x1: 3, y1: 1, x2: 3, y2: 2, orientation: 2},
+  {x1: 4, y1: 1, x2: 4, y2: 2, orientation: 2},
+  {x1: 5, y1: 1, x2: 5, y2: 2, orientation: 2},
+  // Orientation = 3
+  {x1: 0, y1: 1, x2: 1, y2: 1, orientation: 3},
+  {x1: 1, y1: 1, x2: 2, y2: 1, orientation: 3},
+  {x1: 2, y1: 1, x2: 3, y2: 1, orientation: 3},
+  {x1: 3, y1: 1, x2: 4, y2: 1, orientation: 3},
+  {x1: 4, y1: 1, x2: 5, y2: 1, orientation: 3},
+];
+
+// How long a single move takes compared to one link in a chain.
+// TODO: Tweak timings and where bots insert puyos.
+const MOVE_TIME = 3.9;
+
+// Value all-clears based on the amount of garbage they send.
+const SIMPLE_ALL_CLEAR_BONUS = 2100;
+// Not even a 19-chain can compensate a Game Over.
+const SIMPLE_GAME_OVER = -1000000;
+
+/**
+ * Simplified view of one player in a multiplayer game suitable for naïve AI planning.
+ */
+export class SimpleGame {
+  screen: SimplePuyoScreen;
+  // Garbage to be received as soon as possible, one stone at a time.
+  pendingGarbage: number;
+  // Garbage to be received later.
+  lateGarbage: number;
+  lateTimeRemaining: number;
+
+  colorSelection: number[];
+  // The next four or six puyos to be played.
+  bag: number[];
+
+  constructor(
+    screen: SimplePuyoScreen,
+    pendingGarbage: number,
+    lateGarbage: number,
+    lateTimeRemaining: number,
+    colorSelection: number[],
+    bag: number[]
+  ) {
+    this.screen = screen;
+    this.pendingGarbage = pendingGarbage;
+    this.lateGarbage = lateGarbage;
+    this.lateTimeRemaining = lateTimeRemaining;
+    this.colorSelection = colorSelection;
+    this.bag = bag;
+
+    this.resolve();
+  }
+
+  get availableMoves() {
+    const mask = this.screen.mask;
+    const result: number[] = [];
+    const symmetric = this.bag.length >= 2 && this.bag[0] === this.bag[1];
+    MOVES.forEach((move, index) => {
+      if (symmetric && index >= 11) {
+        return;
+      }
+      const {x1, x2} = move;
+      if (!puyoAt(mask, x1, GHOST_Y) || !puyoAt(mask, x2, GHOST_Y)) {
+        result.push(index);
+      }
+    });
+    return result;
+  }
+
+  playAndTick(move: number) {
+    const color1 =
+      this.bag.shift() ||
+      this.colorSelection[
+        Math.floor(Math.random() * this.colorSelection.length)
+      ];
+    const color2 =
+      this.bag.shift() ||
+      this.colorSelection[
+        Math.floor(Math.random() * this.colorSelection.length)
+      ];
+    const {x1, y1, x2, y2} = MOVES[move];
+    this.screen.insertPuyo(x1, y1, color1);
+    this.screen.insertPuyo(x2, y2, color2);
+    const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage);
+    this.pendingGarbage -= releasedGarbage;
+    this.screen.bufferedGarbage += releasedGarbage;
+    const tickResult = this.resolve();
+    return tickResult;
+  }
+
+  resolve() {
+    const tickResult = this.screen.tick();
+    this.lateTimeRemaining -= tickResult.chainNumber + MOVE_TIME;
+    if (this.lateTimeRemaining <= 0) {
+      this.pendingGarbage += this.lateGarbage;
+      this.lateGarbage = 0;
+    }
+    if (tickResult.allClear) {
+      tickResult.score += SIMPLE_ALL_CLEAR_BONUS;
+    }
+    if (!this.availableMoves.length) {
+      tickResult.score += SIMPLE_GAME_OVER;
+    }
+    return tickResult;
+  }
+
+  clone() {
+    return new SimpleGame(
+      this.screen.toSimpleScreen(),
+      this.pendingGarbage,
+      this.lateGarbage,
+      this.lateTimeRemaining,
+      this.colorSelection,
+      [...this.bag]
+    );
   }
 }

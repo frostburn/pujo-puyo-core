@@ -2,7 +2,8 @@ import {sleep} from 'bun';
 import {WIDTH} from './bitboard';
 import {colorOf} from './screen';
 import {stdin, stdout} from 'process';
-import {MultiplayerGame, SinglePlayerGame} from './game';
+import {MOVES, MultiplayerGame, SinglePlayerGame} from './game';
+import {maxDropletStrategy1, maxDropletStrategy2} from './ai';
 
 // TODO: Target the browser, no bun dependencies.
 
@@ -11,23 +12,33 @@ console.log(
   'Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!'
 );
 
-// Play a random demo game.
+// Play a demo game.
 if (process.argv.length >= 3) {
   const game = new MultiplayerGame();
+  const strategies = [maxDropletStrategy1, maxDropletStrategy2];
+  const heuristics = [0, 0];
+  let lastTime = process.hrtime();
   for (let j = 0; j < 1000; ++j) {
     for (let i = 0; i < 2; ++i) {
       if (!game.games[i].active) {
-        game.play(
-          i,
-          Math.floor(Math.random() * WIDTH),
-          2,
-          Math.floor(Math.random() * 4)
-        );
+        const simpleGame = game.toSimpleGame(i);
+        const {move, score} = strategies[i](simpleGame);
+        heuristics[i] = score;
+        const {x1, y1, orientation} = MOVES[move];
+        game.play(i, x1, y1, orientation);
       }
     }
     game.tick();
+    const diff = process.hrtime(lastTime);
+    const millis = diff[0] * 1000 + diff[1] / 1000 / 1000;
+    await sleep(Math.max(0, 70 - millis));
+    lastTime = process.hrtime();
     game.log();
-    await sleep(100);
+    let line = `H0: ${heuristics[0].toFixed(1)}`;
+    while (line.length < 19) {
+      line += ' ';
+    }
+    console.log(line + `H1: ${heuristics[1].toFixed(1)}`);
   }
   // eslint-disable-next-line
   process.exit();
