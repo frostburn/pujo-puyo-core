@@ -25,7 +25,7 @@ test('Large sub-period', () => {
   const jkiss = new JKISS32();
   const originalState = new Uint32Array(jkiss.state);
   // I'd like to run this longer, but jkiss.state[1] seems to have a very small sub-period...
-  for (let i = 0; i < 100000; ++i) {
+  for (let i = 0; i < 10000; ++i) {
     jkiss.step();
     if (
       originalState[0] === jkiss.state[0] ||

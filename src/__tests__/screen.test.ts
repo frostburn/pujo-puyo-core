@@ -54,21 +54,26 @@ test('Ghost garbage preservation', () => {
 });
 
 test('Ghost garbage elimination', () => {
-  const screen = new PuyoScreen();
-  for (let j = 0; j < 4; ++j) {
-    let min = 0;
-    let max = 3;
-    if (j === 0) {
-      min = -1;
-    }
-    if (j === 3) {
-      max = 2;
-    }
-    for (let i = min; i < max; ++i) {
-      screen.insertPuyo(5, 4 + i + 3 * j, j);
-    }
-  }
-  screen.insertPuyo(5, 2, GARBAGE);
+  const lines = [
+    '',
+    '',
+    'N',
+    'R',
+    'R',
+    'R',
+    'R',
+    'G',
+    'G',
+    'G',
+    'Y',
+    'Y',
+    'Y',
+    'B',
+    'B',
+  ];
+
+  const screen = PuyoScreen.fromLines(lines);
+  expect(isNonEmpty(screen.grid[GARBAGE])).toBeTruthy();
   while (screen.tick().busy);
   expect(isEmpty(screen.grid[GARBAGE])).toBeTruthy();
 });
@@ -120,11 +125,11 @@ test('Simple screen chain resolution', () => {
     'RRGGYR',
   ];
   const screen = SimplePuyoScreen.fromLines(lines);
-  const zero = screen.tick();
+  const zero = screen.tick().score;
   expect(zero).toBe(0);
 
   screen.insertPuyo(0, 0, YELLOW);
-  const score = screen.tick();
+  const score = screen.tick().score;
   expect(score).toBe(
     40 * (1 + 8 + 16 + 32 + 64 + 96 + 128 + 160 + 192 + 224 + 256)
   );
