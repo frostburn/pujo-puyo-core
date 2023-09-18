@@ -103,10 +103,10 @@ export function fromArray(array: boolean[]): Puyos {
 }
 
 /**
- * Render puyos of a single color in ASCII using @ for puyos and . for empty space.
+ * Produce lines of ASCII from the puyo collection using @ for puyos and . for empty space.
  */
-export function logPuyos(puyos: Puyos): void {
-  console.log('┌─────────────┐');
+export function puyoDisplayLines(puyos: Puyos): string[] {
+  const result = ['┌─────────────┐'];
   for (let i = 0; i < NUM_SLICES; ++i) {
     for (let y = 0; y < SLICE_HEIGHT; ++y) {
       let line = '│';
@@ -121,10 +121,18 @@ export function logPuyos(puyos: Puyos): void {
       if (y === SLICE_HEIGHT - 1 && puyos[i] & INVALID) {
         line += '!';
       }
-      console.log(line);
+      result.push(line);
     }
   }
-  console.log('└─────────────┘');
+  result.push('└─────────────┘');
+  return result;
+}
+
+/**
+ * Render puyos of a single color in ASCII using @ for puyos and . for empty space.
+ */
+export function logPuyos(puyos: Puyos): void {
+  console.log(puyoDisplayLines(puyos).join('\n'));
 }
 
 /**

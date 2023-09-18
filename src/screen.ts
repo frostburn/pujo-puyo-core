@@ -207,7 +207,7 @@ export class SimplePuyoScreen {
    * Render the screen in the console.
    */
   log(): void {
-    this.displayLines().forEach(line => console.log(line));
+    console.log(this.displayLines().join('\n'));
   }
 
   /**

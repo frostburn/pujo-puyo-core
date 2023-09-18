@@ -167,7 +167,7 @@ export class OnePlayerGame {
    * Render the game in the console.
    */
   log(): void {
-    this.displayLines().forEach(line => console.log(line));
+    console.log(this.displayLines().join('\n'));
   }
 }
 
@@ -235,7 +235,7 @@ export class MultiplayerGame {
    * Render the game in the console.
    */
   log(): void {
-    this.displayLines().forEach(line => console.log(line));
+    console.log(this.displayLines().join('\n'));
   }
 
   play(player: number, x1: number, y1: number, orientation: number) {

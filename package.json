@@ -32,11 +32,12 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "bun build src/index.ts --outdir=build --target=bun",
+    "compile": "bun build src/index.ts --outdir=build --target=browser",
     "fix": "gts fix",
     "prepare": "bun run compile",
     "pretest": "bun run compile",
-    "posttest": "bun run lint"
+    "posttest": "bun run lint",
+    "start": "bun x serve ."
   },
   "type": "module"
 }
