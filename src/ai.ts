@@ -45,7 +45,10 @@ export function maxDropletStrategy1(game: SimpleGame): StrategyResult {
   for (let i = 0; i < moves.length; ++i) {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
-    const score = tickResult.score + PREFER_LONGER * maxDroplet(clone) + materialCount(clone);
+    const score =
+      tickResult.score +
+      PREFER_LONGER * maxDroplet(clone) +
+      materialCount(clone);
     if (score > max) {
       max = score;
       move = moves[i];
@@ -67,7 +70,8 @@ export function maxDropletStrategy2(game: SimpleGame): StrategyResult {
   for (let i = 0; i < moves.length; ++i) {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
-    const score = tickResult.score + PREFER_LONGER * maxDropletStrategy1(clone).score;
+    const score =
+      tickResult.score + PREFER_LONGER * maxDropletStrategy1(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];

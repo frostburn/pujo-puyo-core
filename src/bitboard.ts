@@ -58,6 +58,11 @@ export function randomPuyos(): Puyos {
   return puyos;
 }
 
+/**
+ * Clone a collection of puyos.
+ * @param puyos A collection of puyos to copy.
+ * @returns A copy of the puyos.
+ */
 export function clone(puyos: Puyos) {
   return new Uint32Array(puyos);
 }
@@ -68,7 +73,7 @@ export function clone(puyos: Puyos) {
  * @returns `true` if there aren't any puyos present.
  */
 export function isEmpty(puyos: Puyos) {
-  return !puyos[0] && !puyos[1] && !puyos[2];
+  return !(puyos[0] | puyos[1] | puyos[2]);
 }
 
 /**
@@ -122,17 +127,30 @@ export function logPuyos(puyos: Puyos): void {
   console.log('└─────────────┘');
 }
 
+/**
+ * Test if there is a puyo in the collection at the given coordinates.
+ * @param puyos A collection of puyos.
+ * @param x Horizontal coordinate. 0-indexed, left to right.
+ * @param y Vertical coordinate. 0-indexed, top to bottom.
+ * @returns `true` if there is a puyo at the given coordinates.
+ */
 export function puyoAt(puyos: Puyos, x: number, y: number) {
   const slice_y = y % SLICE_HEIGHT;
   y -= slice_y;
-  return !!(puyos[y / SLICE_HEIGHT] & (1 << (x + slice_y * WIDTH)));
+  return !!(puyos[y / SLICE_HEIGHT] & (1 << (x + slice_y * V_SHIFT)));
 }
 
+/**
+ * Create a collection consisting of only a single puyo at the given coordinates.
+ * @param x Horizontal coordinate. 0-indexed, left to right.
+ * @param y Vertical coordinate. 0-indexed, top to bottom.
+ * @returns A collection of a single puyo.
+ */
 export function singlePuyo(x: number, y: number): Puyos {
   const slice_y = y % SLICE_HEIGHT;
   y -= slice_y;
   const result = emptyPuyos();
-  result[y / SLICE_HEIGHT] |= 1 << (x + slice_y * WIDTH);
+  result[y / SLICE_HEIGHT] |= 1 << (x + slice_y * V_SHIFT);
   return result;
 }
 
@@ -161,7 +179,7 @@ export function flood(source: Puyos, target: Puyos) {
   source[1] &= target[1];
   source[2] &= target[2];
 
-  if (!(source[0] || source[1] || source[2])) {
+  if (!(source[0] | source[1] | source[2])) {
     return;
   }
   const temp = emptyPuyos();
@@ -218,6 +236,7 @@ export function merge(a: Puyos, b: Puyos) {
 /**
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
+ * @returns `true` if anything happened.
  */
 export function fallOne(grid: Puyos[]): boolean {
   const supported = emptyPuyos();
@@ -265,6 +284,7 @@ export function fallOne(grid: Puyos[]): boolean {
 /**
  * Make puyos fall as far as they go.
  * @param grid An array of puyos to apply gravity to.
+ * @returns `true` if anything happened.
  */
 export function resolveGravity(grid: Puyos[]): boolean {
   const all = emptyPuyos();
@@ -310,6 +330,11 @@ export function resolveGravity(grid: Puyos[]): boolean {
   return didSomething;
 }
 
+/**
+ * Count the number of puyos in the collection.
+ * @param puyos Collection of puyos to count.
+ * @returns The number of puyos present.
+ */
 export function puyoCount(puyos: Puyos): number {
   return popcount(puyos[0]) + popcount(puyos[1]) + popcount(puyos[2]);
 }

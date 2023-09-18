@@ -10,6 +10,7 @@ import {
 
 const COLOR_SELECTION_SIZE = 4;
 const BAG_QUOTA_PER_COLOR = 4;
+// TODO: Randomize bag spice amount
 const BAG_SPICE = 8;
 
 // Single player

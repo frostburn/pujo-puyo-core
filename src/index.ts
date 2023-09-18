@@ -1,8 +1,8 @@
 import {sleep} from 'bun';
 import {WIDTH} from './bitboard';
-import {colorOf} from './screen';
+import {SimplePuyoScreen, colorOf} from './screen';
 import {stdin, stdout} from 'process';
-import {MOVES, MultiplayerGame, SinglePlayerGame} from './game';
+import {MOVES, MultiplayerGame, SimpleGame, SinglePlayerGame} from './game';
 import {maxDropletStrategy1, maxDropletStrategy2} from './ai';
 
 // TODO: Target the browser, no bun dependencies.
@@ -13,7 +13,7 @@ console.log(
 );
 
 // Play a demo game.
-if (process.argv.length >= 3) {
+if (process.argv.length === 3) {
   const game = new MultiplayerGame();
   const strategies = [maxDropletStrategy1, maxDropletStrategy2];
   const heuristics = [0, 0];
@@ -40,6 +40,38 @@ if (process.argv.length >= 3) {
     }
     console.log(line + `H1: ${heuristics[1].toFixed(1)}`);
   }
+  // eslint-disable-next-line
+  process.exit();
+} else if (process.argv.length >= 4) {
+  const screen = new SimplePuyoScreen();
+  const game = new SimpleGame(
+    screen,
+    0,
+    0,
+    0,
+    [0, 1, 2, 3],
+    [0, 1, 2, 3, 0, 1]
+  );
+  const start = Date.now();
+  const numMoves = 50;
+  for (let i = 0; i < numMoves; ++i) {
+    const strategy = maxDropletStrategy2(game);
+    game.playAndTick(strategy.move);
+    game.bag.push(
+      game.colorSelection[
+        Math.floor(Math.random() * game.colorSelection.length)
+      ]
+    );
+    game.bag.push(
+      game.colorSelection[
+        Math.floor(Math.random() * game.colorSelection.length)
+      ]
+    );
+    game.screen.log();
+    console.log(strategy.score.toString());
+  }
+  const end = Date.now();
+  console.log(`Playing ${numMoves} moves took ${end - start} ms`);
   // eslint-disable-next-line
   process.exit();
 }
