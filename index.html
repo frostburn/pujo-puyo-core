@@ -12,12 +12,14 @@ import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, maxDropletStrategy
 const FRAME_RATE = 15;
 
 // 'RGYBPN'
-const FILLS = ["red", "green", "yellow", "blue", "purple", "cyan"];
+const FILLS = ["red", "lime", "yellow", "blue", "fuchsia", "cyan"];
 
 const LEFT_SCREEN_X = 1;
 const LEFT_SCREEN_Y = 1;
 const RIGHT_SCREEN_X = 10;
 const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 const game = new MultiplayerGame();
 
@@ -26,19 +28,54 @@ const game = new MultiplayerGame();
 
 const container = document.createElement("div");
 
-const svgns = "http://www.w3.org/2000/svg";
+function svgElement(qualifiedName) {
+  return document.createElementNS(SVG_NS, qualifiedName);
+}
 
-const svg = document.createElementNS(svgns, "svg");
+const svg = svgElement("svg");
 svg.setAttribute("width", "95vh");
 svg.setAttribute("height", "95vh");
 svg.setAttribute("viewBox", "0 0 19 19");
 
-const leftScreen = document.createElementNS(svgns, "rect");
+// Defs
+const defs = svgElement("defs");
+
+const puyoDef = svgElement("circle");
+puyoDef.setAttribute("id", "puyo");
+puyoDef.setAttribute("r", 0.44);
+puyoDef.setAttribute("stroke", "gainsboro");
+puyoDef.setAttribute("stroke-width", "0.07");
+defs.appendChild(puyoDef);
+
+const sparksDef = svgElement("g");
+sparksDef.setAttribute("id", "sparks");
+for (let j = 0; j < 5; ++j) {
+  const theta = 2 * Math.PI * j / 5;
+  const spark = svgElement("circle");
+  spark.setAttribute("cx", Math.cos(theta) * 0.3);
+  spark.setAttribute("cy", Math.sin(theta) * 0.3);
+  spark.setAttribute("r", 0.1);
+  sparksDef.appendChild(spark);
+}
+const animation = svgElement("animateTransform");
+animation.setAttribute("attributeName", "transform");
+animation.setAttribute("type", "rotate");
+animation.setAttribute("from", `0`);
+animation.setAttribute("to", `360`);
+animation.setAttribute("dur", "2s");
+animation.setAttribute("repeatCount", "indefinite");
+sparksDef.appendChild(animation);
+defs.appendChild(sparksDef);
+
+svg.appendChild(defs);
+
+// Visible elements
+const leftScreen = svgElement("rect");
 
 leftScreen.setAttribute("x", LEFT_SCREEN_X);
 leftScreen.setAttribute("y", LEFT_SCREEN_Y);
 
-const rightScreen = document.createElementNS(svgns, "rect");
+const rightScreen = svgElement("rect");
 
 rightScreen.setAttribute("x", RIGHT_SCREEN_X);
 rightScreen.setAttribute("y", RIGHT_SCREEN_Y);
@@ -56,11 +93,11 @@ screens.forEach(screen => {
   svg.appendChild(screen);
 })
 
-const leftContent = document.createElementNS(svgns, "g");
+const leftContent = svgElement("g");
 leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
 svg.appendChild(leftContent);
 
-const rightContent = document.createElementNS(svgns, "g");
+const rightContent = svgElement("g");
 rightContent.setAttribute("transform", `translate(${RIGHT_SCREEN_X},${RIGHT_SCREEN_Y})`);
 svg.appendChild(rightContent);
 
@@ -86,17 +123,15 @@ function renderGame() {
           falling = true;
         }
         if (index >= 0) {
-          const puyo = document.createElementNS(svgns, "circle");
-          puyo.setAttribute("cx", x + 0.5);
-          puyo.setAttribute("cy", y + 0.5);
-          puyo.setAttribute("r", 0.4);
+          const puyo = svgElement("use");
+          puyo.setAttribute("href", "#puyo");
+          puyo.setAttribute("x", x + 0.5);
+          puyo.setAttribute("y", y + 0.5);
           puyo.setAttribute("fill", FILLS[index]);
-          puyo.setAttribute("stroke", "lightgrey");
-          puyo.setAttribute("stroke-width", "0.07");
 
           if (falling) {
-            const animation = document.createElementNS(svgns, "animate");
-            animation.setAttribute("attributeName", "cy");
+            const animation = svgElement("animate");
+            animation.setAttribute("attributeName", "y");
             animation.setAttribute("to", y + 1.5);
             animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
             animation.setAttribute("dur", `${1/FRAME_RATE}s`);
@@ -107,6 +142,16 @@ function renderGame() {
           }
 
           contents[i].appendChild(puyo);
+        }
+
+        index = gameState[i].screen.sparks[arrayIndex];
+        if (index >= 0) {
+          const sparks = svgElement("use");
+          sparks.setAttribute("href", "#sparks");
+          sparks.setAttribute("x", x + 0.5);
+          sparks.setAttribute("y", y + 0.5);
+          sparks.setAttribute("fill", FILLS[index]);
+          contents[i].appendChild(sparks);
         }
       }
     }
@@ -123,12 +168,13 @@ function draw(timeStamp) {
     start = timeStamp;
   }
   const elapsed = timeStamp - start;
-  const intendedAge = FRAME_RATE * elapsed / 1000;
+  const intendedAge = Math.min(FRAME_RATE * elapsed / 1000, gameAge + FRAME_RATE);
+
+  const needsRedraw = (gameAge < intendedAge);
 
   while (gameAge < intendedAge) {
     game.tick();
     gameAge++;
-    renderGame();
 
     if (!game.games[0].active) {
       const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
@@ -141,6 +187,9 @@ function draw(timeStamp) {
       const {x1, y1, orientation} = MOVES[move];
       game.play(1, x1, y1, orientation);
     }
+  }
+  if (needsRedraw) {
+    renderGame();
   }
 
   frameId = window.requestAnimationFrame(draw);
