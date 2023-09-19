@@ -102,6 +102,24 @@ export function fromArray(array: boolean[]): Puyos {
   return puyos;
 }
 
+export function toIndexArray(grid: Puyos[]): number[] {
+  const result = [];
+  for (let k = 0; k < NUM_SLICES; ++k) {
+    for (let j = 0; j < WIDTH * SLICE_HEIGHT; ++j) {
+      let index = -1;
+      const p = 1 << j;
+      for (let i = 0; i < grid.length; ++i) {
+        if (grid[i][k] & p) {
+          index = i;
+          break;
+        }
+      }
+      result.push(index);
+    }
+  }
+  return result;
+}
+
 /**
  * Produce lines of ASCII from the puyo collection using @ for puyos and . for empty space.
  */
@@ -269,6 +287,20 @@ export function trimUnsupported(puyos: Puyos) {
   return puyos;
 }
 
+export function invert(puyos: Puyos) {
+  puyos[0] = ~puyos[0];
+  puyos[1] = ~puyos[1];
+  puyos[2] = ~puyos[2];
+}
+
+export function inMask(puyos: Puyos, mask: Puyos) {
+  const result = clone(puyos);
+  result[0] &= mask[0];
+  result[1] &= mask[1];
+  result[2] &= mask[2];
+  return result;
+}
+
 /**
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
@@ -280,9 +312,7 @@ export function fallOne(grid: Puyos[]): boolean {
 
   // Change the name of the variable for clarity.
   const unsupported = supported;
-  unsupported[0] = ~unsupported[0];
-  unsupported[1] = ~unsupported[1];
-  unsupported[2] = ~unsupported[2];
+  invert(unsupported);
 
   let didFall = false;
 

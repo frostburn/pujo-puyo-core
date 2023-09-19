@@ -3,15 +3,25 @@ import {JKISS32} from './jkiss';
 import {
   NUM_PUYO_COLORS,
   PuyoScreen,
+  ScreenState,
   SimplePuyoScreen,
   TickResult,
   colorOf,
 } from './screen';
 
+export type GameState = {
+  screen: ScreenState;
+  score: number;
+  visibleBag: number[];
+  pendingGarbage: number;
+  lateGarbage: number;
+  allClearBonus: boolean;
+};
+
 const COLOR_SELECTION_SIZE = 4;
 const BAG_QUOTA_PER_COLOR = 4;
-// TODO: Randomize bag spice amount
-const BAG_SPICE = 8;
+const BASE_BAG_SPICE = 3;
+const EXTRA_BAG_SPICE = 7;
 
 // Single player
 const ALL_CLEAR_BONUS = 8500;
@@ -49,6 +59,17 @@ export class OnePlayerGame {
     this.advanceColors();
   }
 
+  get state(): GameState {
+    return {
+      screen: this.screen.state,
+      score: this.score,
+      visibleBag: this.visibleBag,
+      pendingGarbage: 0,
+      lateGarbage: 0,
+      allClearBonus: false,
+    };
+  }
+
   advanceColors() {
     this.bag.shift();
     this.bag.shift();
@@ -63,7 +84,10 @@ export class OnePlayerGame {
         }
       }
       freshBag = freshBag.concat(
-        this.jkiss.sample(this.colorSelection, BAG_SPICE)
+        this.jkiss.sample(
+          this.colorSelection,
+          BASE_BAG_SPICE + (this.jkiss.step() % EXTRA_BAG_SPICE)
+        )
       );
       this.jkiss.shuffle(freshBag);
       this.bag = this.bag.concat(freshBag);
@@ -211,6 +235,16 @@ export class MultiplayerGame {
     this.allClearQueued = [false, false];
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
+  }
+
+  get state(): GameState[] {
+    const states = this.games.map(game => game.state);
+    for (let i = 0; i < this.games.length; ++i) {
+      states[i].pendingGarbage = this.pendingGarbage[i];
+      states[i].lateGarbage = this.accumulatedGarbage[1 - i];
+      states[i].allClearBonus = this.allClearBonus[i];
+    }
+    return states;
   }
 
   displayLines() {

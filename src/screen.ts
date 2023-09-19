@@ -12,13 +12,17 @@ import {
   fallOne,
   fromArray,
   getMask,
+  inMask,
+  invert,
   isEmpty,
   isNonEmpty,
   merge,
   puyoAt,
   resolveGravity,
   singlePuyo,
+  toIndexArray,
   topLine,
+  trimUnsupported,
   vanishTop,
 } from './bitboard';
 import {JKISS32} from './jkiss';
@@ -34,6 +38,13 @@ export type TickResult = {
   busy: boolean;
 };
 
+export type ScreenState = {
+  supported: number[];
+  unsupported: number[];
+  sparks: number[];
+  chainNumber: number;
+};
+
 // Indices of types of puyos in the grid
 export const RED = 0;
 export const GREEN = 1;
@@ -41,6 +52,8 @@ export const YELLOW = 2;
 export const BLUE = 3;
 export const PURPLE = 4;
 export const GARBAGE = 5;
+
+export const AIR = -1; // Not indexed.
 
 export const NUM_PUYO_COLORS = 5;
 export const NUM_PUYO_TYPES = 6;
@@ -119,6 +132,24 @@ export class SimplePuyoScreen {
     const result = new SimplePuyoScreen();
     result.grid = gridFromLines(lines);
     return result;
+  }
+
+  get state(): ScreenState {
+    const supportMask = this.mask;
+    trimUnsupported(supportMask);
+    const supported = toIndexArray(
+      this.grid.map(puyos => inMask(puyos, supportMask))
+    );
+    invert(supportMask);
+    const unsupported = toIndexArray(
+      this.grid.map(puyos => inMask(puyos, supportMask))
+    );
+    return {
+      supported,
+      unsupported,
+      sparks: [],
+      chainNumber: this.chainNumber,
+    };
   }
 
   /**
@@ -329,6 +360,8 @@ export class SimplePuyoScreen {
     result.grid = this.grid.map(clone);
     result.chainNumber = this.chainNumber;
     result.garbageSlots = [...this.garbageSlots];
+    // Shuffle remaining slots to avoid revealing RNG information.
+    result.garbageSlots.sort(() => Math.random() - 0.5);
     return result;
   }
 }
@@ -366,6 +399,25 @@ export class PuyoScreen extends SimplePuyoScreen {
     const result = new PuyoScreen();
     result.grid = gridFromLines(lines);
     return result;
+  }
+
+  get state() {
+    const supportMask = this.mask;
+    merge(supportMask, getMask(this.sparks));
+    trimUnsupported(supportMask);
+    const supported = toIndexArray(
+      this.grid.map(puyos => inMask(puyos, supportMask))
+    );
+    invert(supportMask);
+    const unsupported = toIndexArray(
+      this.grid.map(puyos => inMask(puyos, supportMask))
+    );
+    return {
+      supported,
+      unsupported,
+      sparks: toIndexArray(this.sparks),
+      chainNumber: this.chainNumber,
+    };
   }
 
   /**

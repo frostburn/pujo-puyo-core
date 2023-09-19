@@ -1,10 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <style>
+    body {
+      background-color: #223;
+    }
+  </style>
 <script type="module">
-import { benchmark } from "./build/index.js";
-window.benchmark = benchmark;
-document.body.innerText = "loaded";
+import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, maxDropletStrategy1 } from "./build/index.js";
+
+const FRAME_RATE = 15;
+
+// 'RGYBPN'
+const FILLS = ["red", "green", "yellow", "blue", "purple", "cyan"];
+
+const LEFT_SCREEN_X = 1;
+const LEFT_SCREEN_Y = 1;
+const RIGHT_SCREEN_X = 10;
+const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
+
+const game = new MultiplayerGame();
+
+// TODO: Piece preview
+// TODO: Incoming garbage
+
+const container = document.createElement("div");
+
+const svgns = "http://www.w3.org/2000/svg";
+
+const svg = document.createElementNS(svgns, "svg");
+svg.setAttribute("width", "95vh");
+svg.setAttribute("height", "95vh");
+svg.setAttribute("viewBox", "0 0 19 19");
+
+const leftScreen = document.createElementNS(svgns, "rect");
+
+leftScreen.setAttribute("x", LEFT_SCREEN_X);
+leftScreen.setAttribute("y", LEFT_SCREEN_Y);
+
+const rightScreen = document.createElementNS(svgns, "rect");
+
+rightScreen.setAttribute("x", RIGHT_SCREEN_X);
+rightScreen.setAttribute("y", RIGHT_SCREEN_Y);
+
+const screens = [leftScreen, rightScreen];
+
+screens.forEach(screen => {
+  screen.setAttribute("width", WIDTH);
+  screen.setAttribute("height", LIFE_HEIGHT);
+  screen.setAttribute("fill", "none");
+  screen.setAttribute("stroke", "black");
+  screen.setAttribute("stroke-width", "0.05");
+  screen.setAttribute("rx", "0.1");
+  screen.setAttribute("ry", "0.1");
+  svg.appendChild(screen);
+})
+
+const leftContent = document.createElementNS(svgns, "g");
+leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
+svg.appendChild(leftContent);
+
+const rightContent = document.createElementNS(svgns, "g");
+rightContent.setAttribute("transform", `translate(${RIGHT_SCREEN_X},${RIGHT_SCREEN_Y})`);
+svg.appendChild(rightContent);
+
+const contents = [leftContent, rightContent];
+
+container.appendChild(svg);
+document.body.appendChild(container);
+
+function renderGame() {
+  leftContent.replaceChildren();
+  rightContent.replaceChildren();
+
+  const gameState = game.state;
+
+  for (let i = 0; i < 2; ++i) {
+    for (let y = 0; y < LIFE_HEIGHT; ++y) {
+      for (let x = 0; x < WIDTH; ++x) {
+        const arrayIndex = x + (y + GHOST_Y + 1) * WIDTH;
+        let index = gameState[i].screen.supported[arrayIndex];
+        let falling = false;
+        if (index < 0) {
+          index = gameState[i].screen.unsupported[arrayIndex];
+          falling = true;
+        }
+        if (index >= 0) {
+          const puyo = document.createElementNS(svgns, "circle");
+          puyo.setAttribute("cx", x + 0.5);
+          puyo.setAttribute("cy", y + 0.5);
+          puyo.setAttribute("r", 0.4);
+          puyo.setAttribute("fill", FILLS[index]);
+          puyo.setAttribute("stroke", "lightgrey");
+          puyo.setAttribute("stroke-width", "0.07");
+
+          if (falling) {
+            const animation = document.createElementNS(svgns, "animate");
+            animation.setAttribute("attributeName", "cy");
+            animation.setAttribute("to", y + 1.5);
+            animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
+            animation.setAttribute("dur", `${1/FRAME_RATE}s`);
+            animation.setAttribute("repeatCount", 1);
+            animation.setAttribute("fill", "freeze");
+
+            puyo.appendChild(animation);
+          }
+
+          contents[i].appendChild(puyo);
+        }
+      }
+    }
+  }
+}
+
+let gameAge = 0;
+
+let start;
+let frameId;
+
+function draw(timeStamp) {
+  if (start === undefined) {
+    start = timeStamp;
+  }
+  const elapsed = timeStamp - start;
+  const intendedAge = FRAME_RATE * elapsed / 1000;
+
+  while (gameAge < intendedAge) {
+    game.tick();
+    gameAge++;
+    renderGame();
+
+    if (!game.games[0].active) {
+      const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
+      game.play(0, x1, y1, orientation);
+    }
+
+    if (!game.games[1].active) {
+      const simpleGame = game.toSimpleGame(1);
+      const {move, score} = maxDropletStrategy1(simpleGame);
+      const {x1, y1, orientation} = MOVES[move];
+      game.play(1, x1, y1, orientation);
+    }
+  }
+
+  frameId = window.requestAnimationFrame(draw);
+}
+
+frameId = window.requestAnimationFrame(draw);
+
 </script>
 </head>
 <body></body>
