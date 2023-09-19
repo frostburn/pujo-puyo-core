@@ -11,6 +11,7 @@ import {
   emptyPuyos,
   fallOne,
   fromArray,
+  getMask,
   isEmpty,
   isNonEmpty,
   merge,
@@ -316,9 +317,7 @@ export class SimplePuyoScreen {
    * Mask of all the occupied space in the grid.
    */
   get mask(): Puyos {
-    const result = emptyPuyos();
-    this.grid.forEach(puyos => merge(result, puyos));
-    return result;
+    return getMask(this.grid);
   }
 
   /**

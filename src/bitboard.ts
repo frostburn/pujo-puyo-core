@@ -241,49 +241,66 @@ export function merge(a: Puyos, b: Puyos) {
   a[2] |= b[2];
 }
 
+export function getMask(grid: Puyos[]): Puyos {
+  const result = clone(grid[0]);
+  for (let i = 1; i < grid.length; ++i) {
+    result[0] |= grid[i][0];
+    result[1] |= grid[i][1];
+    result[2] |= grid[i][2];
+  }
+  return result;
+}
+
+export function trimUnsupported(puyos: Puyos) {
+  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
+    puyos[2] &= ~((FULL & ~puyos[2]) >> V_SHIFT);
+  }
+
+  puyos[1] &= ~((TOP & ~puyos[2]) << TOP_TO_BOTTOM);
+  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
+    puyos[1] &= ~((FULL & ~puyos[1]) >> V_SHIFT);
+  }
+
+  puyos[0] &= ~((TOP & ~puyos[1]) << TOP_TO_BOTTOM);
+  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
+    puyos[0] &= ~((FULL & ~puyos[0]) >> V_SHIFT);
+  }
+
+  return puyos;
+}
+
 /**
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
  * @returns `true` if anything happened.
  */
 export function fallOne(grid: Puyos[]): boolean {
-  const supported = emptyPuyos();
-  grid.forEach(puyos => merge(supported, puyos));
+  const supported = getMask(grid);
+  trimUnsupported(supported);
 
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    supported[2] &= ~((FULL & ~supported[2]) >> V_SHIFT);
-  }
+  // Change the name of the variable for clarity.
+  const unsupported = supported;
+  unsupported[0] = ~unsupported[0];
+  unsupported[1] = ~unsupported[1];
+  unsupported[2] = ~unsupported[2];
 
-  supported[1] &= ~((TOP & ~supported[2]) << TOP_TO_BOTTOM);
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    supported[1] &= ~((FULL & ~supported[1]) >> V_SHIFT);
-  }
-
-  supported[0] &= ~((TOP & ~supported[1]) << TOP_TO_BOTTOM);
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    supported[0] &= ~((FULL & ~supported[0]) >> V_SHIFT);
-  }
-
-  // TODO: Investigate if inverting the logic saves a few ops
   let didFall = false;
 
   grid.forEach(puyos => {
-    const unsupported0 = puyos[0] & ~supported[0];
-    const unsupported1 = puyos[1] & ~supported[1];
-    const unsupported2 = puyos[2] & ~supported[2];
+    const unsupported0 = puyos[0] & unsupported[0];
+    const unsupported1 = puyos[1] & unsupported[1];
+    const unsupported2 = puyos[2] & unsupported[2];
 
     didFall = didFall || !!(unsupported0 | unsupported1 | unsupported2);
 
-    // TODO: Combine xors
-    puyos[0] ^= unsupported0;
-    puyos[0] ^= FULL & (unsupported0 << V_SHIFT);
-    puyos[1] ^= unsupported1;
+    puyos[0] ^= unsupported0 ^ (FULL & (unsupported0 << V_SHIFT));
     puyos[1] ^=
-      (FULL & (unsupported1 << V_SHIFT)) |
-      ((unsupported0 & BOTTOM) >> TOP_TO_BOTTOM);
-    puyos[2] ^= unsupported2;
+      unsupported1 ^
+      ((FULL & (unsupported1 << V_SHIFT)) |
+        ((unsupported0 & BOTTOM) >> TOP_TO_BOTTOM));
     puyos[2] ^=
-      (unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM);
+      unsupported2 ^
+      ((unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM));
   });
 
   return didFall;
@@ -295,8 +312,7 @@ export function fallOne(grid: Puyos[]): boolean {
  * @returns `true` if anything happened.
  */
 export function resolveGravity(grid: Puyos[]): boolean {
-  const all = emptyPuyos();
-  grid.forEach(puyos => merge(all, puyos));
+  const all = getMask(grid);
 
   let didSomething = false;
   let didFall = true;
