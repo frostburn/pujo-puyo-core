@@ -23,7 +23,6 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const game = new MultiplayerGame();
 
-// TODO: Piece preview
 // TODO: Incoming garbage
 
 const container = document.createElement("div");
@@ -37,12 +36,40 @@ svg.setAttribute("width", "95vh");
 svg.setAttribute("height", "95vh");
 svg.setAttribute("viewBox", "0 0 19 19");
 
+// Styles
+const style = svgElement("style");
+style.textContent = ".score-label {font: bold 0.7px sans-serif; fill:azure;} .score {font: bold 0.7px monospace; fill:azure;}";
+svg.appendChild(style);
+
 // Defs
 const defs = svgElement("defs");
 
+const screenDef = svgElement("g");
+screenDef.setAttribute("id", "screen");
+
+const mainScreen = svgElement("rect");
+mainScreen.setAttribute("width", WIDTH);
+mainScreen.setAttribute("height", LIFE_HEIGHT);
+mainScreen.setAttribute("fill", "none");
+mainScreen.setAttribute("stroke", "black");
+mainScreen.setAttribute("stroke-width", "0.06");
+mainScreen.setAttribute("rx", "0.1");
+mainScreen.setAttribute("ry", "0.1");
+screenDef.appendChild(mainScreen);
+
+const pieceBox = svgElement("polygon");
+pieceBox.setAttribute("points", "0,0 1,0 1,2 1.5,2 1.5,4 0.5,4 0.5,2 0,2");
+pieceBox.setAttribute("fill", "none");
+pieceBox.setAttribute("stroke", "black");
+pieceBox.setAttribute("stroke-width", "0.06");
+pieceBox.setAttribute("transform", `translate(${WIDTH+0.5}, 0)`);
+screenDef.appendChild(pieceBox);
+
+defs.appendChild(screenDef);
+
 const puyoDef = svgElement("circle");
 puyoDef.setAttribute("id", "puyo");
-puyoDef.setAttribute("r", 0.44);
+puyoDef.setAttribute("r", 0.43);
 puyoDef.setAttribute("stroke", "gainsboro");
 puyoDef.setAttribute("stroke-width", "0.07");
 defs.appendChild(puyoDef);
@@ -70,28 +97,17 @@ defs.appendChild(sparksDef);
 svg.appendChild(defs);
 
 // Visible elements
-const leftScreen = svgElement("rect");
-
+const leftScreen = svgElement("use");
+leftScreen.setAttribute("href", "#screen");
 leftScreen.setAttribute("x", LEFT_SCREEN_X);
 leftScreen.setAttribute("y", LEFT_SCREEN_Y);
+svg.appendChild(leftScreen);
 
-const rightScreen = svgElement("rect");
-
+const rightScreen = svgElement("use");
+rightScreen.setAttribute("href", "#screen");
 rightScreen.setAttribute("x", RIGHT_SCREEN_X);
 rightScreen.setAttribute("y", RIGHT_SCREEN_Y);
-
-const screens = [leftScreen, rightScreen];
-
-screens.forEach(screen => {
-  screen.setAttribute("width", WIDTH);
-  screen.setAttribute("height", LIFE_HEIGHT);
-  screen.setAttribute("fill", "none");
-  screen.setAttribute("stroke", "black");
-  screen.setAttribute("stroke-width", "0.05");
-  screen.setAttribute("rx", "0.1");
-  screen.setAttribute("ry", "0.1");
-  svg.appendChild(screen);
-})
+svg.appendChild(rightScreen);
 
 const leftContent = svgElement("g");
 leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
@@ -113,6 +129,45 @@ function renderGame() {
   const gameState = game.state;
 
   for (let i = 0; i < 2; ++i) {
+    const scoreLabel = svgElement("text");
+    scoreLabel.setAttribute("y", LIFE_HEIGHT+0.8);
+    scoreLabel.classList.add("score-label");
+    scoreLabel.textContent = "Score:";
+    contents[i].appendChild(scoreLabel);
+
+    const score = svgElement("text");
+    score.classList.add("score");
+    score.setAttribute("y", LIFE_HEIGHT+0.8);
+    score.setAttribute("dx", scoreLabel.getBBox().width + 0.1);
+    score.textContent = gameState[i].score;
+    contents[i].appendChild(score);
+
+    const previewBag = gameState[i].visibleBag.slice(-4);
+    const puyo0 = svgElement("use");
+    puyo0.setAttribute("href", "#puyo");
+    puyo0.setAttribute("x", WIDTH + 1);
+    puyo0.setAttribute("y", 1.5);
+    puyo0.setAttribute("fill", FILLS[previewBag[0]]);
+    contents[i].appendChild(puyo0);
+    const puyo1 = svgElement("use");
+    puyo1.setAttribute("href", "#puyo");
+    puyo1.setAttribute("x", WIDTH + 1);
+    puyo1.setAttribute("y", 0.5);
+    puyo1.setAttribute("fill", FILLS[previewBag[1]]);
+    contents[i].appendChild(puyo1);
+    const puyo2 = svgElement("use");
+    puyo2.setAttribute("href", "#puyo");
+    puyo2.setAttribute("x", WIDTH + 1.5);
+    puyo2.setAttribute("y", 3.5);
+    puyo2.setAttribute("fill", FILLS[previewBag[2]]);
+    contents[i].appendChild(puyo2);
+    const puyo3 = svgElement("use");
+    puyo3.setAttribute("href", "#puyo");
+    puyo3.setAttribute("x", WIDTH + 1.5);
+    puyo3.setAttribute("y", 2.5);
+    puyo3.setAttribute("fill", FILLS[previewBag[3]]);
+    contents[i].appendChild(puyo3);
+
     for (let y = 0; y < LIFE_HEIGHT; ++y) {
       for (let x = 0; x < WIDTH; ++x) {
         const arrayIndex = x + (y + GHOST_Y + 1) * WIDTH;
