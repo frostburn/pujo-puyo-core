@@ -18,7 +18,7 @@ if (process.argv.length === 3) {
   let lastTime = process.hrtime();
   for (let j = 0; j < 1000; ++j) {
     for (let i = 0; i < 2; ++i) {
-      if (!game.games[i].active) {
+      if (!game.games[i].busy) {
         const simpleGame = game.toSimpleGame(i);
         const {move, score} = strategies[i](simpleGame);
         heuristics[i] = score;

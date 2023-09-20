@@ -9,10 +9,10 @@
 <script type="module">
 import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
-// TODO: Tweak timings
+// TODO: Chain cards
 // TODO: Responsive layout
 
-const FRAME_RATE = 15;
+const FRAME_RATE = 30;
 
 // 'RGYBPN'
 const STROKES = ["#d22", "#2d2", "#dd2", "#22e", "#d2c", "rgba(20, 160, 160, 0.88)"];
@@ -159,7 +159,7 @@ animation.setAttribute("attributeName", "transform");
 animation.setAttribute("type", "rotate");
 animation.setAttribute("from", `0`);
 animation.setAttribute("to", `360`);
-animation.setAttribute("dur", "2s");
+animation.setAttribute("dur", "3s");
 animation.setAttribute("repeatCount", "indefinite");
 sparksDef.appendChild(animation);
 defs.appendChild(sparksDef);
@@ -442,7 +442,7 @@ function renderGame() {
         }
 
         index = gameState[i].screen.sparks[arrayIndex];
-        if (index >= 0) {
+        if (index >= 0 && index !== GARBAGE) {
           const sparks = svgElement("use");
           sparks.setAttribute("href", "#sparks");
           sparks.setAttribute("x", x + 0.5);
@@ -473,12 +473,12 @@ function draw(timeStamp) {
     game.tick();
     gameAge++;
 
-    if (!game.games[0].active) {
+    if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
       game.play(0, x1, y1, orientation);
     }
 
-    if (!game.games[1].active) {
+    if (!game.games[1].busy) {
       const simpleGame = game.toSimpleGame(1);
       const {move, score} = maxDropletStrategy1(simpleGame);
       const {x1, y1, orientation} = MOVES[move];

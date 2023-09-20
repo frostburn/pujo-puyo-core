@@ -1,4 +1,4 @@
-import {GHOST_Y, HEIGHT, WIDTH, puyoAt} from './bitboard';
+import {GHOST_Y, HEIGHT, WIDTH, isNonEmpty, puyoAt} from './bitboard';
 import {JKISS32} from './jkiss';
 import {
   NUM_PUYO_COLORS,
@@ -18,7 +18,13 @@ export type GameState = {
   allClearBonus: boolean;
 };
 
+// TODO: Implement landing phase.
+// Timings (gravity acts in units of one)
+const SPARK_TIME = 35;
+
+// Colors
 const COLOR_SELECTION_SIZE = 4;
+// Color distribution
 const BAG_QUOTA_PER_COLOR = 4;
 const BASE_BAG_SPICE = 3;
 const EXTRA_BAG_SPICE = 7;
@@ -34,6 +40,7 @@ const ALL_CLEAR_GARBAGE = 30;
 
 export class OnePlayerGame {
   score: number;
+  sparkTime: number;
   active: boolean;
   jkiss: JKISS32;
   screen: PuyoScreen;
@@ -42,6 +49,7 @@ export class OnePlayerGame {
 
   constructor(seed?: number, colorSelection?: number[]) {
     this.score = 0;
+    this.sparkTime = 0;
     this.active = false;
     this.jkiss = new JKISS32(seed);
     this.screen = new PuyoScreen(this.jkiss.step());
@@ -57,6 +65,10 @@ export class OnePlayerGame {
 
     this.bag = [];
     this.advanceColors();
+  }
+
+  get busy(): boolean {
+    return this.active || this.sparkTime > 0;
   }
 
   get state(): GameState {
@@ -154,28 +166,33 @@ export class OnePlayerGame {
   }
 
   tick(): TickResult {
-    if (this.active || this.screen.bufferedGarbage) {
+    if (this.sparkTime <= 0 && (this.active || this.screen.bufferedGarbage)) {
       const tickResult = this.screen.tick();
       this.score += tickResult.score;
       this.active = tickResult.busy;
+      if (this.screen.sparks.some(isNonEmpty)) {
+        this.sparkTime = SPARK_TIME;
+      }
       return tickResult;
     }
+    const wasBusy = this.busy;
+    this.sparkTime--;
     return {
       score: 0,
       chainNumber: this.screen.chainNumber,
       didClear: false,
       allClear: false,
-      busy: false,
+      busy: wasBusy,
     };
   }
 
   get visibleBag() {
-    return this.bag.slice(0, this.active ? 4 : 6);
+    return this.bag.slice(0, this.busy ? 4 : 6);
   }
 
   displayLines() {
     const lines = this.screen.displayLines();
-    const i = this.active ? [1, 0, 3, 2] : [3, 2, 5, 4];
+    const i = this.busy ? [1, 0, 3, 2] : [3, 2, 5, 4];
     lines[0] += '┌──┐';
     lines[1] += `│${colorOf(this.bag[i[0]])}● \x1b[0m│`;
     lines[2] += `│${colorOf(this.bag[i[1]])}● \x1b[0m│`;
@@ -241,7 +258,10 @@ export class MultiplayerGame {
     const states = this.games.map(game => game.state);
     for (let i = 0; i < this.games.length; ++i) {
       states[i].pendingGarbage = this.pendingGarbage[i];
-      states[i].lateGarbage = this.accumulatedGarbage[1 - i];
+      states[i].lateGarbage = Math.max(
+        0,
+        this.accumulatedGarbage[1 - i] - this.accumulatedGarbage[i]
+      );
       states[i].allClearBonus = this.allClearBonus[i];
     }
     return states;
@@ -249,7 +269,13 @@ export class MultiplayerGame {
 
   displayLines() {
     const lines = this.games[0].displayLines();
+    lines.push(
+      `G: ${this.pendingGarbage[0]} ←  ${this.accumulatedGarbage[1]} `
+    );
     const rightLines = this.games[1].displayLines();
+    rightLines.push(
+      `G: ${this.pendingGarbage[1]} ←  ${this.accumulatedGarbage[0]} `
+    );
     for (let i = 0; i < lines.length; ++i) {
       if (i < PADDING.length) {
         for (let j = 0; j < PADDING[i]; j++) {
@@ -311,6 +337,16 @@ export class MultiplayerGame {
         this.pendingGarbage[1 - i] += this.allClearBonus[i]
           ? ALL_CLEAR_GARBAGE
           : 0;
+
+        // Offset outgoing garbage.
+        if (this.pendingGarbage[1 - i] >= this.accumulatedGarbage[1 - i]) {
+          this.pendingGarbage[1 - i] -= this.accumulatedGarbage[1 - i];
+          this.accumulatedGarbage[1 - i] = 0;
+        } else {
+          this.accumulatedGarbage[1 - i] -= this.pendingGarbage[1 - i];
+          this.pendingGarbage[1 - i] = 0;
+        }
+
         this.allClearBonus[i] = this.allClearQueued[i];
         this.allClearQueued[i] = false;
         this.canSend[i] = false;
@@ -323,7 +359,7 @@ export class MultiplayerGame {
     const opponent = 1 - player;
     let lateGarbage = this.accumulatedGarbage[opponent];
     let lateTimeRemaining = 0.5; // As far as I can figure out this value will always be overwritten when there's late garbage.
-    if (this.games[opponent].active) {
+    if (this.games[opponent].busy) {
       const opponentScreen = this.games[opponent].screen.toSimpleScreen();
       const tickResult = opponentScreen.tick();
       lateGarbage += Math.floor(
@@ -373,9 +409,9 @@ export const MOVES = [
   {x1: 4, y1: 1, x2: 5, y2: 1, orientation: 3},
 ];
 
+// TODO: Improve late time calculation.
 // How long a single move takes compared to one link in a chain.
-// TODO: Tweak timings and where bots insert puyos.
-const MOVE_TIME = 3.9;
+const MOVE_TIME = 0.3;
 
 // Value all-clears based on the amount of garbage they send.
 const SIMPLE_ALL_CLEAR_BONUS = 2100;
