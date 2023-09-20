@@ -38,17 +38,17 @@ import {JKISS32} from './jkiss';
 export type TickResult = {
   score: number;
   chainNumber: number;
-  didFall: boolean;
+  didJiggle: boolean;
   didClear: boolean;
   allClear: boolean;
   busy: boolean;
 };
 
-// TODO: Jiggles
 export type ScreenState = {
   grid: number[];
   connectivity: number[];
   falling: boolean[];
+  jiggling: boolean[];
   sparking: boolean[];
   chainNumber: number;
 };
@@ -177,8 +177,9 @@ export class SimplePuyoScreen {
 
     return {
       grid: toIndexArray(this.grid),
-      falling: toArray(unsupportMask),
       connectivity: toFlagArray(connetivityGrid),
+      falling: toArray(unsupportMask),
+      jiggling: [],
       sparking: [],
       chainNumber: this.chainNumber,
     };
@@ -282,7 +283,7 @@ export class SimplePuyoScreen {
     const result: TickResult = {
       score: 0,
       chainNumber: 0,
-      didFall: false,
+      didJiggle: false,
       didClear: false,
       allClear: false,
       busy: false,
@@ -313,7 +314,6 @@ export class SimplePuyoScreen {
     while (active) {
       // Make everything fall down.
       active = resolveGravity(this.grid);
-      result.didFall = result.didFall || active;
 
       // Make everything above the ghost line disappear.
       this.grid.forEach(vanishTop);
@@ -366,6 +366,7 @@ export class SimplePuyoScreen {
     return result;
   }
 
+  // TODO: Make inserts jiggle.
   /**
    * Insert a single puyo into the screen.
    * @param x Horizontal coordinate, 0-indexed, left to right.
@@ -412,6 +413,8 @@ export class SimplePuyoScreen {
  * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
  */
 export class PuyoScreen extends SimplePuyoScreen {
+  doJiggles: boolean;
+  jiggles: Puyos;
   sparks: Puyos;
   jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
@@ -421,6 +424,8 @@ export class PuyoScreen extends SimplePuyoScreen {
    */
   constructor(seed?: number) {
     super();
+    this.doJiggles = false;
+    this.jiggles = emptyPuyos();
     this.sparks = emptyPuyos();
     this.jkiss = new JKISS32(seed);
   }
@@ -438,6 +443,13 @@ export class PuyoScreen extends SimplePuyoScreen {
 
   get state() {
     const result = super.state;
+    result.jiggling = toArray(this.jiggles);
+    // Clean out jiggling air and airborne puyos.
+    for (let i = 0; i < result.grid.length; ++i) {
+      if (result.grid[i] < 0 || result.falling[i]) {
+        result.jiggling[i] = false;
+      }
+    }
     result.sparking = toArray(this.sparks);
     return result;
   }
@@ -507,7 +519,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       return {
         score: 0,
         chainNumber: this.chainNumber,
-        didFall: false,
+        didJiggle: false,
         didClear: false,
         allClear: this.grid.every(isEmpty),
         busy: true,
@@ -532,11 +544,14 @@ export class PuyoScreen extends SimplePuyoScreen {
     }
 
     // Make everything unsupported fall down one grid unit.
-    if (fallOne(this.grid)) {
+    const jiggles = fallOne(this.grid);
+    if (isNonEmpty(jiggles)) {
+      this.doJiggles = true;
+      merge(this.jiggles, jiggles);
       return {
         score: 0,
         chainNumber: this.chainNumber,
-        didFall: true,
+        didJiggle: false,
         didClear: false,
         allClear: false,
         busy: true,
@@ -545,6 +560,21 @@ export class PuyoScreen extends SimplePuyoScreen {
 
     // Make everything above the ghost line disappear.
     this.grid.forEach(vanishTop);
+
+    // Pause to jiggle fallen puyos.
+    if (this.doJiggles) {
+      this.doJiggles = false;
+      return {
+        score: 0,
+        chainNumber: this.chainNumber,
+        didJiggle: true,
+        didClear: false,
+        allClear: false,
+        busy: true,
+      };
+    } else {
+      clear(this.jiggles);
+    }
 
     // Clear groups and give score accordingly.
     let numColors = 0;
@@ -583,7 +613,7 @@ export class PuyoScreen extends SimplePuyoScreen {
     return {
       score,
       chainNumber: this.chainNumber,
-      didFall: false,
+      didJiggle: false,
       didClear,
       allClear: false,
       busy: didClear,

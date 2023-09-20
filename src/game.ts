@@ -18,9 +18,9 @@ export type GameState = {
   allClearBonus: boolean;
 };
 
-// TODO: Implement landing phase.
 // Timings (gravity acts in units of one)
-const SPARK_TIME = 35;
+const JIGGLE_TIME = 7;
+const SPARK_TIME = 28;
 
 // Colors
 const COLOR_SELECTION_SIZE = 4;
@@ -40,6 +40,7 @@ const ALL_CLEAR_GARBAGE = 30;
 
 export class OnePlayerGame {
   score: number;
+  jiggleTime: number;
   sparkTime: number;
   active: boolean;
   jkiss: JKISS32;
@@ -49,6 +50,7 @@ export class OnePlayerGame {
 
   constructor(seed?: number, colorSelection?: number[]) {
     this.score = 0;
+    this.jiggleTime = 0;
     this.sparkTime = 0;
     this.active = false;
     this.jkiss = new JKISS32(seed);
@@ -68,7 +70,7 @@ export class OnePlayerGame {
   }
 
   get busy(): boolean {
-    return this.active || this.sparkTime > 0;
+    return this.active || this.sparkTime > 0 || this.jiggleTime > 0;
   }
 
   get state(): GameState {
@@ -166,21 +168,28 @@ export class OnePlayerGame {
   }
 
   tick(): TickResult {
-    if (this.sparkTime <= 0 && (this.active || this.screen.bufferedGarbage)) {
+    if (
+      this.jiggleTime <= 0 &&
+      this.sparkTime <= 0 &&
+      (this.active || this.screen.bufferedGarbage)
+    ) {
       const tickResult = this.screen.tick();
       this.score += tickResult.score;
       this.active = tickResult.busy;
-      if (isNonEmpty(this.screen.sparks)) {
+      if (tickResult.didJiggle) {
+        this.jiggleTime = JIGGLE_TIME;
+      } else if (isNonEmpty(this.screen.sparks)) {
         this.sparkTime = SPARK_TIME;
       }
       return tickResult;
     }
     const wasBusy = this.busy;
+    this.jiggleTime--;
     this.sparkTime--;
     return {
       score: 0,
       chainNumber: this.screen.chainNumber,
-      didFall: false,
+      didJiggle: false,
       didClear: false,
       allClear: false,
       busy: wasBusy,

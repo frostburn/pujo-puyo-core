@@ -352,24 +352,20 @@ export function applyXor(puyos: Puyos, diff: Puyos) {
 /**
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
- * @returns `true` if anything happened.
+ * @returns A mask of everything that fell.
  */
-export function fallOne(grid: Puyos[]): boolean {
-  const supported = getMask(grid);
-  trimUnsupported(supported);
+export function fallOne(grid: Puyos[]): Puyos {
+  const mask = getMask(grid);
 
-  // Change the name of the variable for clarity.
-  const unsupported = supported;
+  const unsupported = clone(mask);
+  trimUnsupported(unsupported);
   invert(unsupported);
-
-  let didFall = false;
+  applyMask(unsupported, mask);
 
   grid.forEach(puyos => {
     const unsupported0 = puyos[0] & unsupported[0];
     const unsupported1 = puyos[1] & unsupported[1];
     const unsupported2 = puyos[2] & unsupported[2];
-
-    didFall = didFall || !!(unsupported0 | unsupported1 | unsupported2);
 
     puyos[0] ^= unsupported0 ^ (FULL & (unsupported0 << V_SHIFT));
     puyos[1] ^=
@@ -381,7 +377,14 @@ export function fallOne(grid: Puyos[]): boolean {
       ((unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM));
   });
 
-  return didFall;
+  unsupported[2] =
+    (unsupported[2] << V_SHIFT) | ((unsupported[1] & BOTTOM) >> TOP_TO_BOTTOM);
+  unsupported[1] =
+    (FULL & (unsupported[1] << V_SHIFT)) |
+    ((unsupported[0] & BOTTOM) >> TOP_TO_BOTTOM);
+  unsupported[0] = FULL & (unsupported[0] << V_SHIFT);
+
+  return unsupported;
 }
 
 /**
