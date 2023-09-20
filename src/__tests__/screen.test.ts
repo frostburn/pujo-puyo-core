@@ -36,6 +36,7 @@ test('Garbage clearing', () => {
   screen.insertPuyo(4, 14, RED);
 
   screen.tick();
+  screen.tick();
   expect(isEmpty(screen.grid[RED])).toBeTruthy();
   expect(puyoAt(screen.grid[GARBAGE], 0, 13)).toBeTruthy();
 });

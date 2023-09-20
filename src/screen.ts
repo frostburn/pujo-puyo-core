@@ -3,15 +3,17 @@ import {
   LIFE_HEIGHT,
   Puyos,
   WIDTH,
+  applyMask,
+  applyXor,
   clear,
-  clearGarbage,
-  clearGroups,
+  sparkGroups,
   clone,
   collides,
   connections,
   emptyPuyos,
   fallOne,
   fromArray,
+  sparkGarbage,
   getMask,
   inMask,
   invert,
@@ -21,6 +23,7 @@ import {
   puyoAt,
   resolveGravity,
   singlePuyo,
+  toArray,
   toFlagArray,
   toIndexArray,
   topLine,
@@ -35,16 +38,17 @@ import {JKISS32} from './jkiss';
 export type TickResult = {
   score: number;
   chainNumber: number;
+  didFall: boolean;
   didClear: boolean;
   allClear: boolean;
   busy: boolean;
 };
 
 export type ScreenState = {
-  supported: number[];
-  unsupported: number[];
+  grid: number[];
   connectivity: number[];
-  sparks: number[];
+  falling: boolean[];
+  sparking: boolean[];
   chainNumber: number;
 };
 
@@ -143,19 +147,14 @@ export class SimplePuyoScreen {
     return result;
   }
 
-  get supportMask(): Puyos {
-    const result = this.mask;
-    trimUnsupported(result);
-    return result;
-  }
-
   get state(): ScreenState {
-    const supportMask = this.supportMask;
+    const mask = this.mask;
+    const supportMask = clone(mask);
+    trimUnsupported(supportMask);
     const unsupportMask = clone(supportMask);
     invert(unsupportMask);
+    applyMask(unsupportMask, mask);
 
-    const supportedGrid: Puyos[] = [];
-    const unsupportedGrid: Puyos[] = [];
     const connetivityGrid = [
       emptyPuyos(),
       emptyPuyos(),
@@ -163,30 +162,23 @@ export class SimplePuyoScreen {
       emptyPuyos(),
     ];
 
-    this.grid.forEach((puyos, j) => {
+    this.grid.slice(0, -1).forEach(puyos => {
       const supported = inMask(puyos, supportMask);
-      supportedGrid.push(supported);
       const unsupported = inMask(puyos, unsupportMask);
-      unsupportedGrid.push(unsupported);
 
-      if (j < NUM_PUYO_COLORS) {
-        connections(supported).forEach((connectivity, i) =>
-          merge(connetivityGrid[i], connectivity)
-        );
-        connections(unsupported).forEach((connectivity, i) =>
-          merge(connetivityGrid[i], connectivity)
-        );
-      }
+      connections(supported).forEach((connectivity, i) =>
+        merge(connetivityGrid[i], connectivity)
+      );
+      connections(unsupported).forEach((connectivity, i) =>
+        merge(connetivityGrid[i], connectivity)
+      );
     });
 
-    const supported = toIndexArray(supportedGrid);
-    const unsupported = toIndexArray(unsupportedGrid);
-    const connectivity = toFlagArray(connetivityGrid);
     return {
-      supported,
-      unsupported,
-      connectivity,
-      sparks: [],
+      grid: toIndexArray(this.grid),
+      falling: toArray(unsupportMask),
+      connectivity: toFlagArray(connetivityGrid),
+      sparking: [],
       chainNumber: this.chainNumber,
     };
   }
@@ -289,6 +281,7 @@ export class SimplePuyoScreen {
     const result: TickResult = {
       score: 0,
       chainNumber: 0,
+      didFall: false,
       didClear: false,
       allClear: false,
       busy: false,
@@ -319,6 +312,7 @@ export class SimplePuyoScreen {
     while (active) {
       // Make everything fall down.
       active = resolveGravity(this.grid);
+      result.didFall = result.didFall || active;
 
       // Make everything above the ghost line disappear.
       this.grid.forEach(vanishTop);
@@ -331,17 +325,21 @@ export class SimplePuyoScreen {
       const totalCleared = emptyPuyos();
 
       for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
-        const {numCleared, groupBonus, cleared} = clearGroups(this.grid[i]);
+        const {numCleared, groupBonus, sparks} = sparkGroups(this.grid[i]);
         if (numCleared) {
           totalNumCleared += numCleared;
           totalGroupBonus += groupBonus;
-          merge(totalCleared, cleared);
+          applyXor(this.grid[i], sparks);
+          merge(totalCleared, sparks);
           numColors++;
           didClear = true;
         }
       }
 
-      clearGarbage(this.grid[GARBAGE], totalCleared);
+      applyXor(
+        this.grid[GARBAGE],
+        sparkGarbage(this.grid[GARBAGE], totalCleared)
+      );
 
       const colorBonus = COLOR_BONUS[numColors];
       const chainPower = CHAIN_POWERS[this.chainNumber];
@@ -413,7 +411,7 @@ export class SimplePuyoScreen {
  * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
  */
 export class PuyoScreen extends SimplePuyoScreen {
-  sparks: Puyos[];
+  sparks: Puyos;
   jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
   /**
@@ -422,10 +420,7 @@ export class PuyoScreen extends SimplePuyoScreen {
    */
   constructor(seed?: number) {
     super();
-    this.sparks = [];
-    for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
-      this.sparks.push(emptyPuyos());
-    }
+    this.sparks = emptyPuyos();
     this.jkiss = new JKISS32(seed);
   }
 
@@ -440,16 +435,9 @@ export class PuyoScreen extends SimplePuyoScreen {
     return result;
   }
 
-  get supportMask(): Puyos {
-    const result = this.mask;
-    merge(result, getMask(this.sparks));
-    trimUnsupported(result);
-    return result;
-  }
-
   get state() {
     const result = super.state;
-    result.sparks = toIndexArray(this.sparks);
+    result.sparking = toArray(this.sparks);
     return result;
   }
 
@@ -472,20 +460,19 @@ export class PuyoScreen extends SimplePuyoScreen {
               many = true;
             } else {
               line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
-              if (i === GARBAGE) {
-                line += '◎';
+              if (puyoAt(this.sparks, x, y)) {
+                if (i === GARBAGE) {
+                  line += '•';
+                } else {
+                  line += '⦻';
+                }
               } else {
-                line += '●';
+                if (i === GARBAGE) {
+                  line += '◎';
+                } else {
+                  line += '●';
+                }
               }
-            }
-            any = true;
-          }
-          if (puyoAt(this.sparks[i], x, y)) {
-            if (any) {
-              many = true;
-            } else {
-              line += colorOf(i);
-              line += '⦻';
             }
             any = true;
           }
@@ -510,12 +497,16 @@ export class PuyoScreen extends SimplePuyoScreen {
    * @returns The score accumulated, group clearing flag, all-clear flag and a busy signal to discourage interaction.
    */
   tick(): TickResult {
-    // Pause for a step to clear sparks.
-    if (this.sparks.some(isNonEmpty)) {
-      this.sparks.forEach(clear);
+    // Pause for a step to clear sparking puyos.
+    if (isNonEmpty(this.sparks)) {
+      // Invert sparks into a survival mask.
+      invert(this.sparks);
+      this.grid.forEach(puyos => applyMask(puyos, this.sparks));
+      clear(this.sparks);
       return {
         score: 0,
         chainNumber: this.chainNumber,
+        didFall: false,
         didClear: false,
         allClear: this.grid.every(isEmpty),
         busy: true,
@@ -544,6 +535,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       return {
         score: 0,
         chainNumber: this.chainNumber,
+        didFall: true,
         didClear: false,
         allClear: false,
         busy: true,
@@ -558,21 +550,20 @@ export class PuyoScreen extends SimplePuyoScreen {
     let didClear = false;
     let totalNumCleared = 0;
     let totalGroupBonus = 0;
-    const totalCleared = emptyPuyos();
+    clear(this.sparks);
 
     for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
-      const {numCleared, groupBonus, cleared} = clearGroups(this.grid[i]);
+      const {numCleared, groupBonus, sparks} = sparkGroups(this.grid[i]);
       if (numCleared) {
         totalNumCleared += numCleared;
         totalGroupBonus += groupBonus;
-        merge(totalCleared, cleared);
-        this.sparks[i] = cleared;
+        merge(this.sparks, sparks);
         numColors++;
         didClear = true;
       }
     }
 
-    this.sparks[GARBAGE] = clearGarbage(this.grid[GARBAGE], totalCleared);
+    merge(this.sparks, sparkGarbage(this.grid[GARBAGE], this.sparks));
 
     const colorBonus = COLOR_BONUS[numColors];
     const chainPower = CHAIN_POWERS[this.chainNumber];
@@ -591,6 +582,7 @@ export class PuyoScreen extends SimplePuyoScreen {
     return {
       score,
       chainNumber: this.chainNumber,
+      didFall: false,
       didClear,
       allClear: false,
       busy: didClear,

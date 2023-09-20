@@ -170,7 +170,7 @@ export class OnePlayerGame {
       const tickResult = this.screen.tick();
       this.score += tickResult.score;
       this.active = tickResult.busy;
-      if (this.screen.sparks.some(isNonEmpty)) {
+      if (isNonEmpty(this.screen.sparks)) {
         this.sparkTime = SPARK_TIME;
       }
       return tickResult;
@@ -180,6 +180,7 @@ export class OnePlayerGame {
     return {
       score: 0,
       chainNumber: this.screen.chainNumber,
+      didFall: false,
       didClear: false,
       allClear: false,
       busy: wasBusy,

@@ -38,6 +38,12 @@ const CLEAR_THRESHOLD = 4;
 // Scoring
 const GROUP_BONUS = [0, 2, 3, 4, 5, 6, 7, 10];
 
+export type ClearResult = {
+  numCleared: number;
+  groupBonus: number;
+  sparks: Puyos;
+};
+
 /**
  * Obtain an empty bitboard stack of puyos.
  * @returns A screenful of air.
@@ -100,6 +106,21 @@ export function fromArray(array: boolean[]): Puyos {
     }
   }
   return puyos;
+}
+
+export function toArray(puyos: Puyos): boolean[] {
+  const result = [];
+  for (let j = 0; j < NUM_SLICES; ++j) {
+    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
+      const p = 1 << i;
+      if (puyos[j] & p) {
+        result.push(true);
+      } else {
+        result.push(false);
+      }
+    }
+  }
+  return result;
 }
 
 export function toIndexArray(grid: Puyos[]): number[] {
@@ -310,12 +331,22 @@ export function invert(puyos: Puyos) {
   puyos[2] = ~puyos[2];
 }
 
+export function applyMask(puyos: Puyos, mask: Puyos) {
+  puyos[0] &= mask[0];
+  puyos[1] &= mask[1];
+  puyos[2] &= mask[2];
+}
+
 export function inMask(puyos: Puyos, mask: Puyos) {
   const result = clone(puyos);
-  result[0] &= mask[0];
-  result[1] &= mask[1];
-  result[2] &= mask[2];
+  applyMask(result, mask);
   return result;
+}
+
+export function applyXor(puyos: Puyos, diff: Puyos) {
+  puyos[0] ^= diff[0];
+  puyos[1] ^= diff[1];
+  puyos[2] ^= diff[2];
 }
 
 /**
@@ -418,16 +449,10 @@ function getGroupBonus(group_size: number) {
   return GROUP_BONUS[group_size];
 }
 
-export type ClearResult = {
-  numCleared: number;
-  groupBonus: number;
-  cleared: Puyos;
-};
-
-export function clearGroups(puyos: Puyos): ClearResult {
+export function sparkGroups(puyos: Puyos): ClearResult {
   let numCleared = 0;
   let groupBonus = 0;
-  const cleared = emptyPuyos();
+  const sparks = emptyPuyos();
   const group = emptyPuyos();
   const temp = clone(puyos);
   temp[0] &= LIFE_BLOCK;
@@ -437,12 +462,10 @@ export function clearGroups(puyos: Puyos): ClearResult {
     for (let j = WIDTH * SLICE_HEIGHT - 2; j >= 0; j -= 2) {
       group[i] = 3 << j;
       flood(group, temp);
-      temp[0] ^= group[0];
-      temp[1] ^= group[1];
-      temp[2] ^= group[2];
+      applyXor(temp, group);
       const groupSize = puyoCount(group);
       if (groupSize >= CLEAR_THRESHOLD) {
-        merge(cleared, group);
+        merge(sparks, group);
         groupBonus += getGroupBonus(groupSize);
         numCleared += groupSize;
       }
@@ -453,18 +476,14 @@ export function clearGroups(puyos: Puyos): ClearResult {
     }
   }
 
-  puyos[0] ^= cleared[0];
-  puyos[1] ^= cleared[1];
-  puyos[2] ^= cleared[2];
-
   return {
     numCleared,
     groupBonus,
-    cleared,
+    sparks,
   };
 }
 
-export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
+export function sparkGarbage(garbage: Puyos, cleared: Puyos): Puyos {
   const eliminated = clone(garbage);
 
   eliminated[0] &=
@@ -485,10 +504,6 @@ export function clearGarbage(garbage: Puyos, cleared: Puyos): Puyos {
     ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[2] << V_SHIFT) |
     (cleared[2] >> V_SHIFT);
-
-  garbage[0] ^= eliminated[0];
-  garbage[1] ^= eliminated[1];
-  garbage[2] ^= eliminated[2];
 
   return eliminated;
 }

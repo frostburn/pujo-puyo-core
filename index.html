@@ -415,40 +415,36 @@ function renderGame() {
     for (let y = 0; y < LIFE_HEIGHT; ++y) {
       for (let x = 0; x < WIDTH; ++x) {
         const arrayIndex = x + (y + GHOST_Y + 1) * WIDTH;
-        let index = gameState[i].screen.supported[arrayIndex];
-        let falling = false;
-        if (index < 0) {
-          index = gameState[i].screen.unsupported[arrayIndex];
-          falling = true;
-        }
+        const index = gameState[i].screen.grid[arrayIndex];
         if (index >= 0) {
-          const panel = panelAt(x, y, index, gameState[i].screen.connectivity[arrayIndex]);
-          if (falling) {
-            const animation = svgElement("animateTransform");
-            animation.setAttribute("attributeName", "transform");
-            animation.setAttribute("attributeType", "XML");
-            animation.setAttribute("type", "translate");
-            animation.setAttribute("from", "0 0");
-            animation.setAttribute("to", "0 1");
-            animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
-            animation.setAttribute("dur", `${1/FRAME_RATE}s`);
-            animation.setAttribute("repeatCount", 1);
-            animation.setAttribute("fill", "freeze");
+          if (gameState[i].screen.sparking[arrayIndex]) {
+            if (index !== GARBAGE) {
+              const sparks = svgElement("use");
+              sparks.setAttribute("href", "#sparks");
+              sparks.setAttribute("x", x + 0.5);
+              sparks.setAttribute("y", y + 0.5);
+              sparks.setAttribute("fill", STROKES[index]);
+              contents[i].appendChild(sparks);
+            }
+          } else {
+            const panel = panelAt(x, y, index, gameState[i].screen.connectivity[arrayIndex]);
+            if (gameState[i].screen.falling[arrayIndex]) {
+              const animation = svgElement("animateTransform");
+              animation.setAttribute("attributeName", "transform");
+              animation.setAttribute("attributeType", "XML");
+              animation.setAttribute("type", "translate");
+              animation.setAttribute("from", "0 0");
+              animation.setAttribute("to", "0 1");
+              animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
+              animation.setAttribute("dur", `${1/FRAME_RATE}s`);
+              animation.setAttribute("repeatCount", 1);
+              animation.setAttribute("fill", "freeze");
 
-            panel.appendChild(animation);
+              panel.appendChild(animation);
+            }
+
+            contents[i].appendChild(panel);
           }
-
-          contents[i].appendChild(panel);
-        }
-
-        index = gameState[i].screen.sparks[arrayIndex];
-        if (index >= 0 && index !== GARBAGE) {
-          const sparks = svgElement("use");
-          sparks.setAttribute("href", "#sparks");
-          sparks.setAttribute("x", x + 0.5);
-          sparks.setAttribute("y", y + 0.5);
-          sparks.setAttribute("fill", STROKES[index]);
-          contents[i].appendChild(sparks);
         }
       }
     }
