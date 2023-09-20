@@ -9,6 +9,7 @@
 <script type="module">
 import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
+// TODO: Tweak timings
 // TODO: Responsive layout
 
 const FRAME_RATE = 15;
@@ -92,6 +93,7 @@ svg.appendChild(style);
 // Defs
 const defs = svgElement("defs");
 
+// TODO: Extend the screen and piece-box out a little.
 const screenDef = svgElement("g");
 screenDef.setAttribute("id", "screen");
 
@@ -105,9 +107,26 @@ mainScreen.setAttribute("rx", "0.1");
 mainScreen.setAttribute("ry", "0.1");
 screenDef.appendChild(mainScreen);
 
-// TODO: Rounded corners.
-const pieceBox = svgElement("polygon");
-pieceBox.setAttribute("points", "0,0 1,0 1,2 1.5,2 1.5,4 0.5,4 0.5,2 0,2");
+const pieceBox = svgElement("path");
+pieceBox.setAttribute("d",
+  "M 0 0.1 " +
+  "A 0.1 0.1 0 0 1 0.1 0 " +
+  "H 0.9 " +
+  "A 0.1 0.1 0 0 1 1 0.1 " +
+  "V 1 1.9 " +
+  "A 0.1 0.1 0 0 0 1.1 2 " +
+  "H 1.4 " +
+  "A 0.1 0.1 0 0 1 1.5 2.1 " +
+  "V 3.9 " +
+  "A 0.1 0.1 0 0 1 1.4 4 " +
+  "H 0.6 " +
+  "A 0.1 0.1 0 0 1 0.5 3.9 " +
+  "V 2.1 " +
+  "A 0.1 0.1 0 0 0 0.4 2 " +
+  "H 0.1 " +
+  "A 0.1 0.1 0 0 1 0 1.9 " +
+  "Z"
+);
 pieceBox.setAttribute("fill", "none");
 pieceBox.setAttribute("stroke", "black");
 pieceBox.setAttribute("stroke-width", "0.06");
