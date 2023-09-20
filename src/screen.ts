@@ -44,6 +44,7 @@ export type TickResult = {
   busy: boolean;
 };
 
+// TODO: Jiggles
 export type ScreenState = {
   grid: number[];
   connectivity: number[];

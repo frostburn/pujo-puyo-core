@@ -95,6 +95,7 @@ svg.appendChild(style);
 
 // Defs
 const defs = svgElement("defs");
+svg.appendChild(defs);
 
 const screenDef = svgElement("g");
 screenDef.setAttribute("id", "screen");
@@ -139,11 +140,6 @@ screenDef.appendChild(pieceBox);
 
 defs.appendChild(screenDef);
 
-const garbageDef = svgElement("circle");
-garbageDef.setAttribute("id", "garbage");
-garbageDef.setAttribute("r", 0.42);
-defs.appendChild(garbageDef);
-
 const sparksDef = svgElement("g");
 sparksDef.setAttribute("id", "sparks");
 for (let i = 0; i < 5; ++i) {
@@ -154,24 +150,19 @@ for (let i = 0; i < 5; ++i) {
   spark.setAttribute("r", 0.1);
   sparksDef.appendChild(spark);
 }
-const animation = svgElement("animateTransform");
-animation.setAttribute("attributeName", "transform");
-animation.setAttribute("type", "rotate");
-animation.setAttribute("from", `0`);
-animation.setAttribute("to", `360`);
-animation.setAttribute("dur", "3s");
-animation.setAttribute("repeatCount", "indefinite");
-sparksDef.appendChild(animation);
+{
+  const animation = svgElement("animateTransform");
+  animation.setAttribute("attributeName", "transform");
+  animation.setAttribute("type", "rotate");
+  animation.setAttribute("from", `0`);
+  animation.setAttribute("to", `360`);
+  animation.setAttribute("dur", "3s");
+  animation.setAttribute("repeatCount", "indefinite");
+  sparksDef.appendChild(animation);
+}
 defs.appendChild(sparksDef);
 
-svg.appendChild(defs);
-
-const heartDef = svgElement("path");
-heartDef.setAttribute("id", "heart");
-const heartD = "M 0 1 C 1.8 0 0 -1 0 0 C 0 -1 -1.8 0 0 1 Z";
-heartDef.setAttribute("d", transformPath(heartD, 0.5, 0, -0.11));
-defs.appendChild(heartDef);
-
+// Garbage queue indicators
 const spadeDef = svgElement("path");
 spadeDef.setAttribute("id", "spade");
 const spadeD = (
@@ -231,6 +222,8 @@ for (let i = 1; i < 6; ++i) {
 starD += " Z";
 starDef.setAttribute("d", starD);
 defs.appendChild(starDef);
+
+// Panels
 
 const squareClip = svgElement("clipPath");
 squareClip.setAttribute("id", "square");
@@ -302,6 +295,97 @@ for (let i = 0; i < 16; ++i) {
   defs.appendChild(connectedDef);
 }
 
+const garbageDef = svgElement("circle");
+garbageDef.setAttribute("id", "garbage");
+garbageDef.setAttribute("r", 0.42);
+defs.appendChild(garbageDef);
+
+const jigglingGarbageDef = svgElement("ellipse");
+jigglingGarbageDef.setAttribute("id", "jiggling-garbage");
+jigglingGarbageDef.setAttribute("rx", 0.41);
+jigglingGarbageDef.setAttribute("ry", 0.43);
+{
+  const animation = svgElement("animate");
+  animation.setAttribute("attributeName", "rx");
+  animation.setAttribute("values", "0.41;0.43;0.41");
+  animation.setAttribute("dur", "0.3s");
+  animation.setAttribute("repeatCount", "indefinite");
+  jigglingGarbageDef.appendChild(animation);
+}
+{
+  const animation = svgElement("animate");
+  animation.setAttribute("attributeName", "ry");
+  animation.setAttribute("values", "0.43;0.41;0.43");
+  animation.setAttribute("dur", "0.3s");
+  animation.setAttribute("repeatCount", "indefinite");
+  jigglingGarbageDef.appendChild(animation);
+}
+defs.appendChild(jigglingGarbageDef);
+
+// Panel identifiers
+const JIGGLE_DUR = "0.2s";
+const jiggleAnimation = svgElement("animate");
+jiggleAnimation.setAttribute("attributeName", "y");
+jiggleAnimation.setAttribute("values", "-0.05;0.05;-0.05");
+jiggleAnimation.setAttribute("dur", JIGGLE_DUR);
+jiggleAnimation.setAttribute("repeatCount", "indefinite");
+
+const heartDef = svgElement("path");
+heartDef.setAttribute("id", "heart");
+const heartD = "M 0 1 C 1.8 0 0 -1 0 0 C 0 -1 -1.8 0 0 1 Z";
+heartDef.setAttribute("d", transformPath(heartD, 0.3, -0.01, -0.07));
+defs.appendChild(heartDef);
+
+const jigglingHeartDef = svgElement("use");
+jigglingHeartDef.setAttribute("id", "jiggling-heart");
+jigglingHeartDef.setAttribute("href", "#heart");
+jigglingHeartDef.appendChild(jiggleAnimation);
+defs.appendChild(jigglingHeartDef);
+
+const smallStarDef = svgElement("path");
+smallStarDef.setAttribute("id", "small-star");
+smallStarDef.setAttribute("d", transformPath(starD, -0.6, 0, -0.015));
+defs.appendChild(smallStarDef);
+
+const jigglingStarDef = svgElement("use");
+jigglingStarDef.setAttribute("id", "jiggling-star");
+jigglingStarDef.setAttribute("href", "#small-star");
+jigglingStarDef.appendChild(jiggleAnimation.cloneNode());
+defs.appendChild(jigglingStarDef);
+
+const smallCirleDef = svgElement("circle");
+smallCirleDef.setAttribute("id", "small-circle");
+smallCirleDef.setAttribute("r", 0.2);
+defs.appendChild(smallCirleDef);
+
+const jigglingCircleDef = svgElement("use");
+jigglingCircleDef.setAttribute("id", "jiggling-circle");
+jigglingCircleDef.setAttribute("href", "#small-circle");
+jigglingCircleDef.appendChild(jiggleAnimation.cloneNode());
+defs.appendChild(jigglingCircleDef);
+
+const smallMoonDef = svgElement("path");
+smallMoonDef.setAttribute("id", "small-moon");
+smallMoonDef.setAttribute("d", transformPath(moonD, -0.21, 0.15));
+defs.appendChild(smallMoonDef);
+
+const jigglingMoonDef = svgElement("use");
+jigglingMoonDef.setAttribute("id", "jiggling-moon");
+jigglingMoonDef.setAttribute("href", "#small-moon");
+jigglingMoonDef.appendChild(jiggleAnimation.cloneNode());
+defs.appendChild(jigglingMoonDef);
+
+const smallDiamondDef = svgElement("path");
+smallDiamondDef.setAttribute("id", "small-diamond");
+smallDiamondDef.setAttribute("d", transformPath(diamondD, -0.24));
+defs.appendChild(smallDiamondDef);
+
+const jigglingDiamondDef = svgElement("use");
+jigglingDiamondDef.setAttribute("id", "jiggling-diamond");
+jigglingDiamondDef.setAttribute("href", "#small-diamond");
+jigglingDiamondDef.appendChild(jiggleAnimation.cloneNode());
+defs.appendChild(jigglingDiamondDef);
+
 // Visible elements
 const leftScreen = svgElement("use");
 leftScreen.setAttribute("href", "#screen");
@@ -328,10 +412,10 @@ const contents = [leftContent, rightContent];
 container.appendChild(svg);
 document.body.appendChild(container);
 
-function panelAt(x, y, color, connectivity = 0) {
+function panelAt(x, y, color, connectivity = 0, jiggle = false) {
   const element = svgElement("use");
   if (color === GARBAGE) {
-    element.setAttribute("href", "#garbage");
+    element.setAttribute("href", jiggle ? "#jiggling-garbage": "#garbage");
   } else {
     element.setAttribute("href", `#panel${connectivity}`);
   }
@@ -349,22 +433,17 @@ function panelAt(x, y, color, connectivity = 0) {
   glyph.setAttribute("x", x + 0.5);
   glyph.setAttribute("y", y + 0.5);
   glyph.setAttribute("fill", STROKES[color]);
-  glyph.setAttribute("transform-origin", `${x+0.5} ${y+0.5}`);
-  let transform = "scale(0.6)";
   if (color === RED) {
-    glyph.setAttribute("href", "#heart");
+    glyph.setAttribute("href", jiggle ? "#jiggling-heart" : "#heart");
   } else if (color === GREEN) {
-    glyph.setAttribute("href", "#large");
+    glyph.setAttribute("href", jiggle ? "#jiggling-circle" : "#small-circle");
   } else if (color === YELLOW) {
-    glyph.setAttribute("href", "#star");
-    transform += " rotate(180)";
+    glyph.setAttribute("href", jiggle ? "#jiggling-star" : "#small-star");
   } else if (color === BLUE) {
-    glyph.setAttribute("href", "#moon");
-    transform += " rotate(180)";
+    glyph.setAttribute("href", jiggle ? "#jiggling-moon" : "#small-moon");
   } else if (color === PURPLE) {
-    glyph.setAttribute("href", "#diamond");
+    glyph.setAttribute("href", jiggle ? "#jiggling-diamond" : "#small-diamond");
   }
-  glyph.setAttribute("transform", transform);
   group.appendChild(glyph);
   return group;
 }
@@ -374,6 +453,8 @@ function renderGame() {
   rightContent.replaceChildren();
 
   const gameState = game.state;
+
+  const currentTime = svg.getCurrentTime();
 
   for (let i = 0; i < 2; ++i) {
     const garbageDisplay = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
@@ -435,7 +516,7 @@ function renderGame() {
               animation.setAttribute("type", "translate");
               animation.setAttribute("from", "0 0");
               animation.setAttribute("to", "0 1");
-              animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
+              animation.setAttribute("begin", `${currentTime}s`);
               animation.setAttribute("dur", `${1/FRAME_RATE}s`);
               animation.setAttribute("repeatCount", 1);
               animation.setAttribute("fill", "freeze");
@@ -469,6 +550,7 @@ function draw(timeStamp) {
     game.tick();
     gameAge++;
 
+    // TODO: Worker thread for maxDroplet2.
     if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
       game.play(0, x1, y1, orientation);
@@ -489,6 +571,11 @@ function draw(timeStamp) {
 }
 
 frameId = window.requestAnimationFrame(draw);
+
+const panicButton = document.createElement("button");
+panicButton.onclick = () => window.cancelAnimationFrame(frameId);
+panicButton.textContent = "stop";
+document.body.appendChild(panicButton);
 
 </script>
 </head>
