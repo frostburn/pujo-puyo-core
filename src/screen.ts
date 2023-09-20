@@ -8,6 +8,7 @@ import {
   clearGroups,
   clone,
   collides,
+  connections,
   emptyPuyos,
   fallOne,
   fromArray,
@@ -20,6 +21,7 @@ import {
   puyoAt,
   resolveGravity,
   singlePuyo,
+  toFlagArray,
   toIndexArray,
   topLine,
   trimUnsupported,
@@ -41,6 +43,7 @@ export type TickResult = {
 export type ScreenState = {
   supported: number[];
   unsupported: number[];
+  connectivity: number[];
   sparks: number[];
   chainNumber: number;
 };
@@ -67,6 +70,12 @@ const CHAIN_POWERS = [
   0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448,
   480, 512, 544, 576, 608, 640, 672,
 ];
+
+// Connectivity flags
+export const CONNECTS_DOWN = 1;
+export const CONNECTS_UP = 2;
+export const CONNECTS_RIGHT = 4;
+export const CONNECTS_LEFT = 8;
 
 /**
  * Convert puyo grid index to an ANSI color code.
@@ -134,19 +143,48 @@ export class SimplePuyoScreen {
     return result;
   }
 
+  get supportMask(): Puyos {
+    const result = this.mask;
+    trimUnsupported(result);
+    return result;
+  }
+
   get state(): ScreenState {
-    const supportMask = this.mask;
-    trimUnsupported(supportMask);
-    const supported = toIndexArray(
-      this.grid.map(puyos => inMask(puyos, supportMask))
-    );
-    invert(supportMask);
-    const unsupported = toIndexArray(
-      this.grid.map(puyos => inMask(puyos, supportMask))
-    );
+    const supportMask = this.supportMask;
+    const unsupportMask = clone(supportMask);
+    invert(unsupportMask);
+
+    const supportedGrid: Puyos[] = [];
+    const unsupportedGrid: Puyos[] = [];
+    const connetivityGrid = [
+      emptyPuyos(),
+      emptyPuyos(),
+      emptyPuyos(),
+      emptyPuyos(),
+    ];
+
+    this.grid.forEach(puyos => {
+      const supported = inMask(puyos, supportMask);
+      supportedGrid.push(supported);
+      const unsupported = inMask(puyos, unsupportMask);
+      unsupportedGrid.push(unsupported);
+
+      const supportedConnections = connections(supported);
+      const unsupportedConnections = connections(unsupported);
+
+      for (let i = 0; i < 4; i++) {
+        merge(connetivityGrid[i], supportedConnections[i]);
+        merge(connetivityGrid[i], unsupportedConnections[i]);
+      }
+    });
+
+    const supported = toIndexArray(supportedGrid);
+    const unsupported = toIndexArray(unsupportedGrid);
+    const connectivity = toFlagArray(connetivityGrid);
     return {
       supported,
       unsupported,
+      connectivity,
       sparks: [],
       chainNumber: this.chainNumber,
     };
@@ -401,23 +439,17 @@ export class PuyoScreen extends SimplePuyoScreen {
     return result;
   }
 
+  get supportMask(): Puyos {
+    const result = this.mask;
+    merge(result, getMask(this.sparks));
+    trimUnsupported(result);
+    return result;
+  }
+
   get state() {
-    const supportMask = this.mask;
-    merge(supportMask, getMask(this.sparks));
-    trimUnsupported(supportMask);
-    const supported = toIndexArray(
-      this.grid.map(puyos => inMask(puyos, supportMask))
-    );
-    invert(supportMask);
-    const unsupported = toIndexArray(
-      this.grid.map(puyos => inMask(puyos, supportMask))
-    );
-    return {
-      supported,
-      unsupported,
-      sparks: toIndexArray(this.sparks),
-      chainNumber: this.chainNumber,
-    };
+    const result = super.state;
+    result.sparks = toIndexArray(this.sparks);
+    return result;
   }
 
   /**

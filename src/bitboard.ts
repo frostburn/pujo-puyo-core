@@ -120,6 +120,23 @@ export function toIndexArray(grid: Puyos[]): number[] {
   return result;
 }
 
+export function toFlagArray(grid: Puyos[]): number[] {
+  const result = [];
+  for (let k = 0; k < NUM_SLICES; ++k) {
+    for (let j = 0; j < WIDTH * SLICE_HEIGHT; ++j) {
+      let flags = 0;
+      const p = 1 << j;
+      for (let i = 0; i < grid.length; ++i) {
+        if (grid[i][k] & p) {
+          flags |= 1 << i;
+        }
+      }
+      result.push(flags);
+    }
+  }
+  return result;
+}
+
 /**
  * Produce lines of ASCII from the puyo collection using @ for puyos and . for empty space.
  */
@@ -503,4 +520,32 @@ export function topLine(): Puyos {
   const result = emptyPuyos();
   result[0] = TOP;
   return result;
+}
+
+export function connections(puyos: Puyos): Puyos[] {
+  const down = clone(puyos);
+  down[0] &= LIFE_BLOCK;
+  down[0] &= (down[0] >> V_SHIFT) | ((down[1] & TOP) << TOP_TO_BOTTOM);
+  down[1] &= (down[1] >> V_SHIFT) | ((down[2] & TOP) << TOP_TO_BOTTOM);
+  down[2] &= down[2] >> V_SHIFT;
+
+  const up = clone(puyos);
+  up[0] &= LIFE_BLOCK;
+  up[2] &= (up[2] << V_SHIFT) | ((up[1] & BOTTOM) >> TOP_TO_BOTTOM);
+  up[1] &= (up[1] << V_SHIFT) | ((up[0] & BOTTOM) >> TOP_TO_BOTTOM);
+  up[0] &= up[0] << V_SHIFT;
+
+  const right = clone(puyos);
+  right[0] &= LIFE_BLOCK;
+  right[0] &= (right[0] & RIGHT_BLOCK) >> H_SHIFT;
+  right[1] &= (right[1] & RIGHT_BLOCK) >> H_SHIFT;
+  right[2] &= (right[2] & RIGHT_BLOCK) >> H_SHIFT;
+
+  const left = clone(puyos);
+  left[0] &= LIFE_BLOCK;
+  left[0] &= (left[0] << H_SHIFT) & RIGHT_BLOCK;
+  left[1] &= (left[1] << H_SHIFT) & RIGHT_BLOCK;
+  left[2] &= (left[2] << H_SHIFT) & RIGHT_BLOCK;
+
+  return [down, up, right, left];
 }

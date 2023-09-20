@@ -7,14 +7,15 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
+import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
 // TODO: Responsive layout
 
 const FRAME_RATE = 15;
 
 // 'RGYBPN'
-const FILLS = ["red", "lime", "yellow", "blue", "fuchsia", "cyan"];
+const FILLS = ["maroon", "green", "olive", "navy", "purple", "cyan"];
+const STROKES = ["red", "lime", "yellow", "blue", "fuchsia", "teal"];
 
 const LEFT_SCREEN_X = 1;
 const LEFT_SCREEN_Y = 2;
@@ -104,6 +105,7 @@ mainScreen.setAttribute("rx", "0.1");
 mainScreen.setAttribute("ry", "0.1");
 screenDef.appendChild(mainScreen);
 
+// TODO: Rounded corners.
 const pieceBox = svgElement("polygon");
 pieceBox.setAttribute("points", "0,0 1,0 1,2 1.5,2 1.5,4 0.5,4 0.5,2 0,2");
 pieceBox.setAttribute("fill", "none");
@@ -114,12 +116,10 @@ screenDef.appendChild(pieceBox);
 
 defs.appendChild(screenDef);
 
-const puyoDef = svgElement("circle");
-puyoDef.setAttribute("id", "puyo");
-puyoDef.setAttribute("r", 0.43);
-puyoDef.setAttribute("stroke", "gainsboro");
-puyoDef.setAttribute("stroke-width", "0.07");
-defs.appendChild(puyoDef);
+const garbageDef = svgElement("circle");
+garbageDef.setAttribute("id", "garbage");
+garbageDef.setAttribute("r", 0.42);
+defs.appendChild(garbageDef);
 
 const sparksDef = svgElement("g");
 sparksDef.setAttribute("id", "sparks");
@@ -199,6 +199,76 @@ starD += " Z";
 starDef.setAttribute("d", starD);
 defs.appendChild(starDef);
 
+const squareClip = svgElement("clipPath");
+squareClip.setAttribute("id", "square");
+const square = svgElement("rect");
+square.setAttribute("x", -0.504);
+square.setAttribute("y", -0.504);
+square.setAttribute("width", 1.08);
+square.setAttribute("height", 1.08);
+squareClip.appendChild(square);
+defs.appendChild(squareClip);
+
+for (let i = 0; i < 16; ++i) {
+  const connectedDef = svgElement("polygon");
+  connectedDef.setAttribute("id", `panel${i}`);
+
+  let points = [
+    [0.4, 0.3],
+    [0.3, 0.4]
+  ];
+  if (i & CONNECTS_DOWN) {
+    points = points.concat([
+      [0.3, 0.6],
+      [0.4, 0.7],
+      [-0.4, 0.7],
+      [-0.3, 0.6],
+    ]);
+  }
+  points = points.concat([
+    [-0.3, 0.4],
+    [-0.4, 0.3]
+  ]);
+  if (i & CONNECTS_LEFT) {
+    points = points.concat([
+      [-0.6, 0.3],
+      [-0.7, 0.4],
+      [-0.7, -0.4],
+      [-0.6, -0.3]
+    ]);
+  }
+  points = points.concat([
+    [-0.4, -0.3],
+    [-0.3, -0.4]
+  ]);
+  if (i & CONNECTS_UP) {
+    points = points.concat([
+      [-0.3, -0.6],
+      [-0.4, -0.7],
+      [0.4, -0.7],
+      [0.3, -0.6],
+    ]);
+  }
+  points = points.concat([
+    [0.3, -0.4],
+    [0.4, -0.3]
+  ]);
+  if (i & CONNECTS_RIGHT) {
+    points = points.concat([
+      [0.6, -0.3],
+      [0.7, -0.4],
+      [0.7, 0.4],
+      [0.6, 0.3],
+    ]);
+  }
+
+  connectedDef.setAttribute("points", points.map(pair => pair.join(",")).join(" "));
+
+  connectedDef.setAttribute("clip-path", "url(#square)");
+
+  defs.appendChild(connectedDef);
+}
+
 // Visible elements
 const leftScreen = svgElement("use");
 leftScreen.setAttribute("href", "#screen");
@@ -262,30 +332,39 @@ function renderGame() {
     score.textContent = gameState[i].score;
     contents[i].appendChild(score);
 
+    // TODO: Identifying glyphs.
     const previewBag = gameState[i].visibleBag.slice(-4);
     const puyo0 = svgElement("use");
-    puyo0.setAttribute("href", "#puyo");
+    puyo0.setAttribute("href", "#panel0");
     puyo0.setAttribute("x", WIDTH + 1);
     puyo0.setAttribute("y", 1.5);
     puyo0.setAttribute("fill", FILLS[previewBag[0]]);
+    puyo0.setAttribute("stroke", STROKES[previewBag[0]]);
+    puyo0.setAttribute("stroke-width", 0.15);
     contents[i].appendChild(puyo0);
     const puyo1 = svgElement("use");
-    puyo1.setAttribute("href", "#puyo");
+    puyo1.setAttribute("href", "#panel0");
     puyo1.setAttribute("x", WIDTH + 1);
     puyo1.setAttribute("y", 0.5);
     puyo1.setAttribute("fill", FILLS[previewBag[1]]);
+    puyo1.setAttribute("stroke", STROKES[previewBag[1]]);
+    puyo1.setAttribute("stroke-width", 0.15);
     contents[i].appendChild(puyo1);
     const puyo2 = svgElement("use");
-    puyo2.setAttribute("href", "#puyo");
+    puyo2.setAttribute("href", "#panel0");
     puyo2.setAttribute("x", WIDTH + 1.5);
     puyo2.setAttribute("y", 3.5);
     puyo2.setAttribute("fill", FILLS[previewBag[2]]);
+    puyo2.setAttribute("stroke", STROKES[previewBag[2]]);
+    puyo2.setAttribute("stroke-width", 0.15);
     contents[i].appendChild(puyo2);
     const puyo3 = svgElement("use");
-    puyo3.setAttribute("href", "#puyo");
+    puyo3.setAttribute("href", "#panel0");
     puyo3.setAttribute("x", WIDTH + 1.5);
     puyo3.setAttribute("y", 2.5);
     puyo3.setAttribute("fill", FILLS[previewBag[3]]);
+    puyo3.setAttribute("stroke", STROKES[previewBag[3]]);
+    puyo3.setAttribute("stroke-width", 0.15);
     contents[i].appendChild(puyo3);
 
     for (let y = 0; y < LIFE_HEIGHT; ++y) {
@@ -299,10 +378,16 @@ function renderGame() {
         }
         if (index >= 0) {
           const puyo = svgElement("use");
-          puyo.setAttribute("href", "#puyo");
+          if (index === GARBAGE) {
+            puyo.setAttribute("href", "#garbage");
+          } else {
+            puyo.setAttribute("href", `#panel${gameState[i].screen.connectivity[arrayIndex]}`);
+          }
           puyo.setAttribute("x", x + 0.5);
           puyo.setAttribute("y", y + 0.5);
           puyo.setAttribute("fill", FILLS[index]);
+          puyo.setAttribute("stroke", STROKES[index]);
+          puyo.setAttribute("stroke-width", 0.15);
 
           if (falling) {
             const animation = svgElement("animate");
@@ -325,7 +410,7 @@ function renderGame() {
           sparks.setAttribute("href", "#sparks");
           sparks.setAttribute("x", x + 0.5);
           sparks.setAttribute("y", y + 0.5);
-          sparks.setAttribute("fill", FILLS[index]);
+          sparks.setAttribute("fill", STROKES[index]);
           contents[i].appendChild(sparks);
         }
       }
