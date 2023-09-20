@@ -7,7 +7,9 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, maxDropletStrategy1 } from "./build/index.js";
+import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
+
+// TODO: Responsive layout
 
 const FRAME_RATE = 15;
 
@@ -15,7 +17,7 @@ const FRAME_RATE = 15;
 const FILLS = ["red", "lime", "yellow", "blue", "fuchsia", "cyan"];
 
 const LEFT_SCREEN_X = 1;
-const LEFT_SCREEN_Y = 1;
+const LEFT_SCREEN_Y = 2;
 const RIGHT_SCREEN_X = 10;
 const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 
@@ -23,12 +25,57 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const game = new MultiplayerGame();
 
-// TODO: Incoming garbage
-
 const container = document.createElement("div");
 
 function svgElement(qualifiedName) {
   return document.createElementNS(SVG_NS, qualifiedName);
+}
+
+const ARC_SCALE_FLAGS = [true, true, false, false, false, true, true];
+const ARC_TRANSLATION_FLAGS = [false, false, false, false, false, true, true];
+/**
+ * Transform <path> element's definition by first re-scaling it and then translating the points.
+ * NOTE: Likely incomplete and pretty much untested.
+ */
+function transformPath(d, scale = 1, dx = 0, dy = 0) {
+  const transformed = [];
+  let scaleFlags = [];
+  let translationFlags = [];
+  let horizontal = true;
+  d.split(/\s+/).forEach(token => {
+    let num = parseFloat(token);
+    if (isNaN(num)) {
+      transformed.push(token);
+      horizontal = true;
+      if (token.toUpperCase() === "A") {
+        scaleFlags = [...ARC_SCALE_FLAGS];
+        translationFlags = [...ARC_TRANSLATION_FLAGS];
+      } else if (token.toUpperCase() === "V") {
+        horizontal = false;
+      }
+      if (token === token.toLowerCase()) {
+        translationFlags = Array(7).fill(false);
+      }
+    } else {
+      let scaleFlag = true;
+      let translationFlag = true;
+      if (scaleFlags.length) {
+        scaleFlag = scaleFlags.shift();
+      }
+      if (translationFlags.length) {
+        translationFlag = translationFlags.shift();
+      }
+      if (scaleFlag) {
+        num *= scale;
+      }
+      if (translationFlag) {
+        num += (horizontal ? dx : dy);
+        horizontal = !horizontal;
+      }
+      transformed.push(num.toString());
+    }
+  });
+  return transformed.join(" ");
 }
 
 const svg = svgElement("svg");
@@ -76,8 +123,8 @@ defs.appendChild(puyoDef);
 
 const sparksDef = svgElement("g");
 sparksDef.setAttribute("id", "sparks");
-for (let j = 0; j < 5; ++j) {
-  const theta = 2 * Math.PI * j / 5;
+for (let i = 0; i < 5; ++i) {
+  const theta = 2 * Math.PI * i / 5;
   const spark = svgElement("circle");
   spark.setAttribute("cx", Math.cos(theta) * 0.3);
   spark.setAttribute("cy", Math.sin(theta) * 0.3);
@@ -95,6 +142,62 @@ sparksDef.appendChild(animation);
 defs.appendChild(sparksDef);
 
 svg.appendChild(defs);
+
+const heartDef = svgElement("path");
+heartDef.setAttribute("id", "heart");
+heartDef.setAttribute("d", "M 0 1 C 1.8 0 0 -1 0 0 C 0 -1 -1.8 0 0 1 Z");
+defs.appendChild(heartDef);
+
+const spadeDef = svgElement("path");
+spadeDef.setAttribute("id", "spade");
+const spadeD = "M 0.1 0 Q 0 0.6 0.4 0.8 H -0.4 Q 0 0.6 -0.1 0 C 0 1 -1.8 0 0 -1 C 1.8 0 0 1 0.1 0 Z";
+spadeDef.setAttribute("d", transformPath(spadeD, 0.45));
+defs.appendChild(spadeDef);
+
+const moonDef = svgElement("path");
+moonDef.setAttribute("id", "moon");
+const moonD = "M 0 1 A 1.1 1.1 0 1 0 0 -1 A 1.04 1.04 0 0 1 0 1 Z";
+moonDef.setAttribute("d", transformPath(moonD, 0.35, -0.15));
+defs.appendChild(moonDef);
+
+const diamondDef = svgElement("path");
+diamondDef.setAttribute("id", "diamond");
+const diamondD = "M 0 1 Q 0.6 0.6 1 0 Q 0.6 -0.6 0 -1 Q -0.6 -0.6 -1 0 Q -0.6 0.6 0 1 Z";
+diamondDef.setAttribute("d", transformPath(diamondD, 0.4));
+defs.appendChild(diamondDef);
+
+const smallDef = svgElement("circle");
+smallDef.setAttribute("id", "small");
+smallDef.setAttribute("r", 0.2);
+defs.appendChild(smallDef);
+
+const largeDef = svgElement("circle");
+largeDef.setAttribute("id", "large");
+largeDef.setAttribute("r", 0.39);
+defs.appendChild(largeDef);
+
+const cometDef = svgElement("path");
+cometDef.setAttribute("id", "comet");
+const cometD = "M 0 1 A 1 1 0 0 1 0 -1 L 2 -1 L 0.5 -0.5 L 2.5 -0.1 L 0.3 0.3 L 1 1 Z";
+cometDef.setAttribute("d", transformPath(cometD, 0.3, -0.15));
+cometDef.setAttribute("transform", "rotate(-45)");
+defs.appendChild(cometDef);
+
+const starDef = svgElement("path");
+starDef.setAttribute("id", "star");
+let starD = "M 0 0.3";
+const spikeDelta = Math.PI / 5;
+for (let i = 1; i < 6; ++i) {
+  const theta = 2 * Math.PI * i / 5;
+  const x1 = 0.7 * Math.sin(theta - spikeDelta);
+  const y1 = 0.7 * Math.cos(theta - spikeDelta);
+  const x = 0.3 * Math.sin(theta);
+  const y = 0.3 * Math.cos(theta);
+  starD += ` Q ${x1} ${y1} ${x} ${y}`;
+}
+starD += " Z";
+starDef.setAttribute("d", starD);
+defs.appendChild(starDef);
 
 // Visible elements
 const leftScreen = svgElement("use");
@@ -129,6 +232,23 @@ function renderGame() {
   const gameState = game.state;
 
   for (let i = 0; i < 2; ++i) {
+    const garbageDisplay = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
+    garbageDisplay.forEach((symbol, x) => {
+      if (symbol === "rock") {
+        symbol = "spade";
+      } else if (symbol === "crown") {
+        symbol = "diamond";
+      }
+      const glyph = svgElement("use");
+      glyph.setAttribute("href", "#" + symbol);
+      glyph.setAttribute("fill", "cyan");
+      glyph.setAttribute("stroke", "teal");
+      glyph.setAttribute("stroke-width", 0.05);
+      glyph.setAttribute("x", x + 0.5);
+      glyph.setAttribute("y", -0.9);
+      contents[i].appendChild(glyph);
+    });
+
     const scoreLabel = svgElement("text");
     scoreLabel.setAttribute("y", LIFE_HEIGHT+0.8);
     scoreLabel.classList.add("score-label");
