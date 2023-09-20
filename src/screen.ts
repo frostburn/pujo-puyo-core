@@ -163,18 +163,19 @@ export class SimplePuyoScreen {
       emptyPuyos(),
     ];
 
-    this.grid.forEach(puyos => {
+    this.grid.forEach((puyos, j) => {
       const supported = inMask(puyos, supportMask);
       supportedGrid.push(supported);
       const unsupported = inMask(puyos, unsupportMask);
       unsupportedGrid.push(unsupported);
 
-      const supportedConnections = connections(supported);
-      const unsupportedConnections = connections(unsupported);
-
-      for (let i = 0; i < 4; i++) {
-        merge(connetivityGrid[i], supportedConnections[i]);
-        merge(connetivityGrid[i], unsupportedConnections[i]);
+      if (j < NUM_PUYO_COLORS) {
+        connections(supported).forEach((connectivity, i) =>
+          merge(connetivityGrid[i], connectivity)
+        );
+        connections(unsupported).forEach((connectivity, i) =>
+          merge(connetivityGrid[i], connectivity)
+        );
       }
     });
 
