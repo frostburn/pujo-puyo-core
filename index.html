@@ -7,7 +7,7 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
 // TODO: Responsive layout
 
@@ -145,7 +145,8 @@ svg.appendChild(defs);
 
 const heartDef = svgElement("path");
 heartDef.setAttribute("id", "heart");
-heartDef.setAttribute("d", "M 0 1 C 1.8 0 0 -1 0 0 C 0 -1 -1.8 0 0 1 Z");
+const heartD = "M 0 1 C 1.8 0 0 -1 0 0 C 0 -1 -1.8 0 0 1 Z";
+heartDef.setAttribute("d", transformPath(heartD, 0.5, 0, -0.11));
 defs.appendChild(heartDef);
 
 const spadeDef = svgElement("path");
@@ -157,12 +158,12 @@ defs.appendChild(spadeDef);
 const moonDef = svgElement("path");
 moonDef.setAttribute("id", "moon");
 const moonD = "M 0 1 A 1.1 1.1 0 1 0 0 -1 A 1.04 1.04 0 0 1 0 1 Z";
-moonDef.setAttribute("d", transformPath(moonD, 0.35, -0.15));
+moonDef.setAttribute("d", transformPath(moonD, 0.35, -0.25));
 defs.appendChild(moonDef);
 
 const diamondDef = svgElement("path");
 diamondDef.setAttribute("id", "diamond");
-const diamondD = "M 0 1 Q 0.6 0.6 1 0 Q 0.6 -0.6 0 -1 Q -0.6 -0.6 -1 0 Q -0.6 0.6 0 1 Z";
+const diamondD = "M 0 1 Q 0.55 0.55 1 0 Q 0.55 -0.55 0 -1 Q -0.55 -0.55 -1 0 Q -0.55 0.55 0 1 Z";
 diamondDef.setAttribute("d", transformPath(diamondD, 0.4));
 defs.appendChild(diamondDef);
 
@@ -202,10 +203,10 @@ defs.appendChild(starDef);
 const squareClip = svgElement("clipPath");
 squareClip.setAttribute("id", "square");
 const square = svgElement("rect");
-square.setAttribute("x", -0.504);
-square.setAttribute("y", -0.504);
-square.setAttribute("width", 1.08);
-square.setAttribute("height", 1.08);
+square.setAttribute("x", -0.505);
+square.setAttribute("y", -0.505);
+square.setAttribute("width", 1.1);
+square.setAttribute("height", 1.1);
 squareClip.appendChild(square);
 defs.appendChild(squareClip);
 
@@ -295,6 +296,47 @@ const contents = [leftContent, rightContent];
 container.appendChild(svg);
 document.body.appendChild(container);
 
+function panelAt(x, y, color, connectivity = 0) {
+  const element = svgElement("use");
+  if (color === GARBAGE) {
+    element.setAttribute("href", "#garbage");
+  } else {
+    element.setAttribute("href", `#panel${connectivity}`);
+  }
+  element.setAttribute("x", x + 0.5);
+  element.setAttribute("y", y + 0.5);
+  element.setAttribute("fill", FILLS[color]);
+  element.setAttribute("stroke", STROKES[color]);
+  element.setAttribute("stroke-width", 0.15);
+  if (color === GARBAGE) {
+    return element;
+  }
+  const group = svgElement("g");
+  group.appendChild(element);
+  const glyph = svgElement("use");
+  glyph.setAttribute("x", x + 0.5);
+  glyph.setAttribute("y", y + 0.5);
+  glyph.setAttribute("fill", STROKES[color]);
+  glyph.setAttribute("transform-origin", `${x+0.5} ${y+0.5}`);
+  let transform = "scale(0.6)";
+  if (color === RED) {
+    glyph.setAttribute("href", "#heart");
+  } else if (color === GREEN) {
+    glyph.setAttribute("href", "#large");
+  } else if (color === YELLOW) {
+    glyph.setAttribute("href", "#star");
+    transform += " rotate(180)";
+  } else if (color === BLUE) {
+    glyph.setAttribute("href", "#moon");
+    transform += " rotate(180)";
+  } else if (color === PURPLE) {
+    glyph.setAttribute("href", "#diamond");
+  }
+  glyph.setAttribute("transform", transform);
+  group.appendChild(glyph);
+  return group;
+}
+
 function renderGame() {
   leftContent.replaceChildren();
   rightContent.replaceChildren();
@@ -332,40 +374,11 @@ function renderGame() {
     score.textContent = gameState[i].score;
     contents[i].appendChild(score);
 
-    // TODO: Identifying glyphs.
     const previewBag = gameState[i].visibleBag.slice(-4);
-    const puyo0 = svgElement("use");
-    puyo0.setAttribute("href", "#panel0");
-    puyo0.setAttribute("x", WIDTH + 1);
-    puyo0.setAttribute("y", 1.5);
-    puyo0.setAttribute("fill", FILLS[previewBag[0]]);
-    puyo0.setAttribute("stroke", STROKES[previewBag[0]]);
-    puyo0.setAttribute("stroke-width", 0.15);
-    contents[i].appendChild(puyo0);
-    const puyo1 = svgElement("use");
-    puyo1.setAttribute("href", "#panel0");
-    puyo1.setAttribute("x", WIDTH + 1);
-    puyo1.setAttribute("y", 0.5);
-    puyo1.setAttribute("fill", FILLS[previewBag[1]]);
-    puyo1.setAttribute("stroke", STROKES[previewBag[1]]);
-    puyo1.setAttribute("stroke-width", 0.15);
-    contents[i].appendChild(puyo1);
-    const puyo2 = svgElement("use");
-    puyo2.setAttribute("href", "#panel0");
-    puyo2.setAttribute("x", WIDTH + 1.5);
-    puyo2.setAttribute("y", 3.5);
-    puyo2.setAttribute("fill", FILLS[previewBag[2]]);
-    puyo2.setAttribute("stroke", STROKES[previewBag[2]]);
-    puyo2.setAttribute("stroke-width", 0.15);
-    contents[i].appendChild(puyo2);
-    const puyo3 = svgElement("use");
-    puyo3.setAttribute("href", "#panel0");
-    puyo3.setAttribute("x", WIDTH + 1.5);
-    puyo3.setAttribute("y", 2.5);
-    puyo3.setAttribute("fill", FILLS[previewBag[3]]);
-    puyo3.setAttribute("stroke", STROKES[previewBag[3]]);
-    puyo3.setAttribute("stroke-width", 0.15);
-    contents[i].appendChild(puyo3);
+    contents[i].appendChild(panelAt(WIDTH + 0.5, 1, previewBag[0]));
+    contents[i].appendChild(panelAt(WIDTH + 0.5, 0, previewBag[1]));
+    contents[i].appendChild(panelAt(WIDTH + 1, 3, previewBag[2]));
+    contents[i].appendChild(panelAt(WIDTH + 1, 2, previewBag[3]));
 
     for (let y = 0; y < LIFE_HEIGHT; ++y) {
       for (let x = 0; x < WIDTH; ++x) {
@@ -377,31 +390,23 @@ function renderGame() {
           falling = true;
         }
         if (index >= 0) {
-          const puyo = svgElement("use");
-          if (index === GARBAGE) {
-            puyo.setAttribute("href", "#garbage");
-          } else {
-            puyo.setAttribute("href", `#panel${gameState[i].screen.connectivity[arrayIndex]}`);
-          }
-          puyo.setAttribute("x", x + 0.5);
-          puyo.setAttribute("y", y + 0.5);
-          puyo.setAttribute("fill", FILLS[index]);
-          puyo.setAttribute("stroke", STROKES[index]);
-          puyo.setAttribute("stroke-width", 0.15);
-
+          const panel = panelAt(x, y, index, gameState[i].screen.connectivity[arrayIndex]);
           if (falling) {
-            const animation = svgElement("animate");
-            animation.setAttribute("attributeName", "y");
-            animation.setAttribute("to", y + 1.5);
+            const animation = svgElement("animateTransform");
+            animation.setAttribute("attributeName", "transform");
+            animation.setAttribute("attributeType", "XML");
+            animation.setAttribute("type", "translate");
+            animation.setAttribute("from", "0 0");
+            animation.setAttribute("to", "0 1");
             animation.setAttribute("begin", `${svg.getCurrentTime()}s`);
             animation.setAttribute("dur", `${1/FRAME_RATE}s`);
             animation.setAttribute("repeatCount", 1);
             animation.setAttribute("fill", "freeze");
 
-            puyo.appendChild(animation);
+            panel.appendChild(animation);
           }
 
-          contents[i].appendChild(puyo);
+          contents[i].appendChild(panel);
         }
 
         index = gameState[i].screen.sparks[arrayIndex];
