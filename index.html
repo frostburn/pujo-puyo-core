@@ -15,8 +15,11 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, 
 const FRAME_RATE = 15;
 
 // 'RGYBPN'
-const FILLS = ["maroon", "green", "olive", "navy", "purple", "cyan"];
-const STROKES = ["red", "lime", "yellow", "blue", "fuchsia", "teal"];
+const STROKES = ["#d22", "#2d2", "#dd2", "#22e", "#d2c", "rgba(20, 160, 160, 0.88)"];
+const FILLS = ["#922", "#292", "#882", "#229", "#828", "rgba(30, 255, 255, 0.94)"];
+const STROKE_WIDTH = 0.15;
+const SCREEN_STROKE = "#101";
+const SCREEN_FILL = "rgba(0, 0, 0, 0.1)";
 
 const LEFT_SCREEN_X = 1;
 const LEFT_SCREEN_Y = 2;
@@ -101,8 +104,8 @@ mainScreen.setAttribute("x", -0.1);
 mainScreen.setAttribute("y", -0.1);
 mainScreen.setAttribute("width", WIDTH + 0.2);
 mainScreen.setAttribute("height", LIFE_HEIGHT + 0.2);
-mainScreen.setAttribute("fill", "none");
-mainScreen.setAttribute("stroke", "black");
+mainScreen.setAttribute("fill", SCREEN_FILL);
+mainScreen.setAttribute("stroke", SCREEN_STROKE);
 mainScreen.setAttribute("stroke-width", "0.11");
 mainScreen.setAttribute("rx", "0.1");
 mainScreen.setAttribute("ry", "0.1");
@@ -128,8 +131,8 @@ pieceBox.setAttribute("d",
   "A 0.1 0.1 0 0 1 -0.1 2 " +
   "Z"
 );
-pieceBox.setAttribute("fill", "none");
-pieceBox.setAttribute("stroke", "black");
+pieceBox.setAttribute("fill", SCREEN_FILL);
+pieceBox.setAttribute("stroke", SCREEN_STROKE);
 pieceBox.setAttribute("stroke-width", "0.11");
 pieceBox.setAttribute("transform", `translate(${WIDTH+0.5}, 0)`);
 screenDef.appendChild(pieceBox);
@@ -171,8 +174,17 @@ defs.appendChild(heartDef);
 
 const spadeDef = svgElement("path");
 spadeDef.setAttribute("id", "spade");
-const spadeD = "M 0.1 0 Q 0 0.6 0.4 0.8 H -0.4 Q 0 0.6 -0.1 0 C 0 1 -1.8 0 0 -1 C 1.8 0 0 1 0.1 0 Z";
+const spadeD = (
+  "M 0.3 0 " +
+  "Q 0 0.6 0.5 0.8 " +
+  "H -0.5 " +
+  "Q 0 0.6 -0.3 0 " +
+  "C -0.1 1 -1.8 0 0 -1 " +
+  "C 1.8 0 0.1 1 0.3 0 " +
+  "Z"
+);
 spadeDef.setAttribute("d", transformPath(spadeD, 0.45));
+spadeDef.setAttribute("stroke-linejoin", "round");
 defs.appendChild(spadeDef);
 
 const moonDef = svgElement("path");
@@ -327,7 +339,7 @@ function panelAt(x, y, color, connectivity = 0) {
   element.setAttribute("y", y + 0.5);
   element.setAttribute("fill", FILLS[color]);
   element.setAttribute("stroke", STROKES[color]);
-  element.setAttribute("stroke-width", 0.15);
+  element.setAttribute("stroke-width", STROKE_WIDTH);
   if (color === GARBAGE) {
     return element;
   }
@@ -373,9 +385,9 @@ function renderGame() {
       }
       const glyph = svgElement("use");
       glyph.setAttribute("href", "#" + symbol);
-      glyph.setAttribute("fill", "cyan");
-      glyph.setAttribute("stroke", "teal");
-      glyph.setAttribute("stroke-width", 0.05);
+      glyph.setAttribute("fill", FILLS[GARBAGE]);
+      glyph.setAttribute("stroke", STROKES[GARBAGE]);
+      glyph.setAttribute("stroke-width", STROKE_WIDTH);
       glyph.setAttribute("x", x + 0.5);
       glyph.setAttribute("y", -0.9);
       contents[i].appendChild(glyph);
