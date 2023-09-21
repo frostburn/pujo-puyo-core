@@ -14,6 +14,9 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 // TODO: User input
 // TODO: Responsive layout
 
+const strategyWorker = new Worker("./build/worker.js");
+let waitingForStrategy = false;
+
 const FRAME_RATE = 30;
 
 // 'RGYBPN'
@@ -325,16 +328,15 @@ function draw(timeStamp) {
         chainAnimations[NEXT_CHAIN_CARDS[i]].setAttribute("values", "0;1;0.95;0.9;0.8;0.7;0");
         NEXT_CHAIN_CARDS[i] = juggleCards(NEXT_CHAIN_CARDS[i]);
 
+        // TODO: This can go on the card directly, right?
         playSoundFX(i, tickResults[i].chainNumber);
       }
     }
 
-    // TODO: Worker thread for maxDroplet2.
-    if (!game.games[0].busy) {
-      const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
-      if (game.toSimpleGame(0).availableMoves.length) {
-        game.play(0, x1, y1, orientation);
-      }
+    // Worker thread for maxDroplet2.
+    if (!game.games[0].busy && !waitingForStrategy) {
+      waitingForStrategy = true;
+      strategyWorker.postMessage(game.toSimpleGame(0));
     }
 
     if (!game.games[1].busy) {
@@ -355,6 +357,16 @@ function draw(timeStamp) {
 
 // Pre-render once.
 renderGame();
+
+// Worker thread for maxDroplet2.
+strategyWorker.onmessage = (e) => {
+  const {move, score} = e.data;
+  const {x1, y1, orientation} = MOVES[move];
+  if (game.toSimpleGame(0).availableMoves.length) {
+    game.play(0, x1, y1, orientation);
+  }
+  waitingForStrategy = false;
+};
 
 // Sound FX
 const AUDIO_LAG = 0.01;  // Make audio laggy but less clicky.
@@ -445,8 +457,10 @@ function playSoundFX(player, chainNumber) {
 const panicButton = document.createElement("button");
 panicButton.onclick = () => {
   window.cancelAnimationFrame(frameId);
-  oscillator.stop();
-  context.suspend();
+  if (context !== undefined) {
+    oscillators.forEach(oscillator => oscillator.stop());
+    context.suspend();
+  }
 }
 panicButton.textContent = "stop";
 document.body.appendChild(panicButton);

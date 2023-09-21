@@ -33,7 +33,7 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser && bun build lib/sound.ts --outdir=build --target=browser",
+    "compile": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser && bun build lib/sound.ts --outdir=build --target=browser && bun build lib/worker.ts --outdir=build --target=browser",
     "fix": "gts fix",
     "prepare": "bun run compile",
     "pretest": "bun run compile",
