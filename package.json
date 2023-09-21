@@ -24,7 +24,8 @@
     "bun-types": "latest",
     "gts": "^5.0.1",
     "typescript": "~5.1.6",
-    "@types/node": "20.4.6"
+    "@types/node": "20.4.6",
+    "@types/jsdom": "^16.2.15"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -32,7 +33,7 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "bun build src/index.ts --outdir=build --target=browser",
+    "compile": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser",
     "fix": "gts fix",
     "prepare": "bun run compile",
     "pretest": "bun run compile",

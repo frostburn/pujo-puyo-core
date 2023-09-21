@@ -3,7 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "build",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "dom"],
     "module": "esnext",
     "target": "esnext",
     "moduleResolution": "bundler",
@@ -19,10 +19,12 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "types": [
+      "@types/jsdom",
       "bun-types" // add Bun global
     ]
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "lib/**/*.ts"
   ]
 }
