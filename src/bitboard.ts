@@ -493,20 +493,24 @@ export function sparkGarbage(garbage: Puyos, cleared: Puyos): Puyos {
     (((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
       ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
       (cleared[0] << V_SHIFT) |
-      (cleared[0] >> V_SHIFT)) &
+      (cleared[0] >> V_SHIFT) |
+      ((cleared[1] & TOP) << TOP_TO_BOTTOM)) &
     SEMI_LIFE_BLOCK;
 
   eliminated[1] &=
     ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[1] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[1] << V_SHIFT) |
-    (cleared[1] >> V_SHIFT);
+    (cleared[1] >> V_SHIFT) |
+    ((cleared[0] & BOTTOM) >> TOP_TO_BOTTOM) |
+    ((cleared[2] & TOP) << TOP_TO_BOTTOM);
 
   eliminated[2] &=
     ((cleared[2] & RIGHT_BLOCK) >> H_SHIFT) |
     ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
     (cleared[2] << V_SHIFT) |
-    (cleared[2] >> V_SHIFT);
+    (cleared[2] >> V_SHIFT) |
+    ((cleared[1] & BOTTOM) >> TOP_TO_BOTTOM);
 
   return eliminated;
 }

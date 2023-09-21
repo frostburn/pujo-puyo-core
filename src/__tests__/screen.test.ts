@@ -41,6 +41,68 @@ test('Garbage clearing', () => {
   expect(puyoAt(screen.grid[GARBAGE], 0, 13)).toBeTruthy();
 });
 
+test('Garbage clearing across the seam 1', () => {
+  const screen = PuyoScreen.fromLines([
+    ' PPPP ',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+  ]);
+  while (screen.tick().busy);
+  expect(puyoCount(screen.grid[GARBAGE])).toBe(26);
+});
+
+test('Garbage clearing across the seam 2', () => {
+  const screen = PuyoScreen.fromLines([
+    'NNNNNN',
+    'NRRRRN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+  ]);
+  while (screen.tick().busy);
+  expect(puyoCount(screen.grid[GARBAGE])).toBe(22);
+});
+
+test('Garbage clearing across the seam 3', () => {
+  const screen = PuyoScreen.fromLines([
+    ' GGGG',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+  ]);
+  while (screen.tick().busy);
+  expect(puyoCount(screen.grid[GARBAGE])).toBe(56);
+});
+
+test('Garbage clearing across the seam 4', () => {
+  const screen = PuyoScreen.fromLines([
+    'NNNNNN',
+    'NBBBBN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+  ]);
+  while (screen.tick().busy);
+  expect(puyoCount(screen.grid[GARBAGE])).toBe(52);
+});
+
 test('Ghost garbage preservation', () => {
   const screen = new PuyoScreen();
   for (let j = 0; j < 4; ++j) {
