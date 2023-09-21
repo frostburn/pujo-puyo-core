@@ -49,6 +49,7 @@ export type ScreenState = {
   connectivity: number[];
   falling: boolean[];
   jiggling: boolean[];
+  ignited: boolean[];
   sparking: boolean[];
   chainNumber: number;
 };
@@ -163,6 +164,8 @@ export class SimplePuyoScreen {
       emptyPuyos(),
     ];
 
+    const ignitionMask = emptyPuyos();
+
     this.grid.slice(0, -1).forEach(puyos => {
       const supported = inMask(puyos, supportMask);
       const unsupported = inMask(puyos, unsupportMask);
@@ -173,12 +176,16 @@ export class SimplePuyoScreen {
       connections(unsupported).forEach((connectivity, i) =>
         merge(connetivityGrid[i], connectivity)
       );
+
+      const {sparks} = sparkGroups(supported);
+      merge(ignitionMask, sparks);
     });
 
     return {
       grid: toIndexArray(this.grid),
       connectivity: toFlagArray(connetivityGrid),
       falling: toArray(unsupportMask),
+      ignited: toArray(ignitionMask),
       jiggling: [],
       sparking: [],
       chainNumber: this.chainNumber,

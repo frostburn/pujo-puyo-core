@@ -11,7 +11,6 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, 
 
 // TODO: Chain cards
 // TODO: Sound ques
-// TODO: Pre-sparks
 // TODO: Responsive layout
 
 const FRAME_RATE = 30;
@@ -19,6 +18,7 @@ const FRAME_RATE = 30;
 // 'RGYBPN'
 const STROKES = ["#d22", "#2d2", "#dd2", "#22e", "#d2c", "rgba(20, 160, 160, 0.88)"];
 const FILLS = ["#922", "#292", "#882", "#229", "#828", "rgba(30, 255, 255, 0.94)"];
+const IGNITION_FILL = "#eed";
 const STROKE_WIDTH = 0.15;
 const SCREEN_STROKE = "#101";
 const SCREEN_FILL = "rgba(0, 0, 0, 0.1)";
@@ -432,7 +432,7 @@ const contents = [leftContent, rightContent];
 container.appendChild(svg);
 document.body.appendChild(container);
 
-function panelAt(x, y, color, connectivity = 0, jiggle = false) {
+function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false) {
   const element = svgElement("use");
   if (color === GARBAGE) {
     element.setAttribute("href", jiggle ? "#jiggling-garbage": "#garbage");
@@ -441,7 +441,7 @@ function panelAt(x, y, color, connectivity = 0, jiggle = false) {
   }
   element.setAttribute("x", x + 0.5);
   element.setAttribute("y", y + 0.5);
-  element.setAttribute("fill", FILLS[color]);
+  element.setAttribute("fill", ignited ? IGNITION_FILL : FILLS[color]);
   element.setAttribute("stroke", STROKES[color]);
   element.setAttribute("stroke-width", STROKE_WIDTH);
   if (color === GARBAGE) {
@@ -514,8 +514,9 @@ function renderGame() {
               newChildren.push(sparks);
             }
           } else {
-            const panel = panelAt(x, y, index, gameState[i].screen.connectivity[arrayIndex], gameState[i].screen.jiggling[arrayIndex]);
-            if (gameState[i].screen.falling[arrayIndex]) {
+            const screen = gameState[i].screen;
+            const panel = panelAt(x, y, index, screen.connectivity[arrayIndex], screen.jiggling[arrayIndex], screen.ignited[arrayIndex]);
+            if (screen.falling[arrayIndex]) {
               const animation = svgElement("animateTransform");
               animation.setAttribute("attributeName", "transform");
               animation.setAttribute("attributeType", "XML");
