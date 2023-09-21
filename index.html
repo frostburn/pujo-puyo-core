@@ -9,7 +9,6 @@
 <script type="module">
 import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
-// TODO: Juggle at least two chain cards
 // TODO: Sound ques
 // TODO: Responsive layout
 
@@ -26,8 +25,8 @@ const SCREEN_STROKE_WIDTH = 0.16;
 const SCREEN_INNER_STROKE = "#112";
 const SCREEN_INNER_STROKE_WIDTH = 0.06;
 const SCREEN_INNER_DASHARRAY = "0.14 0.1 0.2 0.1";
-const CHAIN_FILL = "rgba(255, 250, 240, 0.4)";
-const CHAIN_BORDER = "rgba(50, 40, 30, 0.5)";
+const CHAIN_FILL = "rgba(255, 250, 240, 0.2)";
+const CHAIN_BORDER = "rgba(50, 40, 30, 0.4)";
 const CHAIN_BORDER_WIDTH = 0.1;
 
 const LEFT_SCREEN_X = 1;
@@ -39,9 +38,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const game = new MultiplayerGame();
 
+const NEXT_CHAIN_CARDS = [0, 2];
 const IGNITION_CENTERS = [[0, 0], [0, 0]];
 
 const container = document.createElement("div");
+
+function juggleCards(cardIndex) {
+  return [1, 0, 3, 2][cardIndex];
+}
 
 function svgElement(qualifiedName) {
   return document.createElementNS(SVG_NS, qualifiedName);
@@ -464,7 +468,7 @@ const chainBoxes = [];
 const chainTexts = [];
 const chainAnimations = [];
 const chains = [];
-for (let i = 0; i < 2; ++i) {
+for (let i = 0; i < 4; ++i) {
   const chain = svgElement("g");
   const chainBox = svgElement("rect");
   chainBox.setAttribute("rx", 0.2);
@@ -485,7 +489,7 @@ for (let i = 0; i < 2; ++i) {
   animation.setAttribute("attributeName", "opacity");
   animation.setAttribute("values", "0");
   animation.setAttribute("begin", "0s");
-  animation.setAttribute("dur", "1.5s");
+  animation.setAttribute("dur", "1.3s");
   animation.setAttribute("repeatCount", "1");
   animation.setAttribute("fill", "freeze");
   chain.appendChild(animation);
@@ -546,8 +550,9 @@ function renderGame() {
 
     const chainNumber = gameState[i].screen.chainNumber;
     if (chainNumber > 0) {
-      chainTexts[i].textContent = `${chainNumber}-Chain`;
-      chainBoxes[i].setAttribute("width", chainTexts[i].getBBox().width + 0.4);
+      const cardIndex = juggleCards(NEXT_CHAIN_CARDS[i]);
+      chainTexts[cardIndex].textContent = `${chainNumber}-Chain`;
+      chainBoxes[cardIndex].setAttribute("width", chainTexts[i].getBBox().width + 0.4);
     }
 
     allClearLabels[i].textContent = gameState[i].allClearBonus ? "All Clear" : "";
@@ -669,24 +674,29 @@ function draw(timeStamp) {
       if (tickResults[i].didClear) {
         const x = i === 0 ? LEFT_SCREEN_X : RIGHT_SCREEN_X;
         const y = i === 0 ? LEFT_SCREEN_Y : RIGHT_SCREEN_Y;
-        chains[i].setAttribute("transform", `translate(${x + IGNITION_CENTERS[i][0]}, ${y + IGNITION_CENTERS[i][1] - 0.5})`);
+        chains[NEXT_CHAIN_CARDS[i]].setAttribute("transform", `translate(${x + IGNITION_CENTERS[i][0]}, ${y + IGNITION_CENTERS[i][1] - 0.5})`);
 
-        chainAnimations[i].setAttribute("begin", `${svg.getCurrentTime()}s`);
-        chainAnimations[i].setAttribute("values", "0;1;0.95;0.9;0.8;0.7;0");
+        chainAnimations[NEXT_CHAIN_CARDS[i]].setAttribute("begin", `${svg.getCurrentTime()}s`);
+        chainAnimations[NEXT_CHAIN_CARDS[i]].setAttribute("values", "0;1;0.95;0.9;0.8;0.7;0");
+        NEXT_CHAIN_CARDS[i] = juggleCards(NEXT_CHAIN_CARDS[i]);
       }
     }
 
     // TODO: Worker thread for maxDroplet2.
     if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[Math.floor(Math.random() * MOVES.length)];
-      game.play(0, x1, y1, orientation);
+      if (game.toSimpleGame(0).availableMoves.length) {
+        game.play(0, x1, y1, orientation);
+      }
     }
 
     if (!game.games[1].busy) {
       const simpleGame = game.toSimpleGame(1);
       const {move, score} = maxDropletStrategy1(simpleGame);
       const {x1, y1, orientation} = MOVES[move];
-      game.play(1, x1, y1, orientation);
+      if (game.toSimpleGame(1).availableMoves.length) {
+        game.play(1, x1, y1, orientation);
+      }
     }
   }
   if (needsRedraw) {
