@@ -10,6 +10,8 @@
 import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, CONNECTS_DOWN, CONNECTS_UP, CONNECTS_RIGHT, CONNECTS_LEFT, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 
 // TODO: Chain cards
+// TODO: Sound ques
+// TODO: Pre-sparks
 // TODO: Responsive layout
 
 const FRAME_RATE = 30;
@@ -20,6 +22,10 @@ const FILLS = ["#922", "#292", "#882", "#229", "#828", "rgba(30, 255, 255, 0.94)
 const STROKE_WIDTH = 0.15;
 const SCREEN_STROKE = "#101";
 const SCREEN_FILL = "rgba(0, 0, 0, 0.1)";
+const SCREEN_STROKE_WIDTH = 0.16;
+const SCREEN_INNER_STROKE = "#112";
+const SCREEN_INNER_STROKE_WIDTH = 0.06;
+const SCREEN_INNER_DASHARRAY = "0.14 0.1 0.2 0.1";
 
 const LEFT_SCREEN_X = 1;
 const LEFT_SCREEN_Y = 2;
@@ -97,20 +103,17 @@ svg.appendChild(style);
 const defs = svgElement("defs");
 svg.appendChild(defs);
 
-const screenDef = svgElement("g");
-screenDef.setAttribute("id", "screen");
+const screenOutlineDef = svgElement("g");
+screenOutlineDef.setAttribute("id", "screen-outline");
 
 const mainScreen = svgElement("rect");
 mainScreen.setAttribute("x", -0.1);
 mainScreen.setAttribute("y", -0.1);
 mainScreen.setAttribute("width", WIDTH + 0.2);
 mainScreen.setAttribute("height", LIFE_HEIGHT + 0.2);
-mainScreen.setAttribute("fill", SCREEN_FILL);
-mainScreen.setAttribute("stroke", SCREEN_STROKE);
-mainScreen.setAttribute("stroke-width", "0.11");
 mainScreen.setAttribute("rx", "0.1");
 mainScreen.setAttribute("ry", "0.1");
-screenDef.appendChild(mainScreen);
+screenOutlineDef.appendChild(mainScreen);
 
 const pieceBox = svgElement("path");
 pieceBox.setAttribute("d",
@@ -132,11 +135,28 @@ pieceBox.setAttribute("d",
   "A 0.1 0.1 0 0 1 -0.1 2 " +
   "Z"
 );
-pieceBox.setAttribute("fill", SCREEN_FILL);
-pieceBox.setAttribute("stroke", SCREEN_STROKE);
-pieceBox.setAttribute("stroke-width", "0.11");
 pieceBox.setAttribute("transform", `translate(${WIDTH+0.5}, 0)`);
-screenDef.appendChild(pieceBox);
+screenOutlineDef.appendChild(pieceBox);
+
+defs.appendChild(screenOutlineDef);
+
+const screenDef = svgElement("g");
+screenDef.setAttribute("id", "screen");
+
+const darkScreen = svgElement("use");
+darkScreen.setAttribute("href", "#screen-outline");
+darkScreen.setAttribute("fill", SCREEN_FILL);
+darkScreen.setAttribute("stroke", SCREEN_STROKE);
+darkScreen.setAttribute("stroke-width", SCREEN_STROKE_WIDTH);
+screenDef.appendChild(darkScreen);
+
+const lightDashes = svgElement("use");
+lightDashes.setAttribute("href", "#screen-outline");
+lightDashes.setAttribute("fill", "none");
+lightDashes.setAttribute("stroke", SCREEN_INNER_STROKE);
+lightDashes.setAttribute("stroke-width", SCREEN_INNER_STROKE_WIDTH);
+lightDashes.setAttribute("stroke-dasharray", SCREEN_INNER_DASHARRAY);
+screenDef.appendChild(lightDashes);
 
 defs.appendChild(screenDef);
 
