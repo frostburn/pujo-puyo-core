@@ -96,7 +96,11 @@ svg.setAttribute("viewBox", "0 0 19 19");
 
 // Styles
 const style = svgElement("style");
-style.textContent = ".score-label {font: bold 0.7px sans-serif; fill:azure;} .score {font: bold 0.7px monospace; fill:azure;}";
+style.textContent = (
+  ".score-label {font: bold 0.7px sans-serif; fill:azure;} " +
+  ".score {font: bold 0.7px monospace; fill:azure;} " +
+  ".all-clear {font: bold 1px sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;}"
+);
 svg.appendChild(style);
 
 // Defs
@@ -419,6 +423,27 @@ rightScreen.setAttribute("x", RIGHT_SCREEN_X);
 rightScreen.setAttribute("y", RIGHT_SCREEN_Y);
 svg.appendChild(rightScreen);
 
+const allClearLabels = [];
+for (let i = 0; i < 2; ++i) {
+  const allClearPath = svgElement("path");
+  allClearPath.setAttribute("id", `all-clear-path-${i}`);
+  if (i === 0) {
+    allClearPath.setAttribute("d", `M ${LEFT_SCREEN_X+0.9} ${LEFT_SCREEN_Y+2} q 2 -0.5 4 0`);
+  } else {
+    allClearPath.setAttribute("d", `M ${RIGHT_SCREEN_X+0.9} ${RIGHT_SCREEN_Y+2} q 2 -0.5 4 0`);
+  }
+  allClearPath.setAttribute("fill", "none");
+  svg.appendChild(allClearPath);
+  const text = svgElement("text");
+  const textPath = svgElement("textPath");
+  textPath.setAttribute("href", `#all-clear-path-${i}`);
+  text.appendChild(textPath);
+  text.classList.add("all-clear");
+  svg.appendChild(text);
+
+  allClearLabels.push(textPath);
+}
+
 const leftContent = svgElement("g");
 leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
 svg.appendChild(leftContent);
@@ -474,6 +499,8 @@ function renderGame() {
   for (let i = 0; i < 2; ++i) {
     const currentTime = svg.getCurrentTime();
     const newChildren = [];
+
+    allClearLabels[i].textContent = gameState[i].allClearBonus ? "All Clear" : "";
 
     const garbageDisplay = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
     garbageDisplay.forEach((symbol, x) => {

@@ -267,10 +267,16 @@ export class MultiplayerGame {
   get state(): GameState[] {
     const states = this.games.map(game => game.state);
     for (let i = 0; i < this.games.length; ++i) {
+      const opponent = 1 - i;
       states[i].pendingGarbage = this.pendingGarbage[i];
+      if (this.allClearBonus[opponent] && this.canSend[opponent]) {
+        states[i].lateGarbage = ALL_CLEAR_GARBAGE;
+      }
       states[i].lateGarbage = Math.max(
         0,
-        this.accumulatedGarbage[1 - i] - this.accumulatedGarbage[i]
+        states[i].lateGarbage +
+          this.accumulatedGarbage[opponent] -
+          this.accumulatedGarbage[i]
       );
       states[i].allClearBonus = this.allClearBonus[i];
     }
@@ -368,7 +374,10 @@ export class MultiplayerGame {
   toSimpleGame(player: number) {
     const opponent = 1 - player;
     let lateGarbage = this.accumulatedGarbage[opponent];
-    let lateTimeRemaining = 0.5; // As far as I can figure out this value will always be overwritten when there's late garbage.
+    if (this.allClearBonus[opponent] && this.canSend[opponent]) {
+      lateGarbage += ALL_CLEAR_GARBAGE;
+    }
+    let lateTimeRemaining = 0.5;
     if (this.games[opponent].busy) {
       const opponentScreen = this.games[opponent].screen.toSimpleScreen();
       const tickResult = opponentScreen.tick();
