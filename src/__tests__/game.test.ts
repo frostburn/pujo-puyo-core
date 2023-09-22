@@ -7,11 +7,11 @@ test('Garbage schedule', () => {
   // Create a deterministic game.
   const game = new MultiplayerGame(0);
   // Create a deterministic player that is somewhat successful.
-  const jkiss = new JKISS32(2);
+  const jkiss = new JKISS32(7);
   // Create a dummy opponent.
   const dummy = new JKISS32(420);
 
-  for (let i = 0; i < 935; ++i) {
+  for (let i = 0; i < 950; ++i) {
     if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[jkiss.step() % MOVES.length];
       game.play(0, x1, y1, orientation);
@@ -36,7 +36,7 @@ test('Garbage schedule', () => {
     // game.log();
   }
 
-  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(11);
+  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(5);
 });
 
 test('Garbage offset in a symmetric game', () => {

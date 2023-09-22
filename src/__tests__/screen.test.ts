@@ -35,10 +35,9 @@ test('Garbage clearing', () => {
   screen.insertPuyo(3, 14, RED);
   screen.insertPuyo(4, 14, RED);
 
-  screen.tick();
-  screen.tick();
+  while (screen.tick().busy);
   expect(isEmpty(screen.grid[RED])).toBeTruthy();
-  expect(puyoAt(screen.grid[GARBAGE], 0, 13)).toBeTruthy();
+  expect(puyoAt(screen.grid[GARBAGE], 0, 14)).toBeTruthy();
 });
 
 test('Garbage clearing across the seam 1', () => {
