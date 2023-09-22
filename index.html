@@ -473,14 +473,39 @@ secondGlyph.setAttribute("fill", "none");
 secondGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[1]));
 svg.appendChild(secondGlyph);
 
+// Small landing indicators
+const mainDroplet = svgElement("circle");
+mainDroplet.setAttribute("r", 0.1);
+mainDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + 0.5);
+mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + LIFE_HEIGHT - 1 + 0.5);
+mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
+mainDroplet.setAttribute("stroke", "white");
+mainDroplet.setAttribute("stroke-width", "0.03");
+mainDroplet.setAttribute("opacity", 0.7);
+svg.appendChild(mainDroplet);
+
+const secondDroplet = svgElement("circle");
+secondDroplet.setAttribute("r", 0.1);
+secondDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
+secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + LIFE_HEIGHT - 1 + secondDeltaY + 0.5);
+secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
+secondDroplet.setAttribute("stroke", "white");
+secondDroplet.setAttribute("stroke-width", "0.03");
+secondDroplet.setAttribute("opacity", 0.7);
+svg.appendChild(secondDroplet);
+
 function disableUserInput() {
   mainPanel.setAttribute("fill", "none");
   mainPanel.setAttribute("stroke", "none");
   mainGlyph.setAttribute("fill", "none");
   mainPanelHelper.setAttribute("fill", "none");
   mainPanelHelper.setAttribute("stroke", "none");
+  mainDroplet.setAttribute("fill", "none");
+  mainDroplet.setAttribute("stroke", "none");
   secondPanel.setAttribute("stroke", "none");
   secondGlyph.setAttribute("fill", "none");
+  secondDroplet.setAttribute("fill", "none");
+  secondDroplet.setAttribute("stroke", "none");
 }
 
 function helpMainPanel() {
@@ -497,6 +522,10 @@ function enableUserInput() {
   mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
   secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
   helpMainPanel();
+  mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
+  mainDroplet.setAttribute("stroke", "white");
+  secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
+  secondDroplet.setAttribute("stroke", "white");
 }
 
 function snapToGrid(x, y) {
@@ -513,6 +542,26 @@ function updatePanelPositions() {
   secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
   secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
   helpMainPanel();
+
+  updateDropletPositions();
+}
+
+function updateDropletPositions() {
+  let mainY = game.games[0].screen.dropPuyo(mainGridX, mainGridY + GHOST_Y + 1) - GHOST_Y - 1;
+  const {hintDeltaX, hintDeltaY} = calculateHints();
+  const hintX = mainGridX + hintDeltaX;
+  let secondY = game.games[0].screen.dropPuyo(hintX, mainGridY + hintDeltaY + GHOST_Y + 1) - GHOST_Y - 1;
+  if (mainY === secondY && mainGridX === hintX) {
+    if (secondDeltaY > 0) {
+      mainY--;
+    } else {
+      secondY--;
+    }
+  }
+  mainDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + 0.5);
+  mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + mainY + 0.5);
+  secondDroplet.setAttribute("cx", LEFT_SCREEN_X + hintX + 0.5);
+  secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + secondY + 0.5);
 }
 
 function updateGlyphPositions() {
@@ -580,6 +629,18 @@ function unlockMainPanel(x, y) {
   secondGlyph.setAttribute("fill", "none");
 }
 
+function calculateHints() {
+  let hintDeltaX = secondDeltaX;
+  let hintDeltaY = secondDeltaY;
+
+  if (Math.abs(secondDeltaY) === 1) {
+    hintDeltaX = 0;
+  } else {
+    hintDeltaY = 0;
+  }
+  return {hintDeltaX, hintDeltaY};
+}
+
 function orbitSecondPanel(x, y) {
   const viewBoxX = LEFT_SCREEN_X + mainGridX + 0.5;
   const viewBoxY = LEFT_SCREEN_Y + mainGridY + 0.5;
@@ -588,46 +649,35 @@ function orbitSecondPanel(x, y) {
   const dy = y - viewBoxY;
   const distance = Math.hypot(dx, dy);
 
-  let hintDeltaX = secondDeltaX;
-  let hintDeltaY = secondDeltaY;
-
   if (distance > MAX_ORBIT_DISTANCE) {
     unlockMainPanel(x, y);
   } else if (distance > MIN_ORBIT_DISTANCE) {
     if (Math.abs(dx) > Math.abs(dy)) {
       secondDeltaX = Math.sign(dx);
       secondDeltaY = dy / Math.abs(dx);
-
-      hintDeltaX = secondDeltaX;
-      hintDeltaY = 0;
     } else {
       secondDeltaX = dx / Math.abs(dy);
       secondDeltaY = Math.sign(dy);
-
-      hintDeltaX = 0;
-      hintDeltaY = secondDeltaY;
     }
 
     // Main panel locked, cannot kick.
     if ((mainGridX + secondDeltaX < 0) || (mainGridX + secondDeltaX >= WIDTH)) {
       secondDeltaY = Math.sign(secondDeltaY) || 1;
-      hintDeltaX = 0;
-      hintDeltaY = secondDeltaY;
     }
     if (mainGridY + secondDeltaY >= LIFE_HEIGHT) {
       secondDeltaX = Math.sign(secondDeltaX) || 1;
-      hintDeltaX = secondDeltaX;
-      hintDeltaY = 0;
     }
+
+    const {hintDeltaX, hintDeltaY} = calculateHints();
 
     secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
     secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
 
     secondGlyph.setAttribute("x", LEFT_SCREEN_X + mainGridX + hintDeltaX + 0.5);
     secondGlyph.setAttribute("y", LEFT_SCREEN_Y + mainGridY + hintDeltaY + 0.5);
-  }
 
-  return {hintDeltaX, hintDeltaY};
+    updateDropletPositions();
+  }
 }
 
 function getOrientation() {
@@ -670,8 +720,9 @@ function commitMove(x, y) {
   if (game.games[0].busy || !mainPanelLocked) {
     return;
   }
+  orbitSecondPanel(x, y);
   // Commit hint
-  const {hintDeltaX, hintDeltaY} = orbitSecondPanel(x, y);
+  const {hintDeltaX, hintDeltaY} = calculateHints();
   secondDeltaX = hintDeltaX;
   secondDeltaY = hintDeltaY;
 
