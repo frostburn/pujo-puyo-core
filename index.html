@@ -75,6 +75,16 @@ style.textContent = (
 svg.appendChild(style);
 
 // Visible elements
+const leftGhostContent = svgElement("g");
+leftGhostContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
+svg.appendChild(leftGhostContent);
+
+const rightGhostContent = svgElement("g");
+rightGhostContent.setAttribute("transform", `translate(${RIGHT_SCREEN_X},${RIGHT_SCREEN_Y})`);
+svg.appendChild(rightGhostContent);
+
+const ghostContents = [leftGhostContent, rightGhostContent];
+
 const leftScreen = svgElement("use");
 leftScreen.setAttribute("href", "#screen");
 leftScreen.setAttribute("x", LEFT_SCREEN_X);
@@ -202,9 +212,35 @@ function renderGame() {
 
   for (let i = 0; i < 2; ++i) {
     const currentTime = svg.getCurrentTime();
-    const newChildren = [];
+
+    const newGhostChildren = [];
+    for (let x = 0; x < WIDTH; ++x) {
+      const arrayIndex = x + GHOST_Y * WIDTH;
+      const index = gameState[i].screen.grid[arrayIndex];
+      if (index >= 0) {
+        const ghostPanel = svgElement("use");
+        if (index === GARBAGE) {
+          ghostPanel.setAttribute("href", "#garbage");
+        } else {
+          ghostPanel.setAttribute("href", "#panel0");
+        }
+        ghostPanel.setAttribute("x", x + 0.5);
+        ghostPanel.setAttribute("y", -0.5);
+        ghostPanel.setAttribute("fill", "none");
+        ghostPanel.setAttribute("stroke", STROKES[index]);
+        ghostPanel.setAttribute("stroke-width", STROKE_WIDTH * 0.5);
+        ghostPanel.setAttribute("stroke-dasharray", "0.1 0.108");
+        ghostPanel.setAttribute("stroke-linecap", "round");
+        ghostPanel.setAttribute("stroke-linejoin", "round");
+        ghostPanel.setAttribute("mask", "url(#fade-mask)");
+        newGhostChildren.push(ghostPanel);
+      }
+    }
+    ghostContents[i].replaceChildren(...newGhostChildren);
 
     allClearLabels[i].textContent = gameState[i].allClearBonus ? "All Clear" : "";
+
+    const newChildren = [];
 
     const garbageDisplay = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
     garbageDisplay.forEach((symbol, x) => {
@@ -219,7 +255,7 @@ function renderGame() {
       glyph.setAttribute("stroke", STROKES[GARBAGE]);
       glyph.setAttribute("stroke-width", STROKE_WIDTH);
       glyph.setAttribute("x", x + 0.5);
-      glyph.setAttribute("y", -0.9);
+      glyph.setAttribute("y", -1);
       newChildren.push(glyph);
     });
 

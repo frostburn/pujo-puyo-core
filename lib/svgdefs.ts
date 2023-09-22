@@ -76,6 +76,35 @@ export function makeDefs() {
   const defs = svgElement('defs');
   svg.appendChild(defs);
 
+  const fadeGradient = svgElement("linearGradient");
+  fadeGradient.setAttribute("id", "fade-gradient");
+  fadeGradient.setAttribute("x1", "0");
+  fadeGradient.setAttribute("y1", "0");
+  fadeGradient.setAttribute("x2", "0");
+  fadeGradient.setAttribute("y2", "1");
+  const blackStop = svgElement("stop");
+  blackStop.setAttribute("offset", "27%");
+  blackStop.setAttribute("stop-color", "#000");
+  fadeGradient.appendChild(blackStop);
+  const whiteStop = svgElement("stop");
+  whiteStop.setAttribute("offset", "75%");
+  whiteStop.setAttribute("stop-color", "#fff");
+  fadeGradient.appendChild(whiteStop);
+  defs.appendChild(fadeGradient);
+
+  const fadeMask = svgElement("mask");
+  fadeMask.setAttribute("id", "fade-mask");
+  fadeMask.setAttribute("maskUnits", "objectBoundingBox");
+  fadeMask.setAttribute("maskContentUnits", "objectBoundingBox");
+  const fadeRect = svgElement("rect");
+  fadeRect.setAttribute("x", "-1");
+  fadeRect.setAttribute("width", "3");
+  fadeRect.setAttribute("y", "-1");
+  fadeRect.setAttribute("height", "3");
+  fadeRect.setAttribute("fill", "url(#fade-gradient");
+  fadeMask.appendChild(fadeRect);
+  defs.appendChild(fadeMask);
+
   const screenOutlineDef = svgElement('g');
   screenOutlineDef.setAttribute('id', 'screen-outline');
 
