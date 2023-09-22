@@ -373,7 +373,6 @@ export class SimplePuyoScreen {
     return result;
   }
 
-  // TODO: Make inserts jiggle.
   /**
    * Insert a single puyo into the screen.
    * @param x Horizontal coordinate, 0-indexed, left to right.
@@ -625,5 +624,22 @@ export class PuyoScreen extends SimplePuyoScreen {
       allClear: false,
       busy: didClear,
     };
+  }
+
+  /**
+   * Insert a single puyo into the screen.
+   * @param x Horizontal coordinate, 0-indexed, left to right.
+   * @param y Vertical coordinate, 0-indexed, top to bottom.
+   * @param color Color of the puyo to insert.
+   * @returns `true` if the space was already occupied.
+   */
+  insertPuyo(x: number, y: number, color: number) {
+    if (!super.insertPuyo(x, y, color)) {
+      const puyo = singlePuyo(x, y);
+      merge(this.jiggles, puyo);
+      this.doJiggles = true;
+      return false;
+    }
+    return true;
   }
 }

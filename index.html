@@ -5,13 +5,18 @@
     body {
       background-color: #223;
     }
+    .container {
+      user-select: none;
+    }
   </style>
 <script type="module">
 import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
-// TODO: User input
+// TODO: Make right clicks swap the panels
+// TODO: Kick hints based on screen content
+// TODO: Semi-ignite the first group during input
 // TODO: Responsive layout
 // TODO: Landing sound FX
 // TODO: All clear fanfare
@@ -31,9 +36,9 @@ const CHAIN_FILL = "rgba(255, 250, 240, 0.2)";
 const CHAIN_BORDER = "rgba(50, 40, 30, 0.4)";
 const CHAIN_BORDER_WIDTH = 0.1;
 
-const LEFT_SCREEN_X = 1;
+const LEFT_SCREEN_X = 2;
 const LEFT_SCREEN_Y = 2;
-const RIGHT_SCREEN_X = 10;
+const RIGHT_SCREEN_X = 11;
 const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 
 const game = new MultiplayerGame();
@@ -45,14 +50,8 @@ const IGNITION_CENTERS = [[0, 0], [0, 0]];
 document.body.appendChild(makeDefs());
 
 const container = document.createElement("div");
+container.classList.add("container");
 document.body.appendChild(container);
-
-// Web Audio API requires user interaction.
-// TODO: Prettier buttons/other initialization system.
-const startButton = document.createElement("button");
-startButton.textContent = "start";
-startButton.style = "float: left";
-container.appendChild(startButton);
 
 function juggleCards(cardIndex) {
   return [1, 0, 3, 2][cardIndex];
@@ -167,6 +166,20 @@ for (let i = 0; i < NUM_CARD_INDICES; ++i) {
   svg.appendChild(chain);
 }
 
+function panelSymbol(color, jiggle = false) {
+  if (color === RED) {
+    return jiggle ? "#jiggling-heart" : "#heart";
+  } else if (color === GREEN) {
+    return jiggle ? "#jiggling-circle" : "#small-circle";
+  } else if (color === YELLOW) {
+    return jiggle ? "#jiggling-star" : "#small-star";
+  } else if (color === BLUE) {
+    return jiggle ? "#jiggling-moon" : "#small-moon";
+  } else if (color === PURPLE) {
+    return jiggle ? "#jiggling-diamond" : "#small-diamond";
+  }
+}
+
 function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false) {
   const element = svgElement("use");
   if (color === GARBAGE) {
@@ -188,17 +201,7 @@ function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false)
   glyph.setAttribute("x", x + 0.5);
   glyph.setAttribute("y", y + 0.5);
   glyph.setAttribute("fill", STROKES[color]);
-  if (color === RED) {
-    glyph.setAttribute("href", jiggle ? "#jiggling-heart" : "#heart");
-  } else if (color === GREEN) {
-    glyph.setAttribute("href", jiggle ? "#jiggling-circle" : "#small-circle");
-  } else if (color === YELLOW) {
-    glyph.setAttribute("href", jiggle ? "#jiggling-star" : "#small-star");
-  } else if (color === BLUE) {
-    glyph.setAttribute("href", jiggle ? "#jiggling-moon" : "#small-moon");
-  } else if (color === PURPLE) {
-    glyph.setAttribute("href", jiggle ? "#jiggling-diamond" : "#small-diamond");
-  }
+  glyph.setAttribute("href", panelSymbol(color, jiggle));
   group.appendChild(glyph);
   return group;
 }
@@ -376,19 +379,17 @@ function draw(timeStamp) {
       }
     }
 
-    // Worker thread for maxDroplet2.
-    if (!game.games[0].busy && !waitingForStrategy) {
-      waitingForStrategy = true;
-      strategyWorker.postMessage(game.toSimpleGame(0));
+    // User input for the left screen.
+    if (tickResults[0].busy) {
+      disableUserInput();
+    } else {
+      enableUserInput();
     }
 
-    if (!game.games[1].busy) {
-      const simpleGame = game.toSimpleGame(1);
-      const {move, score} = maxDropletStrategy1(simpleGame);
-      const {x1, y1, orientation} = MOVES[move];
-      if (game.toSimpleGame(1).availableMoves.length) {
-        game.play(1, x1, y1, orientation);
-      }
+    // Worker thread for maxDroplet2.
+    if (!tickResults[1].busy && !waitingForStrategy) {
+      waitingForStrategy = true;
+      strategyWorker.postMessage(game.toSimpleGame(1));
     }
   }
   if (needsRedraw) {
@@ -405,11 +406,239 @@ renderGame();
 strategyWorker.onmessage = (e) => {
   const {move, score} = e.data;
   const {x1, y1, orientation} = MOVES[move];
-  if (game.toSimpleGame(0).availableMoves.length) {
-    game.play(0, x1, y1, orientation);
+  if (game.toSimpleGame(1).availableMoves.length) {
+    game.play(1, x1, y1, orientation);
   }
   waitingForStrategy = false;
 };
+
+// User interface
+// Please note that orbit distances less than 0.5 would need updates to the second panel during cursor movement.
+const MIN_ORBIT_DISTANCE = 0.5;
+const MAX_ORBIT_DISTANCE = 7;
+let mainPanelLocked = false;
+let mainGridX = 2;
+let mainGridY = 0;
+let secondDeltaX = 0;
+let secondDeltaY = -1;
+
+const mainPanel = svgElement("use");
+mainPanel.setAttribute("href", "#panel0");
+mainPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
+mainPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
+mainPanel.setAttribute("fill", "none");
+mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
+mainPanel.setAttribute("stroke-width", STROKE_WIDTH);
+svg.appendChild(mainPanel);
+
+const mainGlyph = svgElement("use");
+mainGlyph.setAttribute("fill", "none");
+mainGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[0]));
+svg.appendChild(mainGlyph);
+
+const secondPanel = svgElement("use");
+secondPanel.setAttribute("href", "#panel0");
+secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
+secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
+secondPanel.setAttribute("fill", "none");
+secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
+secondPanel.setAttribute("stroke-width", STROKE_WIDTH * 0.5);
+svg.appendChild(secondPanel);
+
+const secondGlyph = svgElement("use");
+secondGlyph.setAttribute("fill", "none");
+secondGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[1]));
+svg.appendChild(secondGlyph);
+
+function disableUserInput() {
+  mainPanel.setAttribute("fill", "none");
+  mainPanel.setAttribute("stroke", "none");
+  mainGlyph.setAttribute("fill", "none");
+  secondPanel.setAttribute("stroke", "none");
+  secondGlyph.setAttribute("fill", "none");
+}
+
+function enableUserInput() {
+  mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
+  secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
+}
+
+function snapToGrid(x, y) {
+  const gridX = Math.max(0, Math.min(WIDTH - 1, Math.floor(x - LEFT_SCREEN_X)));
+  const gridY = Math.max(-1, Math.min(LIFE_HEIGHT - 1, Math.floor(y - LEFT_SCREEN_Y)));
+  return {gridX, gridY};
+}
+
+function updatePanelPositions() {
+  mainPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
+  mainPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
+  secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
+  secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
+}
+
+function updateGlyphPositions() {
+  mainGlyph.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
+  mainGlyph.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
+  secondGlyph.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
+  secondGlyph.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
+}
+
+function kickCursor() {
+  while (mainGridX + secondDeltaX < 0) {
+    mainGridX++;
+  }
+  while (mainGridX + secondDeltaX >= WIDTH) {
+    mainGridX--;
+  }
+  while (mainGridY + secondDeltaY >= LIFE_HEIGHT) {
+    mainGridY--;
+  }
+}
+
+let lastCursorX = 0;
+let lastCursorY = 0;
+function moveCursor(x, y) {
+  lastCursorX = x;
+  lastCursorY = y;
+  const {gridX, gridY} = snapToGrid(x, y);
+  mainGridX = gridX;
+  mainGridY = gridY;
+  kickCursor();
+  updatePanelPositions();
+}
+
+function lockMainPanel(x, y) {
+  if (mainPanelLocked || game.games[0].busy) {
+    return;
+  }
+  moveCursor(x, y);
+  updateGlyphPositions();
+  mainPanelLocked = true;
+  mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
+
+  mainGlyph.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
+  mainGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[0]));
+
+  secondGlyph.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
+  secondGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[1]));
+}
+
+function unlockMainPanel(x, y) {
+  mainPanelLocked = false;
+  secondDeltaX = 0;
+  secondDeltaY = -1;
+  moveCursor(x, y);
+
+  mainPanel.setAttribute("fill", "none");
+  mainGlyph.setAttribute("fill", "none");
+  secondGlyph.setAttribute("fill", "none");
+}
+
+function orbitSecondPanel(x, y) {
+  const viewBoxX = LEFT_SCREEN_X + mainGridX + 0.5;
+  const viewBoxY = LEFT_SCREEN_Y + mainGridY + 0.5;
+
+  const dx = x - viewBoxX;
+  const dy = y - viewBoxY;
+  const distance = Math.hypot(dx, dy);
+
+  let hintDeltaX = secondDeltaX;
+  let hintDeltaY = secondDeltaY;
+
+  if (distance > MAX_ORBIT_DISTANCE) {
+    unlockMainPanel(x, y);
+  } else if (distance > MIN_ORBIT_DISTANCE) {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      secondDeltaX = Math.sign(dx);
+      secondDeltaY = dy / Math.abs(dx);
+
+      hintDeltaX = secondDeltaX;
+      hintDeltaY = 0;
+    } else {
+      secondDeltaX = dx / Math.abs(dy);
+      secondDeltaY = Math.sign(dy);
+
+      hintDeltaX = 0;
+      hintDeltaY = secondDeltaY;
+    }
+
+    // Main panel locked, cannot kick.
+    if ((mainGridX + secondDeltaX < 0) || (mainGridX + secondDeltaX >= WIDTH)) {
+      secondDeltaY = Math.sign(secondDeltaY) || 1;
+      hintDeltaX = 0;
+      hintDeltaY = secondDeltaY;
+    }
+    if (mainGridY + secondDeltaY >= LIFE_HEIGHT) {
+      secondDeltaX = Math.sign(secondDeltaX) || 1;
+      hintDeltaX = secondDeltaX;
+      hintDeltaY = 0;
+    }
+
+    secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
+    secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
+
+    secondGlyph.setAttribute("x", LEFT_SCREEN_X + mainGridX + hintDeltaX + 0.5);
+    secondGlyph.setAttribute("y", LEFT_SCREEN_Y + mainGridY + hintDeltaY + 0.5);
+  }
+
+  return {hintDeltaX, hintDeltaY};
+}
+
+function getOrientation() {
+  if (secondDeltaY === -1) {
+    return 0;
+  }
+  if (secondDeltaY === 1) {
+    return 2;
+  }
+  if (secondDeltaX === -1) {
+    return 1;
+  }
+  if (secondDeltaX === 1) {
+    return 3;
+  }
+  return 0;
+}
+
+function setOrientation(orientation) {
+  orientation &= 3;
+  if (orientation === 0) {
+    secondDeltaX = 0;
+    secondDeltaY = -1;
+  } else if (orientation === 1) {
+    secondDeltaX = -1;
+    secondDeltaY = 0;
+  } else if (orientation === 2) {
+    secondDeltaX = 0;
+    secondDeltaY = 1;
+  } else if (orientation === 3) {
+    secondDeltaX = 1;
+    secondDeltaY = 0;
+  }
+  // Kick or unkick as necessary.
+  moveCursor(lastCursorX, lastCursorY);
+}
+
+// TODO: Give extra points for playing lower
+function commitMove(x, y) {
+  if (game.games[0].busy || !mainPanelLocked) {
+    return;
+  }
+  // Commit hint
+  const {hintDeltaX, hintDeltaY} = orbitSecondPanel(x, y);
+  secondDeltaX = hintDeltaX;
+  secondDeltaY = hintDeltaY;
+
+  game.play(0, mainGridX, mainGridY + GHOST_Y + 1, getOrientation());
+
+  mainPanelLocked = false;
+  secondDeltaX = 0;
+  secondDeltaY = -1;
+
+  kickCursor();
+  updatePanelPositions();
+  disableUserInput();
+}
 
 // Sound FX
 const AUDIO_LAG = 0.01;  // Make audio laggy but less clicky.
@@ -448,7 +677,7 @@ let context;
 const oscillators = [];
 const envelopes = [];
 
-startButton.onclick = () => {
+function initialize() {
   if (frameId === undefined) {
     frameId = window.requestAnimationFrame(draw);
   }
@@ -507,6 +736,50 @@ panicButton.onclick = () => {
 }
 panicButton.textContent = "stop";
 document.body.appendChild(panicButton);
+
+function viewBoxCoords(event) {
+  const bounds = svg.getBoundingClientRect();
+  const viewBox = svg.viewBox.baseVal;
+
+  const x = (event.x - bounds.x) / bounds.width * viewBox.width;
+  const y = (event.y - bounds.y) / bounds.height * viewBox.height;
+
+  return {x, y};
+}
+
+document.addEventListener("mousemove", (e) => {
+  const {x, y} = viewBoxCoords(e);
+  if (mainPanelLocked) {
+    orbitSecondPanel(x, y);
+  } else {
+    moveCursor(x, y);
+  }
+});
+
+svg.addEventListener("mousedown", (e) => {
+  initialize();
+  if (e.button !== 0) {
+    return;
+  }
+  const {x, y} = viewBoxCoords(e);
+  lockMainPanel(x, y);
+});
+
+svg.addEventListener("mouseup", (e) => {
+  if (e.button !== 0) {
+    return;
+  }
+  const {x, y} = viewBoxCoords(e);
+  commitMove(x, y);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.code === "KeyF") {
+    setOrientation(getOrientation() - 1);
+  } else if (e.code === "KeyD") {
+    setOrientation(getOrientation() + 1);
+  }
+});
 
 </script>
 </head>
