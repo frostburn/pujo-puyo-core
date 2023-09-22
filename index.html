@@ -15,7 +15,6 @@ import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
 // TODO: Make right clicks swap the panels in cursor
-// TODO: Kick main panel based on screen content
 // TODO: Semi-ignite the first group during input
 // TODO: Easy/no CPU
 // TODO: Responsive layout
@@ -27,7 +26,7 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 // TODO: Make the CPU avoid topouts
 // TODO: Remove stop button
 // TODO: Game overs and restarts
-// TODO: Track score
+// TODO: Track wins
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -552,8 +551,15 @@ function lockMainPanel(x, y) {
     return;
   }
   moveCursor(x, y);
+
+  // Kick the main panel up for a less cluttered UX.
+  mainGridY = game.games[0].screen.kickPuyo(mainGridX, mainGridY + GHOST_Y + 1) - GHOST_Y - 1;
+
+  updatePanelPositions();
   updateGlyphPositions();
+
   mainPanelLocked = true;
+
   mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
 
   mainGlyph.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);

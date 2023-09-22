@@ -409,6 +409,38 @@ export class SimplePuyoScreen {
     result.garbageSlots.sort(() => Math.random() - 0.5);
     return result;
   }
+
+  /**
+   * Kick a puyo up until it fits.
+   * @param x Horizontal coordinate.
+   * @param y Vertical coordinate.
+   * @returns New vertical coordinate.
+   */
+  kickPuyo(x: number, y: number) {
+    const mask = this.mask;
+    while (puyoAt(mask, x, y)) {
+      y--;
+    }
+    return y;
+  }
+
+  /**
+   * Drop a puyo down until it lands.
+   * Kicks up as necessary.
+   * @param x Horizontal coordinate.
+   * @param y Vertical coordinate.
+   * @returns New vertical coordinate.
+   */
+  dropPuyo(x: number, y: number) {
+    const mask = this.mask;
+    while (puyoAt(mask, x, y)) {
+      y--;
+    }
+    while (y < HEIGHT - 1 && !puyoAt(mask, x, y + 1)) {
+      y++;
+    }
+    return y;
+  }
 }
 
 /**
