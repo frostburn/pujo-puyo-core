@@ -14,6 +14,7 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, 
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
+// TODO: Investigate if the intended garbage schedule happens after my chain, check insta-landed inserts too.
 // TODO: Make right clicks swap the panels in cursor
 // TODO: Semi-ignite the first group during input
 // TODO: Easy/no CPU
@@ -562,6 +563,14 @@ function updateDropletPositions() {
   mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + mainY + 0.5);
   secondDroplet.setAttribute("cx", LEFT_SCREEN_X + hintX + 0.5);
   secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + secondY + 0.5);
+
+  if (mainPanelLocked) {
+    if (hintX === mainGridX && secondY === mainGridY) {
+      mainPanel.setAttribute("fill", "none");
+    } else {
+      mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
+    }
+  }
 }
 
 function updateGlyphPositions() {
@@ -664,9 +673,7 @@ function orbitSecondPanel(x, y) {
     if ((mainGridX + secondDeltaX < 0) || (mainGridX + secondDeltaX >= WIDTH)) {
       secondDeltaY = Math.sign(secondDeltaY) || 1;
     }
-    if (mainGridY + secondDeltaY >= LIFE_HEIGHT) {
-      secondDeltaX = Math.sign(secondDeltaX) || 1;
-    }
+    // Vertical pseudo-kicks are fine. They happens against screen content anyway.
 
     const {hintDeltaX, hintDeltaY} = calculateHints();
 

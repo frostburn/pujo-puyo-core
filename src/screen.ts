@@ -418,7 +418,7 @@ export class SimplePuyoScreen {
    */
   kickPuyo(x: number, y: number) {
     const mask = this.mask;
-    while (puyoAt(mask, x, y)) {
+    while (y >= HEIGHT || puyoAt(mask, x, y)) {
       y--;
     }
     return y;
@@ -433,7 +433,7 @@ export class SimplePuyoScreen {
    */
   dropPuyo(x: number, y: number) {
     const mask = this.mask;
-    while (puyoAt(mask, x, y)) {
+    while (y >= HEIGHT || puyoAt(mask, x, y)) {
       y--;
     }
     while (y < HEIGHT - 1 && !puyoAt(mask, x, y + 1)) {
