@@ -324,26 +324,26 @@ export function makeDefs() {
 
   const garbageDef = svgElement('circle');
   garbageDef.setAttribute('id', 'garbage');
-  garbageDef.setAttribute('r', '0.42');
+  garbageDef.setAttribute('r', '0.414');
   defs.appendChild(garbageDef);
 
   const jigglingGarbageDef = svgElement('ellipse');
   jigglingGarbageDef.setAttribute('id', 'jiggling-garbage');
-  jigglingGarbageDef.setAttribute('rx', '0.41');
-  jigglingGarbageDef.setAttribute('ry', '0.43');
+  jigglingGarbageDef.setAttribute('rx', '0.39');
+  jigglingGarbageDef.setAttribute('ry', '0.414');
   {
     const animation = svgElement('animate');
     animation.setAttribute('attributeName', 'rx');
-    animation.setAttribute('values', '0.41;0.43;0.41');
-    animation.setAttribute('dur', '0.3s');
+    animation.setAttribute('values', '0.39;0.414;0.39');
+    animation.setAttribute('dur', '0.25s');
     animation.setAttribute('repeatCount', 'indefinite');
     jigglingGarbageDef.appendChild(animation);
   }
   {
     const animation = svgElement('animate');
     animation.setAttribute('attributeName', 'ry');
-    animation.setAttribute('values', '0.43;0.41;0.43');
-    animation.setAttribute('dur', '0.3s');
+    animation.setAttribute('values', '0.414;0.39;0.414');
+    animation.setAttribute('dur', '0.25s');
     animation.setAttribute('repeatCount', 'indefinite');
     jigglingGarbageDef.appendChild(animation);
   }
