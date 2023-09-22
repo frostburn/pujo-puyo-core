@@ -13,6 +13,8 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 
 // TODO: User input
 // TODO: Responsive layout
+// TODO: Landing sound FX
+// TODO: All clear fanfare
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -37,6 +39,7 @@ const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 const game = new MultiplayerGame();
 
 const NEXT_CHAIN_CARDS = [0, 2];
+const NUM_CARD_INDICES = 4;
 const IGNITION_CENTERS = [[0, 0], [0, 0]];
 
 document.body.appendChild(makeDefs());
@@ -119,8 +122,9 @@ const chainBoxes = [];
 const chainTexts = [];
 const chainAnimations = [];
 const chains = [];
-for (let i = 0; i < 4; ++i) {
+for (let i = 0; i < NUM_CARD_INDICES; ++i) {
   const chain = svgElement("g");
+  chain.setAttribute("opacity", 0);
   const chainBox = svgElement("rect");
   chainBox.setAttribute("rx", 0.2);
   chainBox.setAttribute("ry", 0.2);
@@ -190,18 +194,15 @@ function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false)
 }
 
 function renderGame() {
+  for (let cardIndex = 0; cardIndex < NUM_CARD_INDICES; ++cardIndex) {
+    chainBoxes[cardIndex].setAttribute("width", chainTexts[cardIndex].getBBox().width + 0.4);
+  }
+
   const gameState = game.state;
 
   for (let i = 0; i < 2; ++i) {
     const currentTime = svg.getCurrentTime();
     const newChildren = [];
-
-    const chainNumber = gameState[i].screen.chainNumber;
-    if (chainNumber > 0) {
-      const cardIndex = juggleCards(NEXT_CHAIN_CARDS[i]);
-      chainTexts[cardIndex].textContent = `${chainNumber}-Chain`;
-      chainBoxes[cardIndex].setAttribute("width", chainTexts[i].getBBox().width + 0.4);
-    }
 
     allClearLabels[i].textContent = gameState[i].allClearBonus ? "All Clear" : "";
 
@@ -320,16 +321,22 @@ function draw(timeStamp) {
 
     for (let i = 0; i < 2; ++i) {
       if (tickResults[i].didClear) {
+        const cardIndex = NEXT_CHAIN_CARDS[i];
+
         const x = i === 0 ? LEFT_SCREEN_X : RIGHT_SCREEN_X;
         const y = i === 0 ? LEFT_SCREEN_Y : RIGHT_SCREEN_Y;
-        chains[NEXT_CHAIN_CARDS[i]].setAttribute("transform", `translate(${x + IGNITION_CENTERS[i][0]}, ${y + IGNITION_CENTERS[i][1] - 0.5})`);
+        chains[cardIndex].setAttribute("transform", `translate(${x + IGNITION_CENTERS[i][0]}, ${y + IGNITION_CENTERS[i][1] - 0.5})`);
+        chains[cardIndex].setAttribute("opacity", 0.1);
 
-        chainAnimations[NEXT_CHAIN_CARDS[i]].setAttribute("begin", `${svg.getCurrentTime()}s`);
-        chainAnimations[NEXT_CHAIN_CARDS[i]].setAttribute("values", "0;1;0.95;0.9;0.8;0.7;0");
-        NEXT_CHAIN_CARDS[i] = juggleCards(NEXT_CHAIN_CARDS[i]);
+        chainAnimations[cardIndex].setAttribute("begin", `${svg.getCurrentTime()}s`);
+        chainAnimations[cardIndex].setAttribute("values", "0.1;1;0.95;0.9;0.8;0.7;0");
 
-        // TODO: This can go on the card directly, right?
-        playSoundFX(i, tickResults[i].chainNumber);
+        const chainNumber = tickResults[i].chainNumber;
+        if (chainNumber > 0) {
+          chainTexts[cardIndex].textContent = `${chainNumber}-Chain`;
+          playSoundFX(i, chainNumber);
+        }
+        NEXT_CHAIN_CARDS[i] = juggleCards(cardIndex);
       }
     }
 
