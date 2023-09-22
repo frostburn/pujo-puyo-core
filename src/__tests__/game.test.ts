@@ -11,7 +11,7 @@ test('Garbage schedule', () => {
   // Create a dummy opponent.
   const dummy = new JKISS32(420);
 
-  for (let i = 0; i < 950; ++i) {
+  for (let i = 0; i < 1950; ++i) {
     if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[jkiss.step() % MOVES.length];
       game.play(0, x1, y1, orientation);
@@ -36,7 +36,7 @@ test('Garbage schedule', () => {
     // game.log();
   }
 
-  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(5);
+  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(8);
 });
 
 test('Garbage offset in a symmetric game', () => {

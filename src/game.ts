@@ -19,7 +19,7 @@ export type GameState = {
 };
 
 // Timings (gravity acts in units of one)
-const JIGGLE_TIME = 7;
+const JIGGLE_TIME = 12;
 const SPARK_TIME = 28;
 
 // Colors

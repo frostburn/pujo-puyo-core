@@ -14,12 +14,21 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, 
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
-// TODO: Make right clicks swap the panels
-// TODO: Kick hints based on screen content
+// TODO: Make right clicks swap the panels in cursor
+// TODO: Kick main panel based on screen content
 // TODO: Semi-ignite the first group during input
+// TODO: Easy/no CPU
 // TODO: Responsive layout
 // TODO: Landing sound FX
 // TODO: All clear fanfare
+// TODO: Diffing to reduce render load
+// TODO: Audio worklet for less glitchy FX
+// TODO: Touch interface
+// TODO: Make the CPU avoid topouts
+// TODO: Tweak garbage jiggling
+// TODO: Remove stop button
+// TODO: Game overs and restarts
+// TODO: Track score
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -41,11 +50,16 @@ const LEFT_SCREEN_Y = 2;
 const RIGHT_SCREEN_X = 11;
 const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 
+const NUM_CARD_INDICES = 4;
+
 const game = new MultiplayerGame();
 
-const NEXT_CHAIN_CARDS = [0, 2];
-const NUM_CARD_INDICES = 4;
-const IGNITION_CENTERS = [[0, 0], [0, 0]];
+const nextChainCards = [0, 2];
+const ignitionCenters = [[0, 0], [0, 0]];
+const screenColors = [
+  Array(WIDTH * LIFE_HEIGHT).fill(-1),
+  Array(WIDTH * LIFE_HEIGHT).fill(-1)
+];
 
 document.body.appendChild(makeDefs());
 
@@ -219,10 +233,10 @@ function renderGame() {
     const newGhostChildren = [];
     for (let x = 0; x < WIDTH; ++x) {
       const arrayIndex = x + GHOST_Y * WIDTH;
-      const index = gameState[i].screen.grid[arrayIndex];
-      if (index >= 0) {
+      const color = gameState[i].screen.grid[arrayIndex];
+      if (color >= 0) {
         const ghostPanel = svgElement("use");
-        if (index === GARBAGE) {
+        if (color === GARBAGE) {
           ghostPanel.setAttribute("href", "#garbage");
         } else {
           ghostPanel.setAttribute("href", "#panel0");
@@ -230,7 +244,7 @@ function renderGame() {
         ghostPanel.setAttribute("x", x + 0.5);
         ghostPanel.setAttribute("y", -0.5);
         ghostPanel.setAttribute("fill", "none");
-        ghostPanel.setAttribute("stroke", STROKES[index]);
+        ghostPanel.setAttribute("stroke", STROKES[color]);
         ghostPanel.setAttribute("stroke-width", STROKE_WIDTH * 0.5);
         ghostPanel.setAttribute("stroke-dasharray", "0.1 0.108");
         ghostPanel.setAttribute("stroke-linecap", "round");
@@ -275,8 +289,9 @@ function renderGame() {
     for (let y = 0; y < LIFE_HEIGHT; ++y) {
       for (let x = 0; x < WIDTH; ++x) {
         const arrayIndex = x + (y + GHOST_Y + 1) * WIDTH;
-        const index = gameState[i].screen.grid[arrayIndex];
-        if (index >= 0) {
+        const color = gameState[i].screen.grid[arrayIndex];
+        screenColors[i][x + y * WIDTH] = color;
+        if (color >= 0) {
           const screen = gameState[i].screen;
           if (screen.ignited[arrayIndex]) {
             numIgnitions++;
@@ -286,16 +301,16 @@ function renderGame() {
 
           if (screen.sparking[arrayIndex]) {
             // Garbage sparks are invisible even if they still support the panels above.
-            if (index !== GARBAGE) {
+            if (color !== GARBAGE) {
               const sparks = svgElement("use");
               sparks.setAttribute("href", "#sparks");
               sparks.setAttribute("x", x + 0.5);
               sparks.setAttribute("y", y + 0.5);
-              sparks.setAttribute("fill", STROKES[index]);
+              sparks.setAttribute("fill", STROKES[color]);
               newChildren.push(sparks);
             }
           } else {
-            const panel = panelAt(x, y, index, screen.connectivity[arrayIndex], screen.jiggling[arrayIndex], screen.ignited[arrayIndex]);
+            const panel = panelAt(x, y, color, screen.connectivity[arrayIndex], screen.jiggling[arrayIndex], screen.ignited[arrayIndex]);
             if (screen.falling[arrayIndex]) {
               const animation = svgElement("animateTransform");
               animation.setAttribute("attributeName", "transform");
@@ -318,8 +333,8 @@ function renderGame() {
     }
 
     if (numIgnitions) {
-      IGNITION_CENTERS[i][0] = ignitionX / numIgnitions;
-      IGNITION_CENTERS[i][1] = ignitionY / numIgnitions;
+      ignitionCenters[i][0] = ignitionX / numIgnitions;
+      ignitionCenters[i][1] = ignitionY / numIgnitions;
     }
 
     contents[i].replaceChildren(...newChildren);
@@ -360,11 +375,11 @@ function draw(timeStamp) {
 
     for (let i = 0; i < 2; ++i) {
       if (tickResults[i].didClear) {
-        const cardIndex = NEXT_CHAIN_CARDS[i];
+        const cardIndex = nextChainCards[i];
 
         const x = i === 0 ? LEFT_SCREEN_X : RIGHT_SCREEN_X;
         const y = i === 0 ? LEFT_SCREEN_Y : RIGHT_SCREEN_Y;
-        chains[cardIndex].setAttribute("transform", `translate(${x + IGNITION_CENTERS[i][0]}, ${y + IGNITION_CENTERS[i][1] - 0.5})`);
+        chains[cardIndex].setAttribute("transform", `translate(${x + ignitionCenters[i][0]}, ${y + ignitionCenters[i][1] - 0.5})`);
         chains[cardIndex].setAttribute("opacity", 0.1);
 
         chainAnimations[cardIndex].setAttribute("begin", `${svg.getCurrentTime()}s`);
@@ -375,7 +390,7 @@ function draw(timeStamp) {
           chainTexts[cardIndex].textContent = `${chainNumber}-Chain`;
           playSoundFX(i, chainNumber);
         }
-        NEXT_CHAIN_CARDS[i] = juggleCards(cardIndex);
+        nextChainCards[i] = juggleCards(cardIndex);
       }
     }
 
@@ -436,6 +451,16 @@ mainGlyph.setAttribute("fill", "none");
 mainGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[0]));
 svg.appendChild(mainGlyph);
 
+// Extra indicator when cursor overlaps with a similar color
+const mainPanelHelper = svgElement("use");
+mainPanelHelper.setAttribute("href", "#panel0");
+mainPanelHelper.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
+mainPanelHelper.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
+mainPanelHelper.setAttribute("fill", "none");
+mainPanelHelper.setAttribute("stroke", "none");
+mainPanelHelper.setAttribute("stroke-width", STROKE_WIDTH * 0.4);
+svg.appendChild(mainPanelHelper);
+
 const secondPanel = svgElement("use");
 secondPanel.setAttribute("href", "#panel0");
 secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
@@ -454,13 +479,26 @@ function disableUserInput() {
   mainPanel.setAttribute("fill", "none");
   mainPanel.setAttribute("stroke", "none");
   mainGlyph.setAttribute("fill", "none");
+  mainPanelHelper.setAttribute("fill", "none");
+  mainPanelHelper.setAttribute("stroke", "none");
   secondPanel.setAttribute("stroke", "none");
   secondGlyph.setAttribute("fill", "none");
+}
+
+function helpMainPanel() {
+  if (screenColors[0][mainGridX + mainGridY * WIDTH] === game.games[0].visibleBag[0]) {
+    mainPanelHelper.setAttribute("fill", "rgba(255, 255, 255, 0.1)");
+    mainPanelHelper.setAttribute("stroke", "white");
+  } else {
+    mainPanelHelper.setAttribute("fill", "none");
+    mainPanelHelper.setAttribute("stroke", "none");
+  }
 }
 
 function enableUserInput() {
   mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
   secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
+  helpMainPanel();
 }
 
 function snapToGrid(x, y) {
@@ -472,8 +510,11 @@ function snapToGrid(x, y) {
 function updatePanelPositions() {
   mainPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
   mainPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
+  mainPanelHelper.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
+  mainPanelHelper.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
   secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
   secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
+  helpMainPanel();
 }
 
 function updateGlyphPositions() {
