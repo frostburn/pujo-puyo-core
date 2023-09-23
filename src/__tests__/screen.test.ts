@@ -197,3 +197,49 @@ test('Simple screen chain resolution', () => {
   );
   expect(puyoAt(screen.grid[PURPLE], 5, 14)).toBeTruthy();
 });
+
+test('Ghost group preservation', () => {
+  const lines = [
+    '',
+    '',
+    'GGGG',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+  ];
+  const screen = SimplePuyoScreen.fromLines(lines);
+  const zero = screen.tick().score;
+  expect(zero).toBe(0);
+});
+
+test('Top group elimination', () => {
+  const lines = [
+    '',
+    '',
+    '',
+    'PPPP',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+    'NNNN',
+  ];
+  const screen = SimplePuyoScreen.fromLines(lines);
+  const score = screen.tick().score;
+  expect(score).toBe(40);
+});

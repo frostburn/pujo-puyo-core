@@ -476,8 +476,9 @@ export function sparkGroups(puyos: Puyos): ClearResult {
   temp[0] &= VISIBLE_BLOCK;
   // Clear from the bottom up hoping for an early exit.
   for (let i = NUM_SLICES - 1; i >= 0; i--) {
-    // TODO: Don't iterate outside of life block
-    for (let j = WIDTH * SLICE_HEIGHT - 2; j >= 0; j -= 2) {
+    // Only iterate within the visible grid.
+    const min = i === 0 ? WIDTH * (GHOST_Y + 1) : 0;
+    for (let j = WIDTH * SLICE_HEIGHT - 2; j >= min; j -= 2) {
       group[i] = 3 << j;
       flood(group, temp);
       applyXor(temp, group);
@@ -488,8 +489,11 @@ export function sparkGroups(puyos: Puyos): ClearResult {
         numCleared += groupSize;
       }
       if (isEmpty(temp)) {
-        // TODO: full break
-        break;
+        return {
+          numCleared,
+          groupBonus,
+          sparks,
+        };
       }
     }
   }

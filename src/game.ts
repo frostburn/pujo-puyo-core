@@ -36,7 +36,6 @@ const ALL_CLEAR_BONUS = 8500;
 const TARGET_POINTS = 70;
 const ONE_STONE = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
-// TODO: Margin time
 
 export class OnePlayerGame {
   score: number;
@@ -233,7 +232,6 @@ export class SinglePlayerGame extends OnePlayerGame {
 
 const PADDING = [1, 1, 1, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
 
-// TODO: True multiplayer
 export class MultiplayerGame {
   games: OnePlayerGame[];
   // Buffered gargabe is sent on the next tick.
@@ -349,7 +347,6 @@ export class MultiplayerGame {
     for (let i = 0; i < tickResults.length; ++i) {
       // Send accumulated garbage as soon as the chain is over.
       if (this.canSend[i] && !tickResults[i].busy) {
-        // TODO: True multiplayer distribution.
         this.pendingGarbage[1 - i] += this.accumulatedGarbage[i];
         this.accumulatedGarbage[i] = 0;
         this.pendingGarbage[1 - i] += this.allClearBonus[i]

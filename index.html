@@ -14,19 +14,7 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGH
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
-// TODO: Make right clicks swap the panels in cursor
-// TODO: Semi-ignite the first group during input
-// TODO: Easy/no CPU
-// TODO: Responsive layout
-// TODO: Landing sound FX
-// TODO: All clear fanfare
-// TODO: Diffing to reduce render load
-// TODO: Audio worklet for less glitchy FX
-// TODO: Full keyboard interface
-// TODO: Touch interface
 // TODO: Remove stop button
-// TODO: Game overs and restarts
-// TODO: Track wins
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -721,7 +709,6 @@ function setOrientation(orientation) {
   moveCursor(lastCursorX, lastCursorY);
 }
 
-// TODO: Give extra points for playing lower
 function commitMove(x, y) {
   if (game.games[0].busy || !mainPanelLocked) {
     return;
