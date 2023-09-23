@@ -587,25 +587,39 @@ function updateGlyphPositions() {
 }
 
 function kickCursor() {
+  while (mainGridX < 0) {
+    mainGridX++;
+  }
   while (mainGridX + secondDeltaX < 0) {
     mainGridX++;
   }
   while (mainGridX + secondDeltaX >= WIDTH) {
     mainGridX--;
   }
+  while (mainGridX >= WIDTH) {
+    mainGridX--;
+  }
+  while (mainGridY < -2) {
+    mainGridY++;
+  }
+  while (mainGridY >= VISIBLE_HEIGHT) {
+    mainGridY--;
+  }
   while (mainGridY + secondDeltaY >= VISIBLE_HEIGHT) {
     mainGridY--;
   }
 }
 
-let lastCursorX = 0;
-let lastCursorY = 0;
+let lastCursorX = undefined;
+let lastCursorY = undefined;
 function moveCursor(x, y) {
-  lastCursorX = x;
-  lastCursorY = y;
-  const {gridX, gridY} = snapToGrid(x, y);
-  mainGridX = gridX;
-  mainGridY = gridY;
+  if (x !== undefined && y !== undefined) {
+    lastCursorX = x;
+    lastCursorY = y;
+    const {gridX, gridY} = snapToGrid(x, y);
+    mainGridX = gridX;
+    mainGridY = gridY;
+  }
   kickCursor();
   updatePanelPositions();
 }
@@ -732,7 +746,9 @@ function commitMove(x, y) {
   if (game.games[0].busy || !mainPanelLocked) {
     return;
   }
-  orbitSecondPanel(x, y);
+  if (x !== undefined && y !== undefined) {
+    orbitSecondPanel(x, y);
+  }
   // Commit hint
   const {hintDeltaX, hintDeltaY} = calculateHints();
   secondDeltaX = hintDeltaX;
@@ -886,11 +902,37 @@ svg.addEventListener("mouseup", (e) => {
   commitMove(x, y);
 });
 
+const ARROW_KEYS = ["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"];
+const WASD_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD"];
+
 document.addEventListener("keydown", (e) => {
-  if (e.code === "KeyF") {
+  initialize();
+  if (e.code === "KeyK") {
+    e.preventDefault();
     setOrientation(getOrientation() - 1);
-  } else if (e.code === "KeyD") {
+  } else if (e.code === "KeyJ") {
+    e.preventDefault();
     setOrientation(getOrientation() + 1);
+  } else if (e.code === "ArrowUp" || e.code === "KeyW") {
+    mainGridY--;
+  } else if (e.code === "ArrowLeft" || e.code === "KeyA") {
+    mainGridX--;
+  } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+    mainGridY++;
+  } else if (e.code === "ArrowRight" || e.code === "KeyD") {
+    mainGridX++;
+  }
+  if (ARROW_KEYS.includes(e.code) || WASD_KEYS.includes(e.code)) {
+    lastCursorX = undefined;
+    lastCursorY = undefined;
+    e.preventDefault();
+    kickCursor();
+    updatePanelPositions();
+  }
+  if (e.code === "Space") {
+    e.preventDefault();
+    mainPanelLocked = true;
+    commitMove();
   }
 });
 
