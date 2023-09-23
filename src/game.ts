@@ -115,7 +115,7 @@ export class OnePlayerGame {
     return this.bag[1];
   }
 
-  play(x1: number, y1: number, orientation: number) {
+  play(x1: number, y1: number, orientation: number, kickDown = false) {
     let x2 = x1;
     let y2 = y1;
     orientation &= 3; // Wrap to 0, 1, 2 or 3.
@@ -151,6 +151,18 @@ export class OnePlayerGame {
     while (puyoAt(mask, x1, y1) || puyoAt(mask, x2, y2)) {
       y1--;
       y2--;
+    }
+
+    if (kickDown) {
+      while (
+        y1 < HEIGHT - 1 &&
+        y2 < HEIGHT - 1 &&
+        !puyoAt(mask, x1, y1 + 1) &&
+        !puyoAt(mask, x2, y2 + 1)
+      ) {
+        y1++;
+        y2++;
+      }
     }
 
     // Play the move if possible, while making sure buffered garbage can still be generated.
@@ -328,8 +340,14 @@ export class MultiplayerGame {
     console.log(this.displayLines().join('\n'));
   }
 
-  play(player: number, x1: number, y1: number, orientation: number) {
-    this.games[player].play(x1, y1, orientation);
+  play(
+    player: number,
+    x1: number,
+    y1: number,
+    orientation: number,
+    kickDown = false
+  ) {
+    this.games[player].play(x1, y1, orientation, kickDown);
     this.canReceive[player] = true;
   }
 

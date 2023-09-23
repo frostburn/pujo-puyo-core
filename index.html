@@ -397,7 +397,7 @@ function draw(timeStamp) {
       const {move, score} = workerStrategy;
       const {x1, y1, orientation} = MOVES[move];
       if (game.toSimpleGame(1).availableMoves.length) {
-        game.play(1, x1, y1, orientation);
+        game.play(1, x1, y1, orientation, true);
         workerGame = game.clone();
         for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
           workerGame.tick();
