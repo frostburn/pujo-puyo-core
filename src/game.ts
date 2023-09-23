@@ -376,6 +376,8 @@ export class MultiplayerGame {
         this.games[i].screen.bufferedGarbage = releasedGarbage;
         this.pendingGarbage[i] -= releasedGarbage;
         this.canReceive[i] = false;
+
+        tickResults[i].busy = true;
       }
     }
     return tickResults;

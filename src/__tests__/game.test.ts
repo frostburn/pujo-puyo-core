@@ -36,6 +36,20 @@ test('Pending commit time', () => {
   expect(puyoCount(game.games[0].screen.grid[GARBAGE])).toBe(77);
 });
 
+test('No pending flash', () => {
+  const game = new MultiplayerGame();
+  game.pendingGarbage[0] = 30;
+  const tickResults = game.tick();
+  expect(tickResults[0].busy).toBeFalse();
+  expect(tickResults[1].busy).toBeFalse();
+
+  game.play(0, 0, 13, 0);
+
+  for (let i = 0; i < 20; ++i) {
+    expect(game.tick()[0].busy).toBeTrue();
+  }
+});
+
 test('Garbage schedule', () => {
   // Create a deterministic game.
   const game = new MultiplayerGame(0);
