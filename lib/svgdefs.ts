@@ -3,7 +3,7 @@ import {
   CONNECTS_LEFT,
   CONNECTS_RIGHT,
   CONNECTS_UP,
-  LIFE_HEIGHT,
+  VISIBLE_HEIGHT,
   WIDTH,
 } from '../src';
 
@@ -112,7 +112,7 @@ export function makeDefs() {
   mainScreen.setAttribute('x', '-0.1');
   mainScreen.setAttribute('y', '-0.1');
   mainScreen.setAttribute('width', `${WIDTH + 0.2}`);
-  mainScreen.setAttribute('height', `${LIFE_HEIGHT + 0.2}`);
+  mainScreen.setAttribute('height', `${VISIBLE_HEIGHT + 0.2}`);
   mainScreen.setAttribute('rx', '0.1');
   mainScreen.setAttribute('ry', '0.1');
   screenOutlineDef.appendChild(mainScreen);

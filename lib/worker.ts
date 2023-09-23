@@ -14,7 +14,7 @@ const FRAME_RATE = 30 / 1000;
 const CHAIN_FRAMES = JIGGLE_TIME + SPARK_TIME + 4;
 const DROP_FRAMES = 10 + JIGGLE_TIME;
 
-let totalThinkingFrames = 10;
+let totalThinkingFrames = 3;
 let numSamples = 1;
 
 onmessage = e => {

@@ -444,7 +444,7 @@ const DEFAULT_MOVE_TIME = JIGGLE_TIME / (JIGGLE_TIME + SPARK_TIME + 4);
 // Value all-clears based on the amount of garbage they send.
 const SIMPLE_ALL_CLEAR_BONUS = 2100;
 // Not even a 19-chain can compensate a Game Over.
-const SIMPLE_GAME_OVER = -1000000;
+export const SIMPLE_GAME_OVER = -1000000;
 
 /**
  * Simplified view of one player in a multiplayer game suitable for naïve AI planning.

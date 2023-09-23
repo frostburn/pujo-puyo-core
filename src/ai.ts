@@ -1,5 +1,18 @@
-import {GHOST_Y, WIDTH, inMask, puyoCount, verticalLine} from './bitboard';
-import {SimpleGame} from './game';
+import {
+  CLEAR_THRESHOLD,
+  GHOST_Y,
+  VISIBLE_HEIGHT,
+  WIDTH,
+  clone,
+  flood,
+  inMask,
+  invert,
+  puyoCount,
+  shatter,
+  verticalLine,
+  visible,
+} from './bitboard';
+import {SIMPLE_GAME_OVER, SimpleGame} from './game';
 
 const HEURISTIC_FAIL = -2000000;
 const PREFER_LONGER = 1.1;
@@ -30,6 +43,61 @@ function topPenalty(game: SimpleGame) {
     2 * puyoCount(inMask(mask, verticalLine(GHOST_Y + 1))) -
     puyoCount(inMask(mask, verticalLine(GHOST_Y + 2)))
   );
+}
+
+/**
+ * Determine if the game is effectively locked out.
+ */
+function effectiveLockout(game: SimpleGame) {
+  const mask = game.screen.mask;
+  if (puyoCount(visible(mask)) < WIDTH * VISIBLE_HEIGHT - 2) {
+    return 0;
+  }
+  invert(mask);
+  if (game.bag.length >= 2) {
+    if (game.bag[0] === game.bag[1]) {
+      flood(mask, visible(game.screen.grid[game.bag[0]]));
+      if (puyoCount(mask) < CLEAR_THRESHOLD) {
+        return SIMPLE_GAME_OVER;
+      }
+    } else {
+      const pieces = shatter(mask);
+      for (let i = 0; i < pieces.length; ++i) {
+        let spot = clone(pieces[i]);
+        flood(spot, visible(game.screen.grid[game.bag[0]]));
+        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+          return 0;
+        }
+        spot = clone(pieces[i]);
+        flood(spot, visible(game.screen.grid[game.bag[0]]));
+        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+          return 0;
+        }
+      }
+      return SIMPLE_GAME_OVER;
+    }
+  } else {
+    const pieces = shatter(mask);
+    for (let j = 0; j < game.colorSelection.length; ++j) {
+      const color = game.colorSelection[j];
+      for (let i = 0; i < pieces.length; ++i) {
+        const spot = clone(pieces[i]);
+        flood(spot, visible(game.screen.grid[color]));
+        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+          return 0;
+        }
+      }
+      if (pieces.length === 2) {
+        const spot = clone(mask);
+        flood(spot, visible(game.screen.grid[color]));
+        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+          return 0;
+        }
+      }
+    }
+    return SIMPLE_GAME_OVER;
+  }
+  return 0;
 }
 
 /**
@@ -134,7 +202,8 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
       tickResult.score +
       PREFER_LONGER * flexDroplet(clone) +
       materialCount(clone) +
-      topPenalty(clone);
+      topPenalty(clone) +
+      effectiveLockout(clone);
     if (score > max) {
       max = score;
       move = moves[i];

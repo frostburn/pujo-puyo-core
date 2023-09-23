@@ -10,7 +10,7 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
@@ -54,8 +54,8 @@ const game = new MultiplayerGame();
 const nextChainCards = [0, 2];
 const ignitionCenters = [[0, 0], [0, 0]];
 const screenColors = [
-  Array(WIDTH * LIFE_HEIGHT).fill(-1),
-  Array(WIDTH * LIFE_HEIGHT).fill(-1)
+  Array(WIDTH * VISIBLE_HEIGHT).fill(-1),
+  Array(WIDTH * VISIBLE_HEIGHT).fill(-1)
 ];
 
 document.body.appendChild(makeDefs());
@@ -283,7 +283,7 @@ function renderGame() {
     let ignitionX = 0;
     let ignitionY = 0;
 
-    for (let y = 0; y < LIFE_HEIGHT; ++y) {
+    for (let y = 0; y < VISIBLE_HEIGHT; ++y) {
       for (let x = 0; x < WIDTH; ++x) {
         const arrayIndex = x + (y + GHOST_Y + 1) * WIDTH;
         const color = gameState[i].screen.grid[arrayIndex];
@@ -337,14 +337,14 @@ function renderGame() {
     contents[i].replaceChildren(...newChildren);
 
     const scoreLabel = svgElement("text");
-    scoreLabel.setAttribute("y", LIFE_HEIGHT+0.8);
+    scoreLabel.setAttribute("y", VISIBLE_HEIGHT+0.8);
     scoreLabel.classList.add("score-label");
     scoreLabel.textContent = "Score:";
     contents[i].appendChild(scoreLabel);
 
     const score = svgElement("text");
     score.classList.add("score");
-    score.setAttribute("y", LIFE_HEIGHT+0.8);
+    score.setAttribute("y", VISIBLE_HEIGHT+0.8);
     score.setAttribute("dx", scoreLabel.getBBox().width + 0.1);
     score.textContent = gameState[i].score;
     contents[i].appendChild(score);
@@ -476,7 +476,7 @@ svg.appendChild(secondGlyph);
 const mainDroplet = svgElement("circle");
 mainDroplet.setAttribute("r", 0.1);
 mainDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + 0.5);
-mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + LIFE_HEIGHT - 1 + 0.5);
+mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + VISIBLE_HEIGHT - 1 + 0.5);
 mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
 mainDroplet.setAttribute("stroke", "white");
 mainDroplet.setAttribute("stroke-width", "0.03");
@@ -486,7 +486,7 @@ svg.appendChild(mainDroplet);
 const secondDroplet = svgElement("circle");
 secondDroplet.setAttribute("r", 0.1);
 secondDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
-secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + LIFE_HEIGHT - 1 + secondDeltaY + 0.5);
+secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + VISIBLE_HEIGHT - 1 + secondDeltaY + 0.5);
 secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
 secondDroplet.setAttribute("stroke", "white");
 secondDroplet.setAttribute("stroke-width", "0.03");
@@ -529,7 +529,7 @@ function enableUserInput() {
 
 function snapToGrid(x, y) {
   const gridX = Math.max(0, Math.min(WIDTH - 1, Math.floor(x - LEFT_SCREEN_X)));
-  const gridY = Math.max(-1, Math.min(LIFE_HEIGHT - 1, Math.floor(y - LEFT_SCREEN_Y)));
+  const gridY = Math.max(-1, Math.min(VISIBLE_HEIGHT - 1, Math.floor(y - LEFT_SCREEN_Y)));
   return {gridX, gridY};
 }
 
@@ -585,7 +585,7 @@ function kickCursor() {
   while (mainGridX + secondDeltaX >= WIDTH) {
     mainGridX--;
   }
-  while (mainGridY + secondDeltaY >= LIFE_HEIGHT) {
+  while (mainGridY + secondDeltaY >= VISIBLE_HEIGHT) {
     mainGridY--;
   }
 }

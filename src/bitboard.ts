@@ -25,18 +25,18 @@ const LEFT_WALL =
   (1 << (V_SHIFT * 4));
 const RIGHT_BLOCK = FULL ^ LEFT_WALL;
 const INVALID = -1 ^ FULL;
-const LIFE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
-const SEMI_LIFE_BLOCK = LIFE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
+const VISIBLE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
+const SEMI_VISIBLE_BLOCK = VISIBLE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
 // Large scale structure
 export const NUM_SLICES = 3;
 export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
-export const LIFE_HEIGHT = 12;
+export const VISIBLE_HEIGHT = 12;
 export const GHOST_Y = 2;
 
 const TOPPING_LINE = TOP << ((GHOST_Y + 1) * V_SHIFT);
 
 // Rules
-const CLEAR_THRESHOLD = 4;
+export const CLEAR_THRESHOLD = 4;
 // Scoring
 const GROUP_BONUS = [0, 2, 3, 4, 5, 6, 7, 10];
 
@@ -473,7 +473,7 @@ export function sparkGroups(puyos: Puyos): ClearResult {
   const sparks = emptyPuyos();
   const group = emptyPuyos();
   const temp = clone(puyos);
-  temp[0] &= LIFE_BLOCK;
+  temp[0] &= VISIBLE_BLOCK;
   // Clear from the bottom up hoping for an early exit.
   for (let i = NUM_SLICES - 1; i >= 0; i--) {
     // TODO: Don't iterate outside of life block
@@ -510,7 +510,7 @@ export function sparkGarbage(garbage: Puyos, cleared: Puyos): Puyos {
       (cleared[0] << V_SHIFT) |
       (cleared[0] >> V_SHIFT) |
       ((cleared[1] & TOP) << TOP_TO_BOTTOM)) &
-    SEMI_LIFE_BLOCK;
+    SEMI_VISIBLE_BLOCK;
 
   eliminated[1] &=
     ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
@@ -544,7 +544,7 @@ export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
 }
 
 export function vanishTop(puyos: Puyos) {
-  puyos[0] &= SEMI_LIFE_BLOCK;
+  puyos[0] &= SEMI_VISIBLE_BLOCK;
 }
 
 export function clear(puyos: Puyos) {
@@ -561,25 +561,25 @@ export function topLine(): Puyos {
 
 export function connections(puyos: Puyos): Puyos[] {
   const down = clone(puyos);
-  down[0] &= LIFE_BLOCK;
+  down[0] &= VISIBLE_BLOCK;
   down[0] &= (down[0] >> V_SHIFT) | ((down[1] & TOP) << TOP_TO_BOTTOM);
   down[1] &= (down[1] >> V_SHIFT) | ((down[2] & TOP) << TOP_TO_BOTTOM);
   down[2] &= down[2] >> V_SHIFT;
 
   const up = clone(puyos);
-  up[0] &= LIFE_BLOCK;
+  up[0] &= VISIBLE_BLOCK;
   up[2] &= (up[2] << V_SHIFT) | ((up[1] & BOTTOM) >> TOP_TO_BOTTOM);
   up[1] &= (up[1] << V_SHIFT) | ((up[0] & BOTTOM) >> TOP_TO_BOTTOM);
   up[0] &= up[0] << V_SHIFT;
 
   const right = clone(puyos);
-  right[0] &= LIFE_BLOCK;
+  right[0] &= VISIBLE_BLOCK;
   right[0] &= (right[0] & RIGHT_BLOCK) >> H_SHIFT;
   right[1] &= (right[1] & RIGHT_BLOCK) >> H_SHIFT;
   right[2] &= (right[2] & RIGHT_BLOCK) >> H_SHIFT;
 
   const left = clone(puyos);
-  left[0] &= LIFE_BLOCK;
+  left[0] &= VISIBLE_BLOCK;
   left[0] &= (left[0] << H_SHIFT) & RIGHT_BLOCK;
   left[1] &= (left[1] << H_SHIFT) & RIGHT_BLOCK;
   left[2] &= (left[2] << H_SHIFT) & RIGHT_BLOCK;
@@ -594,4 +594,24 @@ export function connections(puyos: Puyos): Puyos[] {
  */
 export function toppedUp(puyos: Puyos): boolean {
   return !(TOPPING_LINE & ~puyos[0]);
+}
+
+export function visible(puyos: Puyos): Puyos {
+  const result = clone(puyos);
+  result[0] &= VISIBLE_BLOCK;
+  return result;
+}
+
+export function shatter(puyos: Puyos): Puyos[] {
+  const result = [];
+  for (let j = 0; j < NUM_SLICES; ++j) {
+    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
+      if (puyos[j] & (1 << i)) {
+        const puyo = emptyPuyos();
+        puyo[j] = 1 << i;
+        result.push(puyo);
+      }
+    }
+  }
+  return result;
 }

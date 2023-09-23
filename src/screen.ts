@@ -1,6 +1,6 @@
 import {
   HEIGHT,
-  LIFE_HEIGHT,
+  VISIBLE_HEIGHT,
   Puyos,
   WIDTH,
   applyMask,
@@ -252,7 +252,7 @@ export class SimplePuyoScreen {
             if (any) {
               many = true;
             } else {
-              line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
+              line += colorOf(i, y < HEIGHT - VISIBLE_HEIGHT);
               if (i === GARBAGE) {
                 line += '◎';
               } else {
@@ -515,7 +515,7 @@ export class PuyoScreen extends SimplePuyoScreen {
             if (any) {
               many = true;
             } else {
-              line += colorOf(i, y < HEIGHT - LIFE_HEIGHT);
+              line += colorOf(i, y < HEIGHT - VISIBLE_HEIGHT);
               if (puyoAt(this.sparks, x, y)) {
                 if (i === GARBAGE) {
                   line += '•';
