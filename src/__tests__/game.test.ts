@@ -1,7 +1,40 @@
 import {expect, test} from 'bun:test';
 import {MOVES, MultiplayerGame} from '../game';
 import {JKISS32} from '../jkiss';
-import {GARBAGE, puyoCount} from '..';
+import {GARBAGE, PuyoScreen, RED, puyoCount} from '..';
+
+test('Pending commit time', () => {
+  const game = new MultiplayerGame();
+  game.games[0].bag[0] = RED;
+  game.games[0].screen = PuyoScreen.fromLines([
+    'R     ',
+    'RNNNNN',
+    'RNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+    'NNNNNN',
+  ]);
+  game.pendingGarbage[0] = 30;
+  game.games[0].active = true;
+
+  for (let i = 0; i < 100; ++i) {
+    game.tick();
+  }
+
+  game.play(0, 1, 2, 0);
+
+  for (let i = 0; i < 100; ++i) {
+    game.tick();
+  }
+
+  expect(puyoCount(game.games[0].screen.grid[GARBAGE])).toBe(77);
+});
 
 test('Garbage schedule', () => {
   // Create a deterministic game.
@@ -16,7 +49,7 @@ test('Garbage schedule', () => {
       const {x1, y1, orientation} = MOVES[jkiss.step() % MOVES.length];
       game.play(0, x1, y1, orientation);
     }
-    if (game.pendingGarbage[1]) {
+    if (game.pendingGarbage[1] && !game.games[1].busy) {
       // Make sure that garbage is only sent when the chain is over.
       expect(game.games[0].screen.chainNumber).toBe(0);
       const {x1, y1, orientation} = MOVES[dummy.step() % MOVES.length];
@@ -33,7 +66,6 @@ test('Garbage schedule', () => {
       game.play(1, x1, y1, orientation);
     }
     game.tick();
-    // game.log();
   }
 
   expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(8);

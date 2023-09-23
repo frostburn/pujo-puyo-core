@@ -247,8 +247,10 @@ export class MultiplayerGame {
   // All clear bonus is commited on the next chain.
   allClearQueued: boolean[];
   allClearBonus: boolean[];
-  // Garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
+  // Outgoing garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
   canSend: boolean[];
+  // Incoming garbage lock is needed so that chains have time time to resolve and make room for the nuisance puyos.
+  canReceive: boolean[];
 
   constructor(seed?: number) {
     if (seed === undefined) {
@@ -262,6 +264,7 @@ export class MultiplayerGame {
     this.allClearQueued = [false, false];
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
+    this.canReceive = [false, false];
   }
 
   get state(): GameState[] {
@@ -316,9 +319,7 @@ export class MultiplayerGame {
 
   play(player: number, x1: number, y1: number, orientation: number) {
     this.games[player].play(x1, y1, orientation);
-    const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[player]);
-    this.games[player].screen.bufferedGarbage = releasedGarbage;
-    this.pendingGarbage[player] -= releasedGarbage;
+    this.canReceive[player] = true;
   }
 
   tick() {
@@ -366,6 +367,14 @@ export class MultiplayerGame {
         this.allClearBonus[i] = this.allClearQueued[i];
         this.allClearQueued[i] = false;
         this.canSend[i] = false;
+      }
+    }
+    for (let i = 0; i < tickResults.length; ++i) {
+      if (this.canReceive[i] && !tickResults[i].busy) {
+        const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[i]);
+        this.games[i].screen.bufferedGarbage = releasedGarbage;
+        this.pendingGarbage[i] -= releasedGarbage;
+        this.canReceive[i] = false;
       }
     }
     return tickResults;
