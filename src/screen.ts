@@ -29,6 +29,7 @@ import {
   topLine,
   trimUnsupported,
   vanishTop,
+  toppedUp,
 } from './bitboard';
 import {JKISS32} from './jkiss';
 
@@ -42,6 +43,7 @@ export type TickResult = {
   didClear: boolean;
   allClear: boolean;
   busy: boolean;
+  lockedOut: boolean;
 };
 
 export type ScreenState = {
@@ -294,6 +296,7 @@ export class SimplePuyoScreen {
       didClear: false,
       allClear: false,
       busy: false,
+      lockedOut: false,
     };
 
     // Commit garbage buffer.
@@ -369,6 +372,8 @@ export class SimplePuyoScreen {
     if (this.grid.every(isEmpty)) {
       result.allClear = true;
     }
+
+    result.lockedOut = toppedUp(this.mask);
 
     return result;
   }
@@ -561,6 +566,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         didClear: false,
         allClear: this.grid.every(isEmpty),
         busy: true,
+        lockedOut: false,
       };
     }
 
@@ -593,6 +599,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         didClear: false,
         allClear: false,
         busy: true,
+        lockedOut: false,
       };
     }
 
@@ -609,6 +616,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         didClear: false,
         allClear: false,
         busy: true,
+        lockedOut: false,
       };
     } else {
       clear(this.jiggles);
@@ -642,10 +650,12 @@ export class PuyoScreen extends SimplePuyoScreen {
     );
     const score = 10 * totalNumCleared * clearBonus;
 
+    let lockedOut = false;
     if (didClear) {
       this.chainNumber++;
     } else {
       this.chainNumber = 0;
+      lockedOut = toppedUp(this.mask);
     }
 
     return {
@@ -655,6 +665,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       didClear,
       allClear: false,
       busy: didClear,
+      lockedOut,
     };
   }
 

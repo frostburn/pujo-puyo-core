@@ -193,6 +193,7 @@ export class OnePlayerGame {
       didClear: false,
       allClear: false,
       busy: wasBusy,
+      lockedOut: false,
     };
   }
 
@@ -528,7 +529,7 @@ export class SimpleGame {
     if (tickResult.allClear) {
       tickResult.score += SIMPLE_ALL_CLEAR_BONUS;
     }
-    if (!this.availableMoves.length) {
+    if (tickResult.lockedOut) {
       tickResult.score += SIMPLE_GAME_OVER;
     }
     return tickResult;

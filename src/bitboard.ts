@@ -33,6 +33,8 @@ export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
 export const LIFE_HEIGHT = 12;
 export const GHOST_Y = 2;
 
+const TOPPING_LINE = TOP << ((GHOST_Y + 1) * V_SHIFT);
+
 // Rules
 const CLEAR_THRESHOLD = 4;
 // Scoring
@@ -583,4 +585,13 @@ export function connections(puyos: Puyos): Puyos[] {
   left[2] &= (left[2] << H_SHIFT) & RIGHT_BLOCK;
 
   return [down, up, right, left];
+}
+
+/**
+ * Check if a mask of a grounded screen is locked out.
+ * @param puyos Mask of all the puyos in a grounded screen.
+ * @returns `true` if the game should be over.
+ */
+export function toppedUp(puyos: Puyos): boolean {
+  return !(TOPPING_LINE & ~puyos[0]);
 }
