@@ -219,6 +219,19 @@ export function singlePuyo(x: number, y: number): Puyos {
 }
 
 /**
+ * Create a collection consisting of a single vertical line of puyos at the given coordinate.
+ * @param y Vertical coordinate. 0-indexed, top to bottom.
+ * @returns A vertical line of puyos.
+ */
+export function verticalLine(y: number): Puyos {
+  const slice_y = y % SLICE_HEIGHT;
+  y -= slice_y;
+  const result = emptyPuyos();
+  result[y / SLICE_HEIGHT] |= TOP << (slice_y * V_SHIFT);
+  return result;
+}
+
+/**
  * Population count (aka hamming weight) function. Counts the number of set (i.e. 1-valued) bits in a 32-bit integer.
  * @param x 32-bit integer.
  * @returns The number of set bits in the input.

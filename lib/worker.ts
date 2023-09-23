@@ -1,4 +1,4 @@
-import {SimpleGame, SimplePuyoScreen, maxDropletStrategy2} from '../src';
+import {SimpleGame, SimplePuyoScreen, flexDropletStrategy2} from '../src';
 
 onmessage = e => {
   // Revive the class instance.
@@ -15,7 +15,7 @@ onmessage = e => {
     e.data.colorSelection,
     e.data.bag
   );
-  const strategy = maxDropletStrategy2(game);
+  const strategy = flexDropletStrategy2(game);
 
   postMessage(strategy);
 };

@@ -10,7 +10,7 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay, maxDropletStrategy1 } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, LIFE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
@@ -23,7 +23,6 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 // TODO: Diffing to reduce render load
 // TODO: Audio worklet for less glitchy FX
 // TODO: Touch interface
-// TODO: Make the CPU avoid topouts
 // TODO: Remove stop button
 // TODO: Game overs and restarts
 // TODO: Track wins
@@ -399,7 +398,7 @@ function draw(timeStamp) {
       enableUserInput();
     }
 
-    // Worker thread for maxDroplet2.
+    // Worker thread for the CPU opponent.
     if (!tickResults[1].busy && !waitingForStrategy) {
       waitingForStrategy = true;
       strategyWorker.postMessage(game.toSimpleGame(1));
@@ -415,7 +414,7 @@ function draw(timeStamp) {
 // Pre-render once.
 renderGame();
 
-// Worker thread for maxDroplet2.
+// Worker thread for the CPU opponent.
 strategyWorker.onmessage = (e) => {
   const {move, score} = e.data;
   const {x1, y1, orientation} = MOVES[move];
