@@ -19,8 +19,8 @@ export type GameState = {
 };
 
 // Timings (gravity acts in units of one)
-const JIGGLE_TIME = 12;
-const SPARK_TIME = 28;
+export const JIGGLE_TIME = 15;
+export const SPARK_TIME = 20;
 
 // Colors
 const COLOR_SELECTION_SIZE = 4;
@@ -437,9 +437,8 @@ export const MOVES = [
   {x1: 4, y1: 1, x2: 5, y2: 1, orientation: 3},
 ];
 
-// TODO: Improve late time calculation.
 // How long a single move takes compared to one link in a chain.
-const MOVE_TIME = 0.3;
+const DEFAULT_MOVE_TIME = JIGGLE_TIME / (JIGGLE_TIME + SPARK_TIME + 4);
 
 // Value all-clears based on the amount of garbage they send.
 const SIMPLE_ALL_CLEAR_BONUS = 2100;
@@ -456,6 +455,7 @@ export class SimpleGame {
   // Garbage to be received later.
   lateGarbage: number;
   lateTimeRemaining: number;
+  moveTime: number;
 
   colorSelection: number[];
   // The next four or six puyos to be played.
@@ -467,7 +467,8 @@ export class SimpleGame {
     lateGarbage: number,
     lateTimeRemaining: number,
     colorSelection: number[],
-    bag: number[]
+    bag: number[],
+    moveTime = DEFAULT_MOVE_TIME
   ) {
     this.screen = screen;
     this.pendingGarbage = pendingGarbage;
@@ -475,6 +476,7 @@ export class SimpleGame {
     this.lateTimeRemaining = lateTimeRemaining;
     this.colorSelection = colorSelection;
     this.bag = bag;
+    this.moveTime = moveTime;
 
     this.resolve();
   }
@@ -518,7 +520,7 @@ export class SimpleGame {
 
   resolve() {
     const tickResult = this.screen.tick();
-    this.lateTimeRemaining -= tickResult.chainNumber + MOVE_TIME;
+    this.lateTimeRemaining -= tickResult.chainNumber + this.moveTime;
     if (this.lateTimeRemaining <= 0) {
       this.pendingGarbage += this.lateGarbage;
       this.lateGarbage = 0;

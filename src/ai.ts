@@ -141,7 +141,7 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
     }
     flexBonus += score;
   }
-  flexBonus /= moves.length;
+  flexBonus /= moves.length || 1;
   return {
     move,
     score: 0.9 * max + 0.1 * flexBonus,
@@ -153,6 +153,7 @@ export function flexDropletStrategy2(game: SimpleGame): StrategyResult {
   // Shuffle to break ties.
   moves.sort(() => Math.random() - 0.5);
 
+  let flexBonus = 0;
   let max = HEURISTIC_FAIL;
   let move = moves[0] || 0;
   for (let i = 0; i < moves.length; ++i) {
@@ -164,9 +165,37 @@ export function flexDropletStrategy2(game: SimpleGame): StrategyResult {
       max = score;
       move = moves[i];
     }
+    flexBonus += score;
   }
+  flexBonus /= moves.length || 1;
   return {
     move,
-    score: max,
+    score: 0.9 * max + 0.1 * flexBonus,
+  };
+}
+
+export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
+  const moves = game.availableMoves;
+  // Shuffle to break ties.
+  moves.sort(() => Math.random() - 0.5);
+
+  let flexBonus = 0;
+  let max = HEURISTIC_FAIL;
+  let move = moves[0] || 0;
+  for (let i = 0; i < moves.length; ++i) {
+    const clone = game.clone();
+    const tickResult = clone.playAndTick(moves[i]);
+    const score =
+      tickResult.score + PREFER_LONGER * flexDropletStrategy2(clone).score;
+    if (score > max) {
+      max = score;
+      move = moves[i];
+    }
+    flexBonus += score;
+  }
+  flexBonus /= moves.length || 1;
+  return {
+    move,
+    score: 0.9 * max + 0.1 * flexBonus,
   };
 }
