@@ -499,16 +499,11 @@ export class SimpleGame {
   }
 
   playAndTick(move: number) {
-    const color1 =
-      this.bag.shift() ||
-      this.colorSelection[
-        Math.floor(Math.random() * this.colorSelection.length)
-      ];
-    const color2 =
-      this.bag.shift() ||
-      this.colorSelection[
-        Math.floor(Math.random() * this.colorSelection.length)
-      ];
+    if (this.bag.length < 2) {
+      throw new Error('Out of moves');
+    }
+    const color1 = this.bag.shift()!;
+    const color2 = this.bag.shift()!;
     const {x1, y1, x2, y2} = MOVES[move];
     this.screen.insertPuyo(x1, y1, color1);
     this.screen.insertPuyo(x2, y2, color2);
