@@ -17,6 +17,7 @@ import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
 // TODO: Remove stop button
+// TODO: Investigate glitchy stuff that happens when you spam clicks like panels merging with garbage.
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -58,6 +59,7 @@ const preIgnitions = [
   Array(WIDTH * HEIGHT).fill(false)
 ];
 let inputEnabled = true;
+let gameOvers = [false, false];
 
 const container = document.createElement("div");
 container.classList.add("container");
@@ -82,6 +84,7 @@ style.textContent = (
   ".score-label {font: bold 0.7px sans-serif; fill:azure;} " +
   ".score {font: bold 0.7px monospace; fill:azure;} " +
   ".all-clear {font: bold 1px sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} "+
+  ".game-over {font: bold 1.3px sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} "+
   ".chain {font: bold 0.8px sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} "
 );
 svg.appendChild(style);
@@ -114,9 +117,9 @@ for (let i = 0; i < 2; ++i) {
   const allClearPath = svgElement("path");
   allClearPath.setAttribute("id", `all-clear-path-${i}`);
   if (i === 0) {
-    allClearPath.setAttribute("d", `M ${LEFT_SCREEN_X+0.9} ${LEFT_SCREEN_Y+2} q 2 -0.5 4 0`);
+    allClearPath.setAttribute("d", `M ${LEFT_SCREEN_X+0.9} ${LEFT_SCREEN_Y+2} q 2.05 -0.5 4.2 0`);
   } else {
-    allClearPath.setAttribute("d", `M ${RIGHT_SCREEN_X+0.9} ${RIGHT_SCREEN_Y+2} q 2 -0.5 4 0`);
+    allClearPath.setAttribute("d", `M ${RIGHT_SCREEN_X+0.9} ${RIGHT_SCREEN_Y+2} q 2.05 -0.5 4.2 0`);
   }
   allClearPath.setAttribute("fill", "none");
   svg.appendChild(allClearPath);
@@ -177,6 +180,65 @@ for (let i = 0; i < NUM_CARD_INDICES; ++i) {
   chains.push(chain);
 
   svg.appendChild(chain);
+}
+
+const gameOverBackgrounds = [];
+const gameLabels = [];
+const overLabels = [];
+const overPaths = [];
+for (let i = 0; i < 2; ++i) {
+  const background = svgElement("ellipse");
+  if (i === 0) {
+    background.setAttribute("cx", LEFT_SCREEN_X + 3);
+    background.setAttribute("cy", LEFT_SCREEN_Y + 4.3);
+  } else {
+    background.setAttribute("cx", RIGHT_SCREEN_X + 3);
+    background.setAttribute("cy", RIGHT_SCREEN_Y + 4.3);
+  }
+  background.setAttribute("rx", "2.6");
+  background.setAttribute("ry", "1.7");
+  background.setAttribute("fill", "none");
+  background.setAttribute("stroke", "none");
+  background.setAttribute("stroke-width", "0.1");
+  gameOverBackgrounds.push(background);
+  svg.appendChild(background);
+
+  const gamePath = svgElement("path");
+  gamePath.setAttribute("id", `game-path-${i}`);
+  const overPath = svgElement("path");
+  overPath.setAttribute("id", `over-path-${i}`);
+  if (i === 0) {
+    gamePath.setAttribute("d", `M ${LEFT_SCREEN_X+1.2} ${LEFT_SCREEN_Y+4} q 1.9 0.4 3.8 0`);
+    overPath.setAttribute("d", `M ${LEFT_SCREEN_X+1.4} ${LEFT_SCREEN_Y+5.2} q 1.65 0.2 3.3 0`);
+  } else {
+    gamePath.setAttribute("d", `M ${RIGHT_SCREEN_X+1.2} ${RIGHT_SCREEN_Y+4} q 1.9 0.4 3.8 0`);
+    overPath.setAttribute("d", `M ${RIGHT_SCREEN_X+1.4} ${RIGHT_SCREEN_Y+5.2} q 1.65 0.2 3.3 0`);
+  }
+  gamePath.setAttribute("fill", "none");
+  overPath.setAttribute("fill", "none");
+  overPath.setAttribute("stroke", "none");
+  overPath.setAttribute("stroke-width", "0.2");
+  overPaths.push(overPath);
+  svg.appendChild(gamePath);
+  svg.appendChild(overPath);
+  {
+    const text = svgElement("text");
+    const textPath = svgElement("textPath");
+    textPath.setAttribute("href", `#game-path-${i}`);
+    textPath.setAttribute("textLength", "20%");
+    text.appendChild(textPath);
+    text.classList.add("game-over");
+    svg.appendChild(text);
+    gameLabels.push(textPath);
+  }
+  const text = svgElement("text");
+  const textPath = svgElement("textPath");
+  textPath.setAttribute("href", `#over-path-${i}`);
+  textPath.setAttribute("textLength", "17%");
+  text.appendChild(textPath);
+  text.classList.add("game-over");
+  svg.appendChild(text);
+  overLabels.push(textPath);
 }
 
 function panelSymbol(color, jiggle = false) {
@@ -262,6 +324,14 @@ function renderGame() {
     ghostContents[i].replaceChildren(...newGhostChildren);
 
     allClearLabels[i].textContent = gameState[i].allClearBonus ? "All Clear" : "";
+
+    if (gameOvers[i]) {
+      gameLabels[i].textContent = "Game";
+      overLabels[i].textContent = "Over";
+      overPaths[i].setAttribute("stroke", "red");
+      gameOverBackgrounds[i].setAttribute("fill", "rgba(0, 0, 0, 0.6)");
+      gameOverBackgrounds[i].setAttribute("stroke", "rgba(0, 0, 0, 0.7)");
+    }
 
     const newChildren = [];
 
@@ -380,6 +450,9 @@ function draw(timeStamp) {
     gameAge++;
 
     for (let i = 0; i < 2; ++i) {
+      if (tickResults[i].lockedOut) {
+        gameOvers[i] = true;
+      }
       if (tickResults[i].didClear) {
         const cardIndex = nextChainCards[i];
 
