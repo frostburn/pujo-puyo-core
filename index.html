@@ -12,7 +12,7 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
@@ -53,6 +53,11 @@ const screenColors = [
   Array(WIDTH * VISIBLE_HEIGHT).fill(-1),
   Array(WIDTH * VISIBLE_HEIGHT).fill(-1)
 ];
+const preIgnitions = [
+  Array(WIDTH * HEIGHT).fill(false),
+  Array(WIDTH * HEIGHT).fill(false)
+];
+let inputEnabled = true;
 
 const container = document.createElement("div");
 container.classList.add("container");
@@ -188,7 +193,7 @@ function panelSymbol(color, jiggle = false) {
   }
 }
 
-function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false) {
+function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false, preIgnited = false) {
   const element = svgElement("use");
   if (color === GARBAGE) {
     element.setAttribute("href", jiggle ? "#jiggling-garbage": "#garbage");
@@ -205,6 +210,13 @@ function panelAt(x, y, color, connectivity = 0, jiggle = false, ignited = false)
   }
   const group = svgElement("g");
   group.appendChild(element);
+  if (preIgnited) {
+    const preIgnition = svgElement("use");
+    preIgnition.setAttribute("href", "#pre-ignition");
+    preIgnition.setAttribute("x", x);
+    preIgnition.setAttribute("y", y);
+    group.appendChild(preIgnition);
+  }
   const glyph = svgElement("use");
   glyph.setAttribute("x", x + 0.5);
   glyph.setAttribute("y", y + 0.5);
@@ -304,7 +316,7 @@ function renderGame() {
               newChildren.push(sparks);
             }
           } else {
-            const panel = panelAt(x, y, color, screen.connectivity[arrayIndex], screen.jiggling[arrayIndex], screen.ignited[arrayIndex]);
+            const panel = panelAt(x, y, color, screen.connectivity[arrayIndex], screen.jiggling[arrayIndex], screen.ignited[arrayIndex], preIgnitions[i][arrayIndex]);
             if (screen.falling[arrayIndex]) {
               const animation = svgElement("animateTransform");
               animation.setAttribute("attributeName", "transform");
@@ -505,6 +517,11 @@ secondDroplet.setAttribute("opacity", 0.7);
 svg.appendChild(secondDroplet);
 
 function disableUserInput() {
+  if (!inputEnabled) {
+    return;
+  }
+  inputEnabled = false;
+
   mainPanel.setAttribute("fill", "none");
   mainPanel.setAttribute("stroke", "none");
   mainGlyph.setAttribute("fill", "none");
@@ -516,6 +533,8 @@ function disableUserInput() {
   secondGlyph.setAttribute("fill", "none");
   secondDroplet.setAttribute("fill", "none");
   secondDroplet.setAttribute("stroke", "none");
+
+  preIgnitions[0].fill(false);
 }
 
 function helpMainPanel() {
@@ -529,6 +548,10 @@ function helpMainPanel() {
 }
 
 function enableUserInput() {
+  if (inputEnabled) {
+    return;
+  }
+  inputEnabled = true;
   mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
   secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
   helpMainPanel();
@@ -536,6 +559,7 @@ function enableUserInput() {
   mainDroplet.setAttribute("stroke", "white");
   secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
   secondDroplet.setAttribute("stroke", "white");
+  updateDropletPositions();
 }
 
 function snapToGrid(x, y) {
@@ -557,6 +581,9 @@ function updatePanelPositions() {
 }
 
 function updateDropletPositions() {
+  if (!inputEnabled) {
+    return;
+  }
   let mainY = game.games[0].screen.dropPuyo(mainGridX, mainGridY + GHOST_Y + 1) - GHOST_Y - 1;
   const {hintDeltaX, hintDeltaY} = calculateHints();
   const hintX = mainGridX + hintDeltaX;
@@ -580,6 +607,8 @@ function updateDropletPositions() {
       mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
     }
   }
+
+  preIgnitions[0] = game.games[0].screen.preIgnite(mainGridX, mainY + GHOST_Y + 1, game.games[0].visibleBag[0], hintX, secondY + GHOST_Y + 1, game.games[0].visibleBag[1]);
 }
 
 function updateGlyphPositions() {

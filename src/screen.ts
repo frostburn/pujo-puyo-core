@@ -30,6 +30,11 @@ import {
   trimUnsupported,
   vanishTop,
   toppedUp,
+  flood,
+  puyoCount,
+  CLEAR_THRESHOLD,
+  visible,
+  GHOST_Y,
 } from './bitboard';
 import {JKISS32} from './jkiss';
 
@@ -445,6 +450,53 @@ export class SimplePuyoScreen {
       y++;
     }
     return y;
+  }
+
+  preIgnite(
+    x1: number,
+    y1: number,
+    color1: number,
+    x2: number,
+    y2: number,
+    color2: number
+  ): boolean[] {
+    // Under normal operation this quarantees non-ignition.
+    if (y1 <= GHOST_Y) {
+      y1 = 0;
+    }
+    if (y2 <= GHOST_Y) {
+      y2 = 0;
+    }
+    if (color1 === color2 && (x1 === x2 || y1 === y2)) {
+      const puyos = clone(this.grid[color1]);
+      const group = singlePuyo(x1, y1);
+      merge(group, singlePuyo(x2, y2));
+      merge(puyos, group);
+      flood(group, visible(puyos));
+      if (puyoCount(group) >= CLEAR_THRESHOLD) {
+        return toArray(group);
+      }
+    } else {
+      const result = emptyPuyos();
+
+      const puyos1 = clone(this.grid[color1]);
+      const group1 = singlePuyo(x1, y1);
+      merge(puyos1, group1);
+      flood(group1, visible(puyos1));
+      if (puyoCount(group1) >= CLEAR_THRESHOLD) {
+        merge(result, group1);
+      }
+
+      const puyos2 = clone(this.grid[color2]);
+      const group2 = singlePuyo(x2, y2);
+      merge(puyos2, group2);
+      flood(group2, visible(puyos2));
+      if (puyoCount(group2) >= CLEAR_THRESHOLD) {
+        merge(result, group2);
+      }
+      return toArray(result);
+    }
+    return Array(WIDTH * HEIGHT).fill(false);
   }
 }
 

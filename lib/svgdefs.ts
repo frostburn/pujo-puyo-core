@@ -413,5 +413,27 @@ export function makeDefs() {
   jigglingDiamondDef.appendChild(jiggleAnimation.cloneNode());
   defs.appendChild(jigglingDiamondDef);
 
+  // This should be replaced with an animated fill once we have a grid of stable elements. See issue #10.
+  const preIgnitionDef = svgElement('rect');
+  preIgnitionDef.setAttribute('id', 'pre-ignition');
+  preIgnitionDef.setAttribute('x', '0.03');
+  preIgnitionDef.setAttribute('y', '0.03');
+  preIgnitionDef.setAttribute('rx', '0.2');
+  preIgnitionDef.setAttribute('ry', '0.2');
+  preIgnitionDef.setAttribute('width', '0.94');
+  preIgnitionDef.setAttribute('height', '0.94');
+  preIgnitionDef.setAttribute('fill', 'white');
+  preIgnitionDef.setAttribute('opacity', '0.5');
+  {
+    const animation = svgElement('animate');
+    animation.setAttribute('attributeName', 'opacity');
+    animation.setAttribute('values', '0;0.8;0');
+    animation.setAttribute('dur', '1s');
+    animation.setAttribute('repeatCount', 'indefinite');
+    preIgnitionDef.appendChild(animation);
+  }
+
+  defs.appendChild(preIgnitionDef);
+
   return svg;
 }
