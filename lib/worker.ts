@@ -11,6 +11,8 @@ const LOG = false;
 // Milliseconds per frame
 const FRAME_RATE = 30 / 1000;
 
+const WORKER_ANTICIPATION = 3;
+
 const CHAIN_FRAMES = JIGGLE_TIME + SPARK_TIME + 4;
 const DROP_FRAMES = 10 + JIGGLE_TIME;
 
@@ -31,7 +33,8 @@ onmessage = e => {
     e.data.lateTimeRemaining,
     e.data.colorSelection,
     e.data.bag,
-    (totalThinkingFrames / numSamples + DROP_FRAMES) / CHAIN_FRAMES
+    (totalThinkingFrames / numSamples + DROP_FRAMES - WORKER_ANTICIPATION) /
+      CHAIN_FRAMES
   );
   const start = performance.now();
   const strategy = flexDropletStrategy2(game);

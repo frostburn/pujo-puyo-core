@@ -220,6 +220,18 @@ export class OnePlayerGame {
   log(): void {
     console.log(this.displayLines().join('\n'));
   }
+
+  clone() {
+    // Random seed, don't leak original.
+    const result = new OnePlayerGame(undefined, this.colorSelection);
+    result.score = this.score;
+    result.jiggleTime = this.jiggleTime;
+    result.sparkTime = this.sparkTime;
+    result.active = this.active;
+    result.screen = this.screen.clone();
+    result.bag = this.visibleBag;
+    return result;
+  }
 }
 
 export class SinglePlayerGame extends OnePlayerGame {
@@ -404,6 +416,20 @@ export class MultiplayerGame {
       this.games[player].colorSelection,
       this.games[player].visibleBag
     );
+  }
+
+  clone() {
+    // Random seed. Don't leak original.
+    const result = new MultiplayerGame();
+    result.games = this.games.map(game => game.clone());
+    result.pendingGarbage = [...this.pendingGarbage];
+    result.accumulatedGarbage = [...this.accumulatedGarbage];
+    result.pointResidues = [...this.pointResidues];
+    result.allClearQueued = [...this.allClearQueued];
+    result.allClearBonus = [...this.allClearBonus];
+    result.canSend = [...this.canSend];
+    result.canReceive = [...this.canReceive];
+    return result;
   }
 }
 

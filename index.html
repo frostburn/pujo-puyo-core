@@ -18,6 +18,10 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
+let workerStrategy;
+let workerGame;
+
+const WORKER_ANTICIPATION = 3;
 
 const FRAME_RATE = 30;
 
@@ -39,6 +43,7 @@ const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 const NUM_CARD_INDICES = 4;
 
 const game = new MultiplayerGame();
+workerGame = game.clone();
 
 const nextChainCards = [0, 2];
 const ignitionCenters = [[0, 0], [0, 0]];
@@ -388,9 +393,27 @@ function draw(timeStamp) {
     }
 
     // Worker thread for the CPU opponent.
-    if (!tickResults[1].busy && !waitingForStrategy) {
+    if (!tickResults[1].busy && workerStrategy !== undefined) {
+      const {move, score} = workerStrategy;
+      const {x1, y1, orientation} = MOVES[move];
+      if (game.toSimpleGame(1).availableMoves.length) {
+        game.play(1, x1, y1, orientation);
+        workerGame = game.clone();
+        for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
+          workerGame.tick();
+        }
+      }
+      workerStrategy = undefined;
+    }
+
+    // Anticipate moves.
+    const anticipation = workerGame.tick();
+    if (!anticipation[1].busy && !waitingForStrategy) {
       waitingForStrategy = true;
-      strategyWorker.postMessage(game.toSimpleGame(1));
+      const message = workerGame.toSimpleGame(1);
+      // Make sure that the bot doesn't hallucinate.
+      message.bag = game.games[1].visibleBag;
+      strategyWorker.postMessage(message);
     }
   }
   if (needsRedraw) {
@@ -405,11 +428,7 @@ renderGame();
 
 // Worker thread for the CPU opponent.
 strategyWorker.onmessage = (e) => {
-  const {move, score} = e.data;
-  const {x1, y1, orientation} = MOVES[move];
-  if (game.toSimpleGame(1).availableMoves.length) {
-    game.play(1, x1, y1, orientation);
-  }
+  workerStrategy = e.data;
   waitingForStrategy = false;
 };
 
@@ -720,6 +739,10 @@ function commitMove(x, y) {
   secondDeltaY = hintDeltaY;
 
   game.play(0, mainGridX, mainGridY + GHOST_Y + 1, getOrientation());
+  workerGame = game.clone();
+  for (let i = 0; i < WORKER_ANTICIPATION; ++i) {
+    workerGame.tick();
+  }
 
   mainPanelLocked = false;
   secondDeltaX = 0;

@@ -685,4 +685,21 @@ export class PuyoScreen extends SimplePuyoScreen {
     }
     return true;
   }
+
+  /**
+   * Clone the screen.
+   * @returns Copy of the screen with different randomness.
+   */
+  clone() {
+    const result = new PuyoScreen();
+    result.grid = this.grid.map(clone);
+    result.chainNumber = this.chainNumber;
+    result.garbageSlots = [...this.garbageSlots];
+    // Shuffle remaining slots to avoid revealing RNG information.
+    result.garbageSlots.sort(() => Math.random() - 0.5);
+    result.doJiggles = this.doJiggles;
+    result.jiggles = clone(this.jiggles);
+    result.sparks = clone(this.sparks);
+    return result;
+  }
 }
