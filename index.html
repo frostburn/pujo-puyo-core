@@ -73,9 +73,9 @@ function juggleCards(cardIndex) {
 }
 
 const svg = svgElement("svg");
-svg.setAttribute("width", "95vh");
+svg.setAttribute("width", "98vw");
 svg.setAttribute("height", "95vh");
-svg.setAttribute("viewBox", "0 0 19 19");
+svg.setAttribute("viewBox", "0 0 20 16");
 container.appendChild(svg);
 
 // Styles
@@ -111,6 +111,31 @@ rightScreen.setAttribute("href", "#screen");
 rightScreen.setAttribute("x", RIGHT_SCREEN_X);
 rightScreen.setAttribute("y", RIGHT_SCREEN_Y);
 svg.appendChild(rightScreen);
+
+const scores = [];
+for (let i = 0; i < 2; ++i) {
+  const scoreText = svgElement("text");
+  if (i === 0) {
+    scoreText.setAttribute("x", LEFT_SCREEN_X);
+    scoreText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT+0.8);
+  } else {
+    scoreText.setAttribute("x", RIGHT_SCREEN_X);
+    scoreText.setAttribute("y", RIGHT_SCREEN_Y + VISIBLE_HEIGHT+0.8);
+  }
+
+  const scoreLabel = svgElement("tspan");
+  scoreLabel.classList.add("score-label");
+  scoreLabel.textContent = "Score:";
+  scoreText.appendChild(scoreLabel);
+
+  const scoreDisplay = svgElement("tspan");
+  scoreDisplay.classList.add("score");
+  scoreDisplay.textContent = "0";
+  scoreText.appendChild(scoreDisplay);
+
+  scores.push(scoreDisplay);
+  svg.appendChild(scoreText);
+}
 
 const allClearLabels = [];
 for (let i = 0; i < 2; ++i) {
@@ -415,19 +440,7 @@ function renderGame() {
 
     contents[i].replaceChildren(...newChildren);
 
-    const scoreLabel = svgElement("text");
-    scoreLabel.setAttribute("y", VISIBLE_HEIGHT+0.8);
-    scoreLabel.classList.add("score-label");
-    scoreLabel.textContent = "Score:";
-    contents[i].appendChild(scoreLabel);
-
-    const score = svgElement("text");
-    score.classList.add("score");
-    score.setAttribute("y", VISIBLE_HEIGHT+0.8);
-    score.setAttribute("dx", scoreLabel.getBBox().width + 0.1);
-    score.textContent = gameState[i].score;
-    contents[i].appendChild(score);
-
+    scores[i].textContent = gameState[i].score;
   }
 }
 
@@ -971,13 +984,11 @@ panicButton.onclick = () => {
 panicButton.textContent = "stop";
 document.body.appendChild(panicButton);
 
+const pt = svg.createSVGPoint();
 function viewBoxCoords(event) {
-  const bounds = svg.getBoundingClientRect();
-  const viewBox = svg.viewBox.baseVal;
-
-  const x = (event.x - bounds.x) / bounds.width * viewBox.width;
-  const y = (event.y - bounds.y) / bounds.height * viewBox.height;
-
+  pt.x = event.x;
+  pt.y = event.y;
+  return  pt.matrixTransform(svg.getScreenCTM().inverse());
   return {x, y};
 }
 
