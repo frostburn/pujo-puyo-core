@@ -1,5 +1,5 @@
 import {GHOST_Y, HEIGHT, WIDTH, isNonEmpty, puyoAt} from './bitboard';
-import {JKISS32} from './jkiss';
+import {JKISS32, randomSeed} from './jkiss';
 import {
   NUM_PUYO_COLORS,
   PuyoScreen,
@@ -277,7 +277,7 @@ export class MultiplayerGame {
 
   constructor(seed?: number) {
     if (seed === undefined) {
-      seed = Math.floor(Math.random() * 4294967296);
+      seed = randomSeed();
     }
     this.games = [new OnePlayerGame(seed), new OnePlayerGame(seed)];
 

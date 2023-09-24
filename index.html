@@ -12,12 +12,11 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay, randomSeed } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
 // TODO: Remove stop button
-// TODO: Investigate glitchy stuff that happens when you spam clicks like panels merging with garbage.
 
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
@@ -25,6 +24,9 @@ let workerStrategy;
 let workerGame;
 
 const WORKER_ANTICIPATION = 3;
+
+let userMove;
+let inputEnabled = true;
 
 const FRAME_RATE = 30;
 
@@ -45,7 +47,15 @@ const RIGHT_SCREEN_Y = LEFT_SCREEN_Y;
 
 const NUM_CARD_INDICES = 4;
 
-const game = new MultiplayerGame();
+// Replayability
+let replaying = false;
+let seed = randomSeed();
+let moves = [];
+let replayIndex;
+
+let gameAge = 0;
+
+let game = new MultiplayerGame(seed);
 workerGame = game.clone();
 
 const nextChainCards = [0, 2];
@@ -58,7 +68,6 @@ const preIgnitions = [
   Array(WIDTH * HEIGHT).fill(false),
   Array(WIDTH * HEIGHT).fill(false)
 ];
-let inputEnabled = true;
 let gameOvers = [false, false];
 
 const container = document.createElement("div");
@@ -356,6 +365,12 @@ function renderGame() {
       overPaths[i].setAttribute("stroke", "red");
       gameOverBackgrounds[i].setAttribute("fill", "rgba(0, 0, 0, 0.6)");
       gameOverBackgrounds[i].setAttribute("stroke", "rgba(0, 0, 0, 0.7)");
+    } else {
+      gameLabels[i].textContent = "";
+      overLabels[i].textContent = "";
+      overPaths[i].setAttribute("stroke", "none");
+      gameOverBackgrounds[i].setAttribute("fill", "none");
+      gameOverBackgrounds[i].setAttribute("stroke", "none");
     }
 
     const newChildren = [];
@@ -444,8 +459,6 @@ function renderGame() {
   }
 }
 
-let gameAge = 0;
-
 let start;
 let frameId;
 
@@ -460,7 +473,6 @@ function draw(timeStamp) {
 
   while (gameAge < intendedAge) {
     const tickResults = game.tick();
-    gameAge++;
 
     for (let i = 0; i < 2; ++i) {
       if (tickResults[i].lockedOut) {
@@ -486,36 +498,62 @@ function draw(timeStamp) {
       }
     }
 
-    // User input for the left screen.
-    if (tickResults[0].busy) {
+    if (replaying) {
       disableUserInput();
-    } else {
-      enableUserInput();
-    }
 
-    // Worker thread for the CPU opponent.
-    if (!tickResults[1].busy && workerStrategy !== undefined) {
-      const {move, score} = workerStrategy;
-      const {x1, y1, orientation} = MOVES[move];
-      if (game.toSimpleGame(1).availableMoves.length) {
-        game.play(1, x1, y1, orientation, true);
+      while(replayIndex < moves.length && moves[replayIndex][0] <= gameAge) {
+        const move = moves[replayIndex++].slice(1);
+        game.play(...move);
+      }
+    } else {
+
+      // User input for the left screen.
+      if (tickResults[0].busy) {
+        disableUserInput();
+      } else {
+        enableUserInput();
+      }
+
+      if (!tickResults[0].busy && userMove !== undefined) {
+        game.play(0, ...userMove);
+        userMove.unshift(0);
+        userMove.unshift(gameAge);
+        moves.push(userMove);
+        userMove = undefined;
+
         workerGame = game.clone();
         for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
           workerGame.tick();
         }
       }
-      workerStrategy = undefined;
+
+      // Worker thread for the CPU opponent.
+      if (!tickResults[1].busy && workerStrategy !== undefined) {
+        const {move, score} = workerStrategy;
+        const {x1, y1, orientation} = MOVES[move];
+        if (game.toSimpleGame(1).availableMoves.length) {
+          game.play(1, x1, y1, orientation, true);
+          moves.push([gameAge, 1, x1, y1, orientation, true]);
+          workerGame = game.clone();
+          for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
+            workerGame.tick();
+          }
+        }
+        workerStrategy = undefined;
+      }
+
+      // Anticipate moves.
+      const anticipation = workerGame.tick();
+      if (!anticipation[1].busy && !waitingForStrategy) {
+        waitingForStrategy = true;
+        const message = workerGame.toSimpleGame(1);
+        // Make sure that the bot doesn't hallucinate.
+        message.bag = game.games[1].visibleBag;
+        strategyWorker.postMessage(message);
+      }
     }
 
-    // Anticipate moves.
-    const anticipation = workerGame.tick();
-    if (!anticipation[1].busy && !waitingForStrategy) {
-      waitingForStrategy = true;
-      const message = workerGame.toSimpleGame(1);
-      // Make sure that the bot doesn't hallucinate.
-      message.bag = game.games[1].visibleBag;
-      strategyWorker.postMessage(message);
-    }
+    gameAge++;
   }
   if (needsRedraw) {
     renderGame();
@@ -739,11 +777,13 @@ function moveCursor(x, y) {
     mainGridY = gridY;
   }
   kickCursor();
-  updatePanelPositions();
+  if (inputEnabled) {
+    updatePanelPositions();
+  }
 }
 
 function lockMainPanel(x, y) {
-  if (mainPanelLocked || game.games[0].busy) {
+  if (mainPanelLocked || game.games[0].busy || !inputEnabled) {
     return;
   }
   moveCursor(x, y);
@@ -872,11 +912,7 @@ function commitMove(x, y) {
   secondDeltaX = hintDeltaX;
   secondDeltaY = hintDeltaY;
 
-  game.play(0, mainGridX, mainGridY + GHOST_Y + 1, getOrientation());
-  workerGame = game.clone();
-  for (let i = 0; i < WORKER_ANTICIPATION; ++i) {
-    workerGame.tick();
-  }
+  userMove = [mainGridX, mainGridY + GHOST_Y + 1, getOrientation(), false];
 
   mainPanelLocked = false;
   secondDeltaX = 0;
@@ -983,6 +1019,21 @@ panicButton.onclick = () => {
 }
 panicButton.textContent = "stop";
 document.body.appendChild(panicButton);
+
+const replayButton = document.createElement("button");
+replayButton.addEventListener("click", () => {
+  game = new MultiplayerGame(seed);
+  workerGame = game.clone();
+  gameAge = 0;
+  replaying = true;
+  replayIndex = 0;
+  gameOvers = [false, false];
+  start = undefined;
+  // Make the moves available for debugging.
+  window.replayMoves = moves;
+});
+replayButton.textContent = "replay";
+document.body.appendChild(replayButton);
 
 const pt = svg.createSVGPoint();
 function viewBoxCoords(event) {

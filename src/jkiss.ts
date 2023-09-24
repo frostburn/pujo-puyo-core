@@ -1,5 +1,9 @@
 const TWO_POW_32 = 4294967296;
 
+export function randomSeed() {
+  return Math.floor(Math.random() * TWO_POW_32);
+}
+
 /**
  * Pseudo-random number generator.
  * Adapted from "Good Practice in (Pseudo) Random Number Generation for Bioinformatics Applications" by David Jones.
@@ -13,10 +17,10 @@ export class JKISS32 {
     this.state = new Uint32Array(5);
 
     if (seed === undefined) {
-      this.state[0] = Math.random() * TWO_POW_32;
-      this.state[1] = Math.random() * TWO_POW_32;
-      this.state[2] = Math.random() * TWO_POW_32;
-      this.state[3] = Math.random() * TWO_POW_32;
+      this.state[0] = randomSeed();
+      this.state[1] = randomSeed();
+      this.state[2] = randomSeed();
+      this.state[3] = randomSeed();
       if (this.state[1] === 0) {
         this.state[1] = 7;
       }
