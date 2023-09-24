@@ -29,10 +29,37 @@ const MAX_WORKER_ANTICIPATION = 5;
 let workerAnticipation = 2;
 let workerGameAge = 0;
 
-const EASY_THROTTLE_FRAMES = FRAME_RATE * 3;
-let botName = "random";
-let botKickDown = false;
+const DIFFICULTIES = [
+  {
+    "label": "Easy",
+    "botName": "random",
+    "throttleFrames": FRAME_RATE * 4,
+    "kickDown": false,
+  },
+  {
+    "label": "Mid",
+    "botName": "flex1",
+    "throttleFrames": FRAME_RATE * 2,
+    "kickDown": false,
+  },
+  {
+    "label": "Hard",
+    "botName": "flex2",
+    "throttleFrames": 0,
+    "kickDown": false,
+  },
+  {
+    "label": "Brutal",
+    "botName": "flex2",
+    "throttleFrames": 0,
+    "kickDown": true,
+  },
+];
+
+let botName = DIFFICULTIES[0].botName;
 let botThrottleFrames = 0;
+let botInitialThrottleFrames = DIFFICULTIES[0].throttleFrames;
+let botKickDown = DIFFICULTIES[0].kickDown;
 
 let userMove;
 let inputEnabled = true;
@@ -104,9 +131,13 @@ const style = svgElement("style");
 style.textContent = (
   ".score-label {font: bold 0.7px sans-serif; fill:azure;} " +
   ".score {font: bold 0.7px monospace; fill:azure;} " +
-  ".all-clear {font: bold 1px sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} "+
-  ".game-over {font: bold 1.3px sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} "+
-  ".chain {font: bold 0.8px sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} "
+  ".all-clear {font: bold 1px sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} " +
+  ".game-over {font: bold 1.3px sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} " +
+  ".chain {font: bold 0.8px sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} " +
+  ".difficulty-text {font: bold 0.8px sans-serif; dominant-baseline: middle; text-anchor: middle; fill:#68a; filter:url(#shadow);} " +
+  ".difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} " +
+  ".difficulty-text.active {fill:#bde;} " +
+  ".difficulty-button.active {fill:#ab9} "
 );
 svg.appendChild(style);
 
@@ -178,6 +209,67 @@ for (let i = 0; i < 2; ++i) {
 
   allClearLabels.push(textPath);
 }
+
+const difficultyElements = [];
+
+DIFFICULTIES.forEach((difficulty, i) => {
+  const x = RIGHT_SCREEN_X + 7.8;
+  const y = RIGHT_SCREEN_Y + 5.5 + 1.85*i;
+
+  const button = svgElement("ellipse");
+  button.classList.add("difficulty-button");
+  button.setAttribute("rx", 1.4);
+  button.setAttribute("ry", 0.8);
+  button.setAttribute("cx", x);
+  button.setAttribute("cy", y);
+  svg.appendChild(button);
+
+  const text = svgElement("text");
+  text.classList.add("difficulty-text");
+  text.setAttribute("x", x);
+  text.setAttribute("y", y);
+  text.textContent = difficulty.label;
+  svg.appendChild(text);
+
+  if (difficulty.label === "Easy") {
+    button.classList.add("active");
+    text.classList.add("active");
+  }
+
+  function guard(event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const myBotName = difficulty.botName;
+  const myThrottleFrames = difficulty.throttleFrames;
+  const myKickDown = difficulty.kickDown;
+
+  function click(event) {
+    guard(event);
+    let activate = false;
+    if (button.classList.contains("active")) {
+      botName = "none";
+    } else {
+      activate = true;
+      botName = myBotName;
+      botInitialThrottleFrames = myThrottleFrames;
+      botKickDown = myKickDown;
+    }
+    difficultyElements.forEach(element => element.classList.remove("active"));
+    if (activate) {
+      button.classList.add("active");
+      text.classList.add("active");
+    }
+  }
+  button.addEventListener("click", click);
+  button.addEventListener("mousedown", guard);
+  text.addEventListener("click", click);
+  text.addEventListener("mousedown", guard);
+
+  difficultyElements.push(button);
+  difficultyElements.push(text);
+});
 
 const leftContent = svgElement("g");
 leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
@@ -561,15 +653,17 @@ function draw(timeStamp) {
       // Anticipate moves.
       const anticipation = workerGame.tick();
       if (!anticipation[1].busy && !waitingForStrategy && botThrottleFrames <= 0) {
-        waitingForStrategy = true;
-        const message = {
-          name: botName,
-          game: workerGame.toSimpleGame(1),
-          anticipation: workerAnticipation,
+        if (botName !== "none") {
+          waitingForStrategy = true;
+          const message = {
+            name: botName,
+            game: workerGame.toSimpleGame(1),
+            anticipation: workerAnticipation,
+          }
+          // Make sure that the bot doesn't hallucinate.
+          message.game.bag = game.games[1].visibleBag;
+          strategyWorker.postMessage(message);
         }
-        // Make sure that the bot doesn't hallucinate.
-        message.game.bag = game.games[1].visibleBag;
-        strategyWorker.postMessage(message);
       }
     }
 
@@ -591,7 +685,7 @@ strategyWorker.onmessage = (e) => {
   workerStrategy = e.data.strategy;
   workerAnticipation = Math.min(e.data.thinkingFrames, MAX_WORKER_ANTICIPATION);
   waitingForStrategy = false;
-  botThrottleFrames = EASY_THROTTLE_FRAMES;
+  botThrottleFrames = botInitialThrottleFrames;
 };
 
 // User interface

@@ -435,5 +435,16 @@ export function makeDefs() {
 
   defs.appendChild(preIgnitionDef);
 
+  const shadowFilter = svgElement('filter');
+  shadowFilter.setAttribute('id', 'shadow');
+  shadowFilter.setAttribute('width', '125%');
+  shadowFilter.setAttribute('height', '130%');
+  const dropShadow = svgElement('feDropShadow');
+  dropShadow.setAttribute('dx', '0.03');
+  dropShadow.setAttribute('dy', '0.05');
+  dropShadow.setAttribute('stdDeviation', '0.03');
+  shadowFilter.appendChild(dropShadow);
+  defs.appendChild(shadowFilter);
+
   return svg;
 }
