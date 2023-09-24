@@ -18,17 +18,24 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 
 // TODO: Remove stop button
 
+const FRAME_RATE = 30;
+
 const strategyWorker = new Worker("./build/worker.js");
 let waitingForStrategy = false;
 let workerStrategy;
 let workerGame;
 
-const WORKER_ANTICIPATION = 3;
+const MAX_WORKER_ANTICIPATION = 5;
+let workerAnticipation = 2;
+let workerGameAge = 0;
+
+const EASY_THROTTLE_FRAMES = FRAME_RATE * 3;
+let botName = "random";
+let botKickDown = false;
+let botThrottleFrames = 0;
 
 let userMove;
 let inputEnabled = true;
-
-const FRAME_RATE = 30;
 
 // 'RGYBPN'
 const STROKES = ["#d22", "#2d2", "#dd2", "#22e", "#d2c", "rgba(20, 160, 160, 0.88)"];
@@ -57,6 +64,11 @@ let gameAge = 0;
 
 let game = new MultiplayerGame(seed);
 workerGame = game.clone();
+// Does essentially nothing, but documents the intention.
+for (let i = 0; i < workerAnticipation; ++i) {
+  workerGame.tick();
+  workerGameAge++;
+}
 
 const nextChainCards = [0, 2];
 const ignitionCenters = [[0, 0], [0, 0]];
@@ -522,8 +534,10 @@ function draw(timeStamp) {
         userMove = undefined;
 
         workerGame = game.clone();
-        for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
+        workerGameAge = gameAge;
+        while(workerGameAge < gameAge + workerAnticipation) {
           workerGame.tick();
+          workerGameAge++;
         }
       }
 
@@ -532,11 +546,13 @@ function draw(timeStamp) {
         const {move, score} = workerStrategy;
         const {x1, y1, orientation} = MOVES[move];
         if (game.toSimpleGame(1).availableMoves.length) {
-          game.play(1, x1, y1, orientation, true);
-          moves.push([gameAge, 1, x1, y1, orientation, true]);
+          game.play(1, x1, y1, orientation, botKickDown);
+          moves.push([gameAge, 1, x1, y1, orientation, botKickDown]);
           workerGame = game.clone();
-          for (let j = 0; j < WORKER_ANTICIPATION; ++j) {
+          workerGameAge = gameAge;
+          while(workerGameAge < gameAge + workerAnticipation) {
             workerGame.tick();
+            workerGameAge++;
           }
         }
         workerStrategy = undefined;
@@ -544,16 +560,21 @@ function draw(timeStamp) {
 
       // Anticipate moves.
       const anticipation = workerGame.tick();
-      if (!anticipation[1].busy && !waitingForStrategy) {
+      if (!anticipation[1].busy && !waitingForStrategy && botThrottleFrames <= 0) {
         waitingForStrategy = true;
-        const message = workerGame.toSimpleGame(1);
+        const message = {
+          name: botName,
+          game: workerGame.toSimpleGame(1),
+          anticipation: workerAnticipation,
+        }
         // Make sure that the bot doesn't hallucinate.
-        message.bag = game.games[1].visibleBag;
+        message.game.bag = game.games[1].visibleBag;
         strategyWorker.postMessage(message);
       }
     }
 
     gameAge++;
+    botThrottleFrames--;
   }
   if (needsRedraw) {
     renderGame();
@@ -567,8 +588,10 @@ renderGame();
 
 // Worker thread for the CPU opponent.
 strategyWorker.onmessage = (e) => {
-  workerStrategy = e.data;
+  workerStrategy = e.data.strategy;
+  workerAnticipation = Math.min(e.data.thinkingFrames, MAX_WORKER_ANTICIPATION);
   waitingForStrategy = false;
+  botThrottleFrames = EASY_THROTTLE_FRAMES;
 };
 
 // User interface

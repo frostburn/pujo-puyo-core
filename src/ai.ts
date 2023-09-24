@@ -1,3 +1,4 @@
+import {JKISS32} from '.';
 import {
   CLEAR_THRESHOLD,
   GHOST_Y,
@@ -267,4 +268,23 @@ export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
     move,
     score: 0.9 * max + 0.1 * flexBonus,
   };
+}
+
+// Use high quality randomness for the moves.
+const RANDOM_JKISS = new JKISS32();
+
+export function randomStrategy(game: SimpleGame): StrategyResult {
+  const moves = game.availableMoves;
+  if (moves.length) {
+    const entropy = RANDOM_JKISS.step();
+    return {
+      move: moves[entropy % moves.length],
+      score: entropy, // ha ha ha
+    };
+  } else {
+    return {
+      move: 0,
+      score: HEURISTIC_FAIL, // aw shucks
+    };
+  }
 }
