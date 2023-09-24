@@ -17,6 +17,9 @@ import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
 // TODO: Remove stop button
+// TODO: Make replay button into SVG
+// TODO: Restart button
+// TODO: Track wins
 
 const FRAME_RATE = 30;
 
@@ -795,12 +798,11 @@ function enableUserInput() {
   inputEnabled = true;
   mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
   secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
-  helpMainPanel();
   mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
   mainDroplet.setAttribute("stroke", "white");
   secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
   secondDroplet.setAttribute("stroke", "white");
-  updateDropletPositions();
+  moveCursor(lastCursorX, lastCursorY);
 }
 
 function snapToGrid(x, y) {
