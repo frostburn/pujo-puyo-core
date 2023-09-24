@@ -16,9 +16,6 @@ import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGH
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
-// TODO: Remove stop button
-// TODO: Make replay button into SVG
-
 const FRAME_RATE = 30;
 
 const strategyWorker = new Worker("./build/worker.js");
@@ -140,7 +137,7 @@ style.textContent = (
   '.all-clear {font: bold 1px "Arial", sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
   '.game-over {font: bold 1.3px "Arial", sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
   '.chain {font: bold 0.8px "Arial", sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} ' +
-  '.shadowed-text {font: bold 0.8px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; filter:url(#shadow);} ' +
+  '.shadowed-text {font: bold 0.79px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; filter:url(#shadow);} ' +
   '.difficulty-text {fill:#68a;} ' +
   '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} ' +
   '.difficulty-text.active {fill:#bde;} ' +
@@ -230,6 +227,7 @@ function restart(event) {
   userMove = undefined;
   gameOvers.fill(false);
   replaying = false;
+  replayIndicator.setAttribute("href", "#rec");
   seed = randomSeed();
   moves = [];
   gameAge = 0;
@@ -271,6 +269,49 @@ restartButton.addEventListener("mousedown", guard);
 restartButton.addEventListener("click", restart);
 restartText.addEventListener("mousedown", guard);
 restartText.addEventListener("click", restart);
+
+function replay(event) {
+  guard(event);
+  game = new MultiplayerGame(seed);
+  workerGame = game.clone();
+  gameAge = 0;
+  replaying = true;
+  replayIndicator.setAttribute("href", "#play");
+  replayIndex = 0;
+  gameOvers.fill(false);
+  startTime = undefined;
+  // Make the moves available for debugging.
+  window.replayMoves = moves;
+}
+
+const replayButton = svgElement("ellipse");
+replayButton.setAttribute("fill", "#586");
+replayButton.setAttribute("stroke", "#7a8");
+replayButton.setAttribute("stroke-width", 0.1);
+replayButton.setAttribute("rx", 1.7);
+replayButton.setAttribute("ry", 0.8);
+replayButton.setAttribute("cx", RIGHT_SCREEN_X+5.5);
+replayButton.setAttribute("cy", RIGHT_SCREEN_Y + VISIBLE_HEIGHT + 2);
+svg.appendChild(replayButton);
+const replayText = svgElement("text");
+replayText.classList.add("shadowed-text");
+replayText.setAttribute("fill", "#cfd");
+replayText.setAttribute("x", RIGHT_SCREEN_X+5.5);
+replayText.setAttribute("y", RIGHT_SCREEN_Y + VISIBLE_HEIGHT + 2);
+replayText.textContent = "Replay";
+svg.appendChild(replayText);
+
+restartButton.addEventListener("mousedown", guard);
+restartButton.addEventListener("click", replay);
+replayText.addEventListener("mousedown", guard);
+replayText.addEventListener("click", replay);
+
+const replayIndicator = svgElement("use");
+replayIndicator.setAttribute("href", "#stop");
+replayIndicator.classList.add("shadowed-text");
+replayIndicator.setAttribute("x", RIGHT_SCREEN_X+7.7);
+replayIndicator.setAttribute("y", RIGHT_SCREEN_Y+ VISIBLE_HEIGHT + 2);
+svg.appendChild(replayIndicator);
 
 const allClearLabels = [];
 for (let i = 0; i < 2; ++i) {
@@ -693,6 +734,9 @@ function draw(timeStamp) {
       while(replayIndex < moves.length && moves[replayIndex][0] <= gameAge) {
         const move = moves[replayIndex++].slice(1);
         game.play(...move);
+      }
+      if (replayIndex >= moves.length) {
+        replayIndicator.setAttribute("href", "#pause");
       }
     } else {
 
@@ -1164,6 +1208,7 @@ const envelopes = [];
 function initialize() {
   if (frameId === undefined) {
     frameId = window.requestAnimationFrame(draw);
+    replayIndicator.setAttribute("href", "#rec");
   }
 
   if (context === undefined) {
@@ -1209,32 +1254,6 @@ function playSoundFX(player, chainNumber) {
   envelopes[player].gain.exponentialRampToValueAtTime(1e-5, now + 3);
   arpegiate(oscillators[player], ARPEGGIOS[chainNumber - 1], now, now + 3);
 }
-
-const panicButton = document.createElement("button");
-panicButton.onclick = () => {
-  window.cancelAnimationFrame(frameId);
-  if (context !== undefined) {
-    oscillators.forEach(oscillator => oscillator.stop());
-    context.suspend();
-  }
-}
-panicButton.textContent = "stop";
-document.body.appendChild(panicButton);
-
-const replayButton = document.createElement("button");
-replayButton.addEventListener("click", () => {
-  game = new MultiplayerGame(seed);
-  workerGame = game.clone();
-  gameAge = 0;
-  replaying = true;
-  replayIndex = 0;
-  gameOvers.fill(false);
-  startTime = undefined;
-  // Make the moves available for debugging.
-  window.replayMoves = moves;
-});
-replayButton.textContent = "replay";
-document.body.appendChild(replayButton);
 
 const pt = svg.createSVGPoint();
 function viewBoxCoords(event) {

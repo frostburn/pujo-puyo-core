@@ -446,5 +446,43 @@ export function makeDefs() {
   shadowFilter.appendChild(dropShadow);
   defs.appendChild(shadowFilter);
 
+  const stopDef = svgElement('rect');
+  stopDef.setAttribute('id', 'stop');
+  stopDef.setAttribute('x', '-0.2');
+  stopDef.setAttribute('y', '-0.2');
+  stopDef.setAttribute('width', '0.4');
+  stopDef.setAttribute('height', '0.4');
+  stopDef.setAttribute('fill', 'gray');
+  defs.appendChild(stopDef);
+
+  const recDef = svgElement('circle');
+  recDef.setAttribute('id', 'rec');
+  recDef.setAttribute('r', '0.2');
+  recDef.setAttribute('fill', 'red');
+  defs.appendChild(recDef);
+
+  const playDef = svgElement('polygon');
+  playDef.setAttribute('id', 'play');
+  playDef.setAttribute('points', '-0.17,-0.2 0.17,0 -0.17,0.2');
+  playDef.setAttribute('fill', 'lime');
+  defs.appendChild(playDef);
+
+  const pauseDef = svgElement('g');
+  pauseDef.setAttribute('id', 'pause');
+  const leftBar = svgElement('rect');
+  leftBar.setAttribute('x', '-0.16');
+  leftBar.setAttribute('y', '-0.2');
+  leftBar.setAttribute('width', '0.11');
+  leftBar.setAttribute('height', '0.4');
+  pauseDef.appendChild(leftBar);
+  const rightBar = svgElement('rect');
+  rightBar.setAttribute('x', '0.06');
+  rightBar.setAttribute('y', '-0.2');
+  rightBar.setAttribute('width', '0.11');
+  rightBar.setAttribute('height', '0.4');
+  pauseDef.appendChild(rightBar);
+  pauseDef.setAttribute('fill', 'lightgray');
+  defs.appendChild(pauseDef);
+
   return svg;
 }
