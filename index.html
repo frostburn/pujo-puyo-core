@@ -18,7 +18,6 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 
 // TODO: Remove stop button
 // TODO: Make replay button into SVG
-// TODO: Restart button
 
 const FRAME_RATE = 30;
 
@@ -66,6 +65,9 @@ let botKickDown = DIFFICULTIES[0].kickDown;
 let userMove;
 let inputEnabled = true;
 
+let startTime;
+let frameId;
+
 // 'RGYBPN'
 const STROKES = ["#d22", "#2d2", "#dd2", "#22e", "#d2c", "rgba(20, 160, 160, 0.88)"];
 const FILLS = ["#922", "#292", "#882", "#229", "#828", "rgba(30, 255, 255, 0.94)"];
@@ -111,7 +113,7 @@ const preIgnitions = [
   Array(WIDTH * HEIGHT).fill(false),
   Array(WIDTH * HEIGHT).fill(false)
 ];
-let gameOvers = [false, false];
+const gameOvers = [false, false];
 
 const container = document.createElement("div");
 container.classList.add("container");
@@ -138,7 +140,8 @@ style.textContent = (
   '.all-clear {font: bold 1px "Arial", sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
   '.game-over {font: bold 1.3px "Arial", sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
   '.chain {font: bold 0.8px "Arial", sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} ' +
-  '.difficulty-text {font: bold 0.8px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; fill:#68a; filter:url(#shadow);} ' +
+  '.shadowed-text {font: bold 0.8px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; filter:url(#shadow);} ' +
+  '.difficulty-text {fill:#68a;} ' +
   '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} ' +
   '.difficulty-text.active {fill:#bde;} ' +
   '.difficulty-button.active {fill:#ab9} '
@@ -219,6 +222,56 @@ for (let i = 0; i < 2; ++i) {
   svg.appendChild(winCounter);
 }
 
+function restart(event) {
+  guard(event);
+  waitingForStrategy = false;
+  workerGameAge = 0;
+  botThrottleFrames = 0;
+  userMove = undefined;
+  gameOvers.fill(false);
+  replaying = false;
+  seed = randomSeed();
+  moves = [];
+  gameAge = 0;
+  game = new MultiplayerGame(seed);
+  workerGame = game.clone();
+  // Does essentially nothing, but documents the intention.
+  for (let i = 0; i < workerAnticipation; ++i) {
+    workerGame.tick();
+    workerGameAge++;
+  }
+  screenColors[0].fill(-1);
+  screenColors[1].fill(-1);
+  preIgnitions[0].fill(false);
+  preIgnitions[1].fill(false);
+  gameOvers.fill(false);
+  disableUserInput();
+  enableUserInput();
+  startTime = undefined;
+}
+
+const restartButton = svgElement("ellipse");
+restartButton.setAttribute("fill", "#586");
+restartButton.setAttribute("stroke", "#7a8");
+restartButton.setAttribute("stroke-width", 0.1);
+restartButton.setAttribute("rx", 1.7);
+restartButton.setAttribute("ry", 0.8);
+restartButton.setAttribute("cx", RIGHT_SCREEN_X+1.7);
+restartButton.setAttribute("cy", RIGHT_SCREEN_Y + VISIBLE_HEIGHT + 2);
+svg.appendChild(restartButton);
+const restartText = svgElement("text");
+restartText.classList.add("shadowed-text");
+restartText.setAttribute("fill", "#cfd");
+restartText.setAttribute("x", RIGHT_SCREEN_X+1.7);
+restartText.setAttribute("y", RIGHT_SCREEN_Y + VISIBLE_HEIGHT + 2);
+restartText.textContent = "Restart";
+svg.appendChild(restartText);
+
+restartButton.addEventListener("mousedown", guard);
+restartButton.addEventListener("click", restart);
+restartText.addEventListener("mousedown", guard);
+restartText.addEventListener("click", restart);
+
 const allClearLabels = [];
 for (let i = 0; i < 2; ++i) {
   const allClearPath = svgElement("path");
@@ -240,6 +293,11 @@ for (let i = 0; i < 2; ++i) {
   allClearLabels.push(textPath);
 }
 
+function guard(event) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 const difficultyElements = [];
 
 DIFFICULTIES.forEach((difficulty, i) => {
@@ -255,6 +313,7 @@ DIFFICULTIES.forEach((difficulty, i) => {
   svg.appendChild(button);
 
   const text = svgElement("text");
+  text.classList.add("shadowed-text");
   text.classList.add("difficulty-text");
   text.setAttribute("x", x);
   text.setAttribute("y", y);
@@ -264,11 +323,6 @@ DIFFICULTIES.forEach((difficulty, i) => {
   if (difficulty.label === "Easy") {
     button.classList.add("active");
     text.classList.add("active");
-  }
-
-  function guard(event) {
-    event.preventDefault();
-    event.stopPropagation();
   }
 
   const myBotName = difficulty.botName;
@@ -593,14 +647,11 @@ function renderGame() {
   }
 }
 
-let start;
-let frameId;
-
 function draw(timeStamp) {
-  if (start === undefined) {
-    start = timeStamp;
+  if (startTime === undefined) {
+    startTime = timeStamp;
   }
-  const elapsed = timeStamp - start;
+  const elapsed = timeStamp - startTime;
   const intendedAge = Math.min(FRAME_RATE * elapsed / 1000, gameAge + FRAME_RATE);
 
   const needsRedraw = (gameAge < intendedAge);
@@ -610,7 +661,7 @@ function draw(timeStamp) {
 
     for (let i = 0; i < 2; ++i) {
       if (tickResults[i].lockedOut) {
-        if (!gameOvers[i] && !gameOvers[1-i]) {
+        if (!gameOvers[i] && !gameOvers[1-i] && !replaying) {
           wins[1-i]++;
           winCounters[1-i].textContent = wins[1-i];
         }
@@ -1177,8 +1228,8 @@ replayButton.addEventListener("click", () => {
   gameAge = 0;
   replaying = true;
   replayIndex = 0;
-  gameOvers = [false, false];
-  start = undefined;
+  gameOvers.fill(false);
+  startTime = undefined;
   // Make the moves available for debugging.
   window.replayMoves = moves;
 });
