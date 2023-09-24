@@ -19,7 +19,6 @@ import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/
 // TODO: Remove stop button
 // TODO: Make replay button into SVG
 // TODO: Restart button
-// TODO: Track wins
 
 const FRAME_RATE = 30;
 
@@ -90,6 +89,8 @@ let seed = randomSeed();
 let moves = [];
 let replayIndex;
 
+let wins = [0, 0];
+
 let gameAge = 0;
 
 let game = new MultiplayerGame(seed);
@@ -126,21 +127,21 @@ function juggleCards(cardIndex) {
 const svg = svgElement("svg");
 svg.setAttribute("width", "98vw");
 svg.setAttribute("height", "95vh");
-svg.setAttribute("viewBox", "0 0 20 16");
+svg.setAttribute("viewBox", "0 0 20 17");
 container.appendChild(svg);
 
 // Styles
 const style = svgElement("style");
 style.textContent = (
-  ".score-label {font: bold 0.7px sans-serif; fill:azure;} " +
-  ".score {font: bold 0.7px monospace; fill:azure;} " +
-  ".all-clear {font: bold 1px sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} " +
-  ".game-over {font: bold 1.3px sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} " +
-  ".chain {font: bold 0.8px sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} " +
-  ".difficulty-text {font: bold 0.8px sans-serif; dominant-baseline: middle; text-anchor: middle; fill:#68a; filter:url(#shadow);} " +
-  ".difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} " +
-  ".difficulty-text.active {fill:#bde;} " +
-  ".difficulty-button.active {fill:#ab9} "
+  '.score-label {font: bold 0.7px "Arial", sans-serif; fill:azure;} ' +
+  '.score {font: bold 0.7px "Lucida Console", monospace; fill:azure;} ' +
+  '.all-clear {font: bold 1px "Arial", sans-serif; fill:aliceblue; stroke:cornflowerblue; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
+  '.game-over {font: bold 1.3px "Arial", sans-serif; fill:red; stroke:yellow; stroke-width:0.035px; stroke-linejoin:round; stroke-linecap:round;} ' +
+  '.chain {font: bold 0.8px "Arial", sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} ' +
+  '.difficulty-text {font: bold 0.8px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; fill:#68a; filter:url(#shadow);} ' +
+  '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} ' +
+  '.difficulty-text.active {fill:#bde;} ' +
+  '.difficulty-button.active {fill:#ab9} '
 );
 svg.appendChild(style);
 
@@ -190,6 +191,32 @@ for (let i = 0; i < 2; ++i) {
 
   scores.push(scoreDisplay);
   svg.appendChild(scoreText);
+}
+
+const winCounters = [];
+for (let i = 0; i < 2; ++i) {
+  const trophy = svgElement("text");
+  trophy.classList.add("score-label");
+  trophy.setAttribute("text-anchor", "middle");
+  trophy.textContent = "🏆";
+  const winCounter = svgElement("text");
+  winCounter.classList.add("score");
+  winCounter.setAttribute("text-anchor", "middle");
+  winCounter.textContent = "0";
+  if (i === 0) {
+    trophy.setAttribute("x", LEFT_SCREEN_X - 1);
+    trophy.setAttribute("y", LEFT_SCREEN_Y + 10.6);
+    winCounter.setAttribute("x", LEFT_SCREEN_X - 1);
+    winCounter.setAttribute("y", LEFT_SCREEN_Y + 11.5);
+  } else {
+    trophy.setAttribute("x", RIGHT_SCREEN_X - 1);
+    trophy.setAttribute("y", RIGHT_SCREEN_Y + 10.6);
+    winCounter.setAttribute("x", RIGHT_SCREEN_X - 1);
+    winCounter.setAttribute("y", RIGHT_SCREEN_Y + 11.5);
+  }
+  winCounters.push(winCounter);
+  svg.appendChild(trophy);
+  svg.appendChild(winCounter);
 }
 
 const allClearLabels = [];
@@ -331,10 +358,10 @@ for (let i = 0; i < 2; ++i) {
   const background = svgElement("ellipse");
   if (i === 0) {
     background.setAttribute("cx", LEFT_SCREEN_X + 3);
-    background.setAttribute("cy", LEFT_SCREEN_Y + 4.3);
+    background.setAttribute("cy", LEFT_SCREEN_Y + 4.2);
   } else {
     background.setAttribute("cx", RIGHT_SCREEN_X + 3);
-    background.setAttribute("cy", RIGHT_SCREEN_Y + 4.3);
+    background.setAttribute("cy", RIGHT_SCREEN_Y + 4.2);
   }
   background.setAttribute("rx", "2.6");
   background.setAttribute("ry", "1.7");
@@ -583,6 +610,10 @@ function draw(timeStamp) {
 
     for (let i = 0; i < 2; ++i) {
       if (tickResults[i].lockedOut) {
+        if (!gameOvers[i] && !gameOvers[1-i]) {
+          wins[1-i]++;
+          winCounters[1-i].textContent = wins[1-i];
+        }
         gameOvers[i] = true;
       }
       if (tickResults[i].didClear) {
