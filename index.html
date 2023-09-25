@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
     body {
       background-color: #223;
     }
@@ -142,7 +143,7 @@ style.textContent = (
   '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1;} ' +
   '.difficulty-text.active {fill:#bde;} ' +
   '.difficulty-button.active {fill:#ab9;} ' +
-  '.title {font: 0.9px cursive; text-decoration:underline;} ' +
+  '.title {font: 1.3px "Italianno", cursive;} ' +
   '.subtitle {font: italic 0.4px serif;} '
 );
 svg.appendChild(style);
@@ -399,42 +400,43 @@ DIFFICULTIES.forEach((difficulty, i) => {
 });
 
 for (let i = 0; i < 2; ++i) {
+  const branding = svgElement("g");
+  const titleUnderLine = svgElement("rect");
+  titleUnderLine.setAttribute("x", LEFT_SCREEN_X);
+  titleUnderLine.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.2);
+  titleUnderLine.setAttribute("width", 3.8);
+  titleUnderLine.setAttribute("height", 0.05);
+  branding.appendChild(titleUnderLine);
   const titleText = svgElement("text");
   titleText.classList.add("title");
   titleText.setAttribute("x", LEFT_SCREEN_X);
   titleText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.1);
-  titleText.textContent = "𝒜𝓇𝓉𝑒𝓂𝒾𝓈𝒾𝒶";
-  svg.appendChild(titleText);
+  titleText.textContent = "Artemisia";
+  branding.appendChild(titleText);
   const subtitleText = svgElement("text");
   subtitleText.classList.add("subtitle");
   subtitleText.setAttribute("x", LEFT_SCREEN_X);
-  subtitleText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.6);
+  subtitleText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.62);
   subtitleText.textContent = "a.k.a. Pujo Puyo";
-  svg.appendChild(subtitleText);
+  branding.appendChild(subtitleText);
 
   const logo = svgElement("use");
   logo.setAttribute("x", LEFT_SCREEN_X+4.5);
   logo.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 1.2);
   logo.setAttribute("transform-origin", `${LEFT_SCREEN_X} ${LEFT_SCREEN_Y + VISIBLE_HEIGHT + 1.2}`);
   logo.setAttribute("transform", "scale(0.9)");
-  svg.appendChild(logo);
+  branding.appendChild(logo);
 
   if (i === 0) {
-    titleText.setAttribute("filter", "url(#blur)");
-    titleText.setAttribute("fill", "white");
-    titleText.setAttribute("opacity", 0.5);
-    subtitleText.setAttribute("filter", "url(#blur)");
-    subtitleText.setAttribute("fill", "white");
-    subtitleText.setAttribute("opacity", 0.4);
     logo.setAttribute("href", "#plain-logo");
-    logo.setAttribute("filter", "url(#blur)");
-    logo.setAttribute("fill", "white");
-    logo.setAttribute("opacity", 0.4);
+    branding.setAttribute("filter", "url(#blur)");
+    branding.setAttribute("fill", "white");
+    branding.setAttribute("opacity", 0.5);
   } else {
-    titleText.setAttribute("fill", "#887");
-    subtitleText.setAttribute("fill", "#887");
     logo.setAttribute("href", "#logo");
+    branding.setAttribute("fill", "#887");
   }
+  svg.appendChild(branding);
 }
 
 
