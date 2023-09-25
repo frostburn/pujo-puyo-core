@@ -139,9 +139,11 @@ style.textContent = (
   '.chain {font: bold 0.8px "Arial", sans-serif; fill:#fee; stroke:rgba(85, 83, 80, 0.7); stroke-width:0.04px;} ' +
   '.shadowed-text {font: bold 0.79px "Arial", sans-serif; dominant-baseline: middle; text-anchor: middle; filter:url(#shadow);} ' +
   '.difficulty-text {fill:#68a;} ' +
-  '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1} ' +
+  '.difficulty-button {fill: #767; stroke: #a9a; stroke-width: 0.1;} ' +
   '.difficulty-text.active {fill:#bde;} ' +
-  '.difficulty-button.active {fill:#ab9} '
+  '.difficulty-button.active {fill:#ab9;} ' +
+  '.title {font: 0.9px cursive; text-decoration:underline;} ' +
+  '.subtitle {font: italic 0.4px serif;} '
 );
 svg.appendChild(style);
 
@@ -395,6 +397,46 @@ DIFFICULTIES.forEach((difficulty, i) => {
   difficultyElements.push(button);
   difficultyElements.push(text);
 });
+
+for (let i = 0; i < 2; ++i) {
+  const titleText = svgElement("text");
+  titleText.classList.add("title");
+  titleText.setAttribute("x", LEFT_SCREEN_X);
+  titleText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.1);
+  titleText.textContent = "𝒜𝓇𝓉𝑒𝓂𝒾𝓈𝒾𝒶";
+  svg.appendChild(titleText);
+  const subtitleText = svgElement("text");
+  subtitleText.classList.add("subtitle");
+  subtitleText.setAttribute("x", LEFT_SCREEN_X);
+  subtitleText.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 2.6);
+  subtitleText.textContent = "a.k.a. Pujo Puyo";
+  svg.appendChild(subtitleText);
+
+  const logo = svgElement("use");
+  logo.setAttribute("x", LEFT_SCREEN_X+4.5);
+  logo.setAttribute("y", LEFT_SCREEN_Y + VISIBLE_HEIGHT + 1.2);
+  logo.setAttribute("transform-origin", `${LEFT_SCREEN_X} ${LEFT_SCREEN_Y + VISIBLE_HEIGHT + 1.2}`);
+  logo.setAttribute("transform", "scale(0.9)");
+  svg.appendChild(logo);
+
+  if (i === 0) {
+    titleText.setAttribute("filter", "url(#blur)");
+    titleText.setAttribute("fill", "white");
+    titleText.setAttribute("opacity", 0.5);
+    subtitleText.setAttribute("filter", "url(#blur)");
+    subtitleText.setAttribute("fill", "white");
+    subtitleText.setAttribute("opacity", 0.4);
+    logo.setAttribute("href", "#plain-logo");
+    logo.setAttribute("filter", "url(#blur)");
+    logo.setAttribute("fill", "white");
+    logo.setAttribute("opacity", 0.4);
+  } else {
+    titleText.setAttribute("fill", "#887");
+    subtitleText.setAttribute("fill", "#887");
+    logo.setAttribute("href", "#logo");
+  }
+}
+
 
 const leftContent = svgElement("g");
 leftContent.setAttribute("transform", `translate(${LEFT_SCREEN_X},${LEFT_SCREEN_Y})`);
@@ -1322,6 +1364,22 @@ document.addEventListener("keydown", (e) => {
     commitMove();
   }
 });
+
+const controlsInfo = document.createElement("p");
+controlsInfo.style = "color:lightgray";
+controlsInfo.textContent = "Controls: Mouse or WASD/Arrow keys. 'J' rotates left. 'K' rotates right. Releasing the mouse button or pressing 'Space' commits the move."
+document.body.appendChild(controlsInfo);
+
+const projectInfo = document.createElement("p");
+projectInfo.style = "color:lightgray";
+projectInfo.textContent = "Artemisia is open source. Check out the ";
+const projectLink = document.createElement("a");
+projectLink.setAttribute("href", "https://github.com/frostburn/pujo-puyo-core");
+projectLink.textContent = "project page on GitHub";
+projectInfo.appendChild(projectLink);
+const period = document.createTextNode(".");
+projectInfo.appendChild(period);
+document.body.appendChild(projectInfo);
 
 </script>
 </head>
