@@ -7,8 +7,14 @@ The name is a pun on the Finnish name for *Artemisia vulgaris*, the common mugwo
 
 *Public domain illustration of Artemisia vulgaris i.e. pujo*
 
+## Try it online
+The game is hosted at [pujo.lumipakkanen.com](https://pujo.lumipakkanen.com).
+
+## Project status
+Currently in alpha stage of development. Not much of a *core* library yet. More like a messy monorepo.
+
 ## Trademark Notice
-*"Puyo Puyo"* is a registered U.S. trademark of SEGA CORPORATION since 2017. Pujo Puyo is not endorsed or related to SEGA CORPORATION in any way.
+*"Puyo Puyo"* is a registered U.S. trademark of SEGA CORPORATION since 2017. Artemisia / Pujo Puyo is not endorsed or related to SEGA CORPORATION in any way.
 
 ## Development setup
 To install dependencies:
@@ -20,7 +26,8 @@ bun install
 To run:
 
 ```bash
-bun run index.ts
+bun run compile
+bun start
 ```
 
 This project was created using `bun init` in bun v1.0.1. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

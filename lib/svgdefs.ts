@@ -27,40 +27,44 @@ export function transformPath(d: string, scale = 1, dx = 0, dy = 0) {
   const transformed: string[] = [];
   let scaleFlags: boolean[] = [];
   let translationFlags: boolean[] = [];
+  let relative = false;
   let horizontal = true;
-  d.split(/\s+/).forEach(token => {
-    let num = parseFloat(token);
-    if (isNaN(num)) {
-      transformed.push(token);
-      horizontal = true;
-      if (token.toUpperCase() === 'A') {
-        scaleFlags = [...ARC_SCALE_FLAGS];
-        translationFlags = [...ARC_TRANSLATION_FLAGS];
-      } else if (token.toUpperCase() === 'V') {
-        horizontal = false;
+  d.replaceAll(',', ' ')
+    .split(/\s+/)
+    .forEach(token => {
+      let num = parseFloat(token);
+      if (isNaN(num)) {
+        transformed.push(token);
+        relative = false;
+        horizontal = true;
+        if (token.toUpperCase() === 'A') {
+          scaleFlags = [...ARC_SCALE_FLAGS];
+          translationFlags = [...ARC_TRANSLATION_FLAGS];
+        } else if (token.toUpperCase() === 'V') {
+          horizontal = false;
+        }
+        if (token !== 'm' && token === token.toLowerCase()) {
+          relative = true;
+        }
+      } else {
+        let scaleFlag = true;
+        let translationFlag = true;
+        if (scaleFlags.length) {
+          scaleFlag = scaleFlags.shift()!;
+        }
+        if (translationFlags.length) {
+          translationFlag = translationFlags.shift()!;
+        }
+        if (scaleFlag) {
+          num *= scale;
+        }
+        if (translationFlag && !relative) {
+          num += horizontal ? dx : dy;
+          horizontal = !horizontal;
+        }
+        transformed.push(num.toString());
       }
-      if (token === token.toLowerCase()) {
-        translationFlags = Array(7).fill(false);
-      }
-    } else {
-      let scaleFlag = true;
-      let translationFlag = true;
-      if (scaleFlags.length) {
-        scaleFlag = scaleFlags.shift()!;
-      }
-      if (translationFlags.length) {
-        translationFlag = translationFlags.shift()!;
-      }
-      if (scaleFlag) {
-        num *= scale;
-      }
-      if (translationFlag) {
-        num += horizontal ? dx : dy;
-        horizontal = !horizontal;
-      }
-      transformed.push(num.toString());
-    }
-  });
+    });
   return transformed.join(' ');
 }
 
@@ -483,6 +487,59 @@ export function makeDefs() {
   pauseDef.appendChild(rightBar);
   pauseDef.setAttribute('fill', 'lightgray');
   defs.appendChild(pauseDef);
+
+  const logoDef = svgElement('g');
+  logoDef.setAttribute('id', 'logo');
+
+  const crescent = svgElement('path');
+  const crescentD = 'M 0 0 A 1 1 0 1 1 0.9 0.8 A 0.8 0.8 0 1 0 0 0 z';
+  crescent.setAttribute('d', transformPath(crescentD, 0.95, 0.05, 1.2));
+  crescent.setAttribute('fill', 'goldenrod');
+  logoDef.appendChild(crescent);
+
+  const leaf = svgElement('g');
+  const leafBody = svgElement('path');
+  const leafBodyD =
+    'M 95.475041,101.30591 C 80.828481,79.440826 71.382451,88.591836 56.704531,86.004596 c 2.92477,-1.03198 4.7018,-2.47636 6.31563,-2.95284 -1.426,-4.29393 -2.62952,-1.8623 -5.54008,-2.02377 1.26036,-2.70646 -3.24566,-1.33314 -6.11568,-0.99976 3.06824,-4.89796 6.92345,-2.27433 9.08064,-4.34038 -7.73865,-3.08276 -18.86406,-8.03653 -19.41956,-11.43155 1.98947,-0.002 2.62155,0.93495 4.39894,0.79981 -1.89868,-4.02329 -6.59425,-4.16468 -7.92738,-7.15182 0.85838,-0.1594 1.36744,-0.27273 2.03591,-0.55342 -1.02818,-1.76526 -3.7121,-1.00564 -3.49413,-4.62106 3.04571,1.05035 8.11103,5.73378 10.78526,4.71601 0.55342,-0.80569 -0.0645,-1.02402 -0.45847,-1.49253 2.85789,-1.8117 3.28758,8.10686 15.05493,10.70244 -1.52303,-3.48409 -2.79516,-1.72263 -3.83338,-7.85669 11.75731,2.49057 11.67966,5.3176 17.43009,12.25562 -2.37932,-5.43335 -0.45222,-3.62927 -2.04595,-7.24469 4.698,1.40382 15.45276,11.03961 14.63077,16.50103 3.7731,2.13882 9.32287,9.82569 9.12709,16.0547 0.36976,1.56321 0.7383,2.840194 -1.25412,4.940214 z';
+  leafBody.setAttribute('d', transformPath(leafBodyD, 0.029, -0.99, -1.2));
+  leafBody.setAttribute('fill', 'green');
+  leaf.appendChild(leafBody);
+  const leafVeins = svgElement('g');
+  const leafVeinDs = [
+    'm 96,98.328566 c -10.25056,-15.90605 -47.2233,-37.04343 -55.91861,-41.85059',
+    'm 76.130461,73.090966 c 5.08994,4.52439 9.04878,13.85593 9.04878,13.85593',
+    'm 61.638281,62.274846 c 6.78658,6.99867 9.19016,13.50248 9.19016,13.50248',
+    'm 61.214111,78.534376 c 7.42283,0 16.47161,2.47427 16.47161,2.47427',
+  ];
+  leafVeinDs.forEach(d => {
+    const leafVein = svgElement('path');
+    leafVein.setAttribute('d', transformPath(d, 0.029, -0.99, -1.2));
+    leafVeins.appendChild(leafVein);
+  });
+  leafVeins.setAttribute('fill', 'none');
+  leafVeins.setAttribute('stroke', 'darkgreen');
+  leafVeins.setAttribute('stroke-width', '0.04');
+  leaf.appendChild(leafVeins);
+  logoDef.appendChild(leaf);
+  defs.appendChild(logoDef);
+
+  const plainLogoDef = svgElement('g');
+  plainLogoDef.setAttribute('id', 'plain-logo');
+  const plainCrescent = svgElement('path');
+  plainCrescent.setAttribute('d', crescent.getAttribute('d')!);
+  plainLogoDef.appendChild(plainCrescent);
+  const plainLeaf = svgElement('path');
+  plainLeaf.setAttribute('d', leafBody.getAttribute('d')!);
+  plainLogoDef.appendChild(plainLeaf);
+  defs.appendChild(plainLogoDef);
+
+  const blurDef = svgElement('filter');
+  blurDef.setAttribute('id', 'blur');
+  const gaussian = svgElement('feGaussianBlur');
+  gaussian.setAttribute('in', 'SourceGraphic');
+  gaussian.setAttribute('stdDeviation', '0.03');
+  blurDef.appendChild(gaussian);
+  defs.appendChild(blurDef);
 
   return svg;
 }
