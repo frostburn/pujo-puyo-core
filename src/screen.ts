@@ -143,6 +143,27 @@ export class SimplePuyoScreen {
     this.garbageSlots = [];
   }
 
+  toJSON() {
+    return {
+      grid: this.grid.map(puyos => [...puyos]),
+      bufferedGarbage: this.bufferedGarbage,
+      garbageSlots: this.garbageSlots,
+    };
+  }
+
+  static fromJSON(obj: any) {
+    const result = new SimplePuyoScreen();
+    for (let j = 0; j < obj.grid.length; ++j) {
+      // TODO: Hide slicing details inside bitboard.ts
+      for (let i = 0; i < WIDTH; ++i) {
+        result.grid[j][i] = obj.grid[j][i];
+      }
+    }
+    result.bufferedGarbage = obj.bufferedGarbage;
+    result.garbageSlots = obj.garbageSlots;
+    return result;
+  }
+
   /**
    * Construct a new screen from ASCII representation of the grid.
    * @param lines Array of strings consisting of characters "RGYBPN", "N" stands for nuisance i.e. garbage.
