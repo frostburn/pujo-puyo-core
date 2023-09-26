@@ -583,4 +583,17 @@ export class SimpleGame {
       [...this.bag]
     );
   }
+
+  static fromJSON(obj: any) {
+    const screen = SimplePuyoScreen.fromJSON(obj.screen);
+    return new SimpleGame(
+      screen,
+      obj.pendingGarbage,
+      obj.lateGarbage,
+      obj.lateTimeRemaining,
+      obj.colorSelection,
+      obj.bag,
+      obj.moveTime
+    );
+  }
 }
