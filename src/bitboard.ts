@@ -1,39 +1,21 @@
-// Puyos of a single color are represented as a bitboard consisting of three unsigned integers
+// Puyos of a single color are represented as a bitboard consisting of six unsigned integers
 // The width of the playing grid is fixed to 6
-export type Puyos = Uint32Array;
+export type Puyos = Uint16Array;
 
 // Bitboard constants
 export const WIDTH = 6;
-const SLICE_HEIGHT = 5;
-const H_SHIFT = 1;
-const V_SHIFT = 6;
-const TOP_TO_BOTTOM = V_SHIFT * (SLICE_HEIGHT - 1);
+export const HEIGHT = 16;
 // Bitboard patterns
-const TOP = (1 << WIDTH) - 1;
-const BOTTOM = TOP << ((SLICE_HEIGHT - 1) * V_SHIFT);
-const FULL =
-  TOP |
-  (TOP << V_SHIFT) |
-  (TOP << (V_SHIFT * 2)) |
-  (TOP << (V_SHIFT * 3)) |
-  BOTTOM;
-const LEFT_WALL =
-  1 |
-  (1 << V_SHIFT) |
-  (1 << (V_SHIFT * 2)) |
-  (1 << (V_SHIFT * 3)) |
-  (1 << (V_SHIFT * 4));
-const RIGHT_BLOCK = FULL ^ LEFT_WALL;
-const INVALID = -1 ^ FULL;
-const VISIBLE_BLOCK = BOTTOM | (BOTTOM >> V_SHIFT);
-const SEMI_VISIBLE_BLOCK = VISIBLE_BLOCK | (BOTTOM >> (2 * V_SHIFT));
+const TOP = 1;
+const BOTTOM = 32768;
+const VISIBLE = 65520;
+const SEMI_VISIBLE = 65528;
+const TOPPING_LINE = 16;
 // Large scale structure
-export const NUM_SLICES = 3;
-export const HEIGHT = SLICE_HEIGHT * NUM_SLICES;
+export const NUM_SLICES = WIDTH;
 export const VISIBLE_HEIGHT = 12;
-export const GHOST_Y = 2;
-
-const TOPPING_LINE = TOP << ((GHOST_Y + 1) * V_SHIFT);
+export const GHOST_Y = 3;
+export const BOTTOM_Y = 15;
 
 // Rules
 export const CLEAR_THRESHOLD = 4;
@@ -51,7 +33,7 @@ export type ClearResult = {
  * @returns A screenful of air.
  */
 export function emptyPuyos(): Puyos {
-  return new Uint32Array(NUM_SLICES);
+  return new Uint16Array(NUM_SLICES);
 }
 
 /**
@@ -61,7 +43,7 @@ export function emptyPuyos(): Puyos {
 export function randomPuyos(): Puyos {
   const puyos = emptyPuyos();
   for (let i = 0; i < NUM_SLICES; ++i) {
-    puyos[i] = Math.random() * (FULL + 1);
+    puyos[i] = Math.random() * (1 << 16);
   }
   return puyos;
 }
@@ -71,8 +53,8 @@ export function randomPuyos(): Puyos {
  * @param puyos A collection of puyos to copy.
  * @returns A copy of the puyos.
  */
-export function clone(puyos: Puyos) {
-  return new Uint32Array(puyos);
+export function clone(puyos: Puyos): Puyos {
+  return new Uint16Array(puyos);
 }
 
 /**
@@ -81,7 +63,7 @@ export function clone(puyos: Puyos) {
  * @returns `true` if there aren't any puyos present.
  */
 export function isEmpty(puyos: Puyos) {
-  return !(puyos[0] | puyos[1] | puyos[2]);
+  return !(puyos[0] | puyos[1] | puyos[2] | puyos[3] | puyos[4] | puyos[5]);
 }
 
 /**
@@ -90,7 +72,7 @@ export function isEmpty(puyos: Puyos) {
  * @returns `true` if there are puyos present.
  */
 export function isNonEmpty(puyos: Puyos) {
-  return !!(puyos[0] | puyos[1] | puyos[2]);
+  return !!(puyos[0] | puyos[1] | puyos[2] | puyos[3] | puyos[4] | puyos[5]);
 }
 
 /**
@@ -100,10 +82,10 @@ export function isNonEmpty(puyos: Puyos) {
  */
 export function fromArray(array: boolean[]): Puyos {
   const puyos = emptyPuyos();
-  for (let j = 0; j < NUM_SLICES; ++j) {
-    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
-      if (array[i + j * WIDTH * SLICE_HEIGHT]) {
-        puyos[j] |= 1 << i;
+  for (let y = 0; y < HEIGHT; ++y) {
+    for (let x = 0; x < NUM_SLICES; ++x) {
+      if (array[x + y * WIDTH]) {
+        puyos[x] |= 1 << y;
       }
     }
   }
@@ -112,10 +94,10 @@ export function fromArray(array: boolean[]): Puyos {
 
 export function toArray(puyos: Puyos): boolean[] {
   const result = [];
-  for (let j = 0; j < NUM_SLICES; ++j) {
-    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
-      const p = 1 << i;
-      if (puyos[j] & p) {
+  for (let y = 0; y < HEIGHT; ++y) {
+    const p = 1 << y;
+    for (let x = 0; x < NUM_SLICES; ++x) {
+      if (puyos[x] & p) {
         result.push(true);
       } else {
         result.push(false);
@@ -127,12 +109,12 @@ export function toArray(puyos: Puyos): boolean[] {
 
 export function toIndexArray(grid: Puyos[]): number[] {
   const result = [];
-  for (let k = 0; k < NUM_SLICES; ++k) {
-    for (let j = 0; j < WIDTH * SLICE_HEIGHT; ++j) {
+  for (let y = 0; y < HEIGHT; ++y) {
+    const p = 1 << y;
+    for (let x = 0; x < NUM_SLICES; ++x) {
       let index = -1;
-      const p = 1 << j;
       for (let i = 0; i < grid.length; ++i) {
-        if (grid[i][k] & p) {
+        if (grid[i][x] & p) {
           index = i;
           break;
         }
@@ -145,12 +127,12 @@ export function toIndexArray(grid: Puyos[]): number[] {
 
 export function toFlagArray(grid: Puyos[]): number[] {
   const result = [];
-  for (let k = 0; k < NUM_SLICES; ++k) {
-    for (let j = 0; j < WIDTH * SLICE_HEIGHT; ++j) {
+  for (let y = 0; y < HEIGHT; ++y) {
+    const p = 1 << y;
+    for (let x = 0; x < NUM_SLICES; ++x) {
       let flags = 0;
-      const p = 1 << j;
       for (let i = 0; i < grid.length; ++i) {
-        if (grid[i][k] & p) {
+        if (grid[i][x] & p) {
           flags |= 1 << i;
         }
       }
@@ -165,22 +147,17 @@ export function toFlagArray(grid: Puyos[]): number[] {
  */
 export function puyoDisplayLines(puyos: Puyos): string[] {
   const result = ['┌─────────────┐'];
-  for (let i = 0; i < NUM_SLICES; ++i) {
-    for (let y = 0; y < SLICE_HEIGHT; ++y) {
-      let line = '│';
-      for (let x = 0; x < WIDTH; ++x) {
-        if (puyos[i] & (1 << (x * H_SHIFT + y * V_SHIFT))) {
-          line += ' @';
-        } else {
-          line += ' .';
-        }
+  for (let y = 0; y < HEIGHT; ++y) {
+    let line = '│';
+    for (let x = 0; x < NUM_SLICES; ++x) {
+      if (puyos[x] & (1 << y)) {
+        line += ' @';
+      } else {
+        line += ' .';
       }
-      line += ' │';
-      if (y === SLICE_HEIGHT - 1 && puyos[i] & INVALID) {
-        line += '!';
-      }
-      result.push(line);
     }
+    line += ' │';
+    result.push(line);
   }
   result.push('└─────────────┘');
   return result;
@@ -201,9 +178,7 @@ export function logPuyos(puyos: Puyos): void {
  * @returns `true` if there is a puyo at the given coordinates.
  */
 export function puyoAt(puyos: Puyos, x: number, y: number) {
-  const slice_y = y % SLICE_HEIGHT;
-  y -= slice_y;
-  return !!(puyos[y / SLICE_HEIGHT] & (1 << (x + slice_y * V_SHIFT)));
+  return !!(puyos[x] & (1 << y));
 }
 
 /**
@@ -213,10 +188,8 @@ export function puyoAt(puyos: Puyos, x: number, y: number) {
  * @returns A collection of a single puyo.
  */
 export function singlePuyo(x: number, y: number): Puyos {
-  const slice_y = y % SLICE_HEIGHT;
-  y -= slice_y;
   const result = emptyPuyos();
-  result[y / SLICE_HEIGHT] |= 1 << (x + slice_y * V_SHIFT);
+  result[x] = 1 << y;
   return result;
 }
 
@@ -226,10 +199,11 @@ export function singlePuyo(x: number, y: number): Puyos {
  * @returns A vertical line of puyos.
  */
 export function verticalLine(y: number): Puyos {
-  const slice_y = y % SLICE_HEIGHT;
-  y -= slice_y;
   const result = emptyPuyos();
-  result[y / SLICE_HEIGHT] |= TOP << (slice_y * V_SHIFT);
+  const p = 1 << y;
+  for (let x = 0; x < NUM_SLICES; ++x) {
+    result[x] = p;
+  }
   return result;
 }
 
@@ -238,7 +212,7 @@ export function verticalLine(y: number): Puyos {
  * @param x 32-bit integer.
  * @returns The number of set bits in the input.
  */
-function popcount(x: number) {
+export function popcount(x: number) {
   x -= (x >> 1) & 0x55555555;
   x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
   x = (x + (x >> 4)) & 0x0f0f0f0f;
@@ -246,6 +220,18 @@ function popcount(x: number) {
   x += x >> 16;
 
   return x & 0x7f;
+}
+
+/**
+ * Population count (aka hamming weight) function. Counts the number of set (i.e. 1-valued) bits in a 16-bit integer.
+ * @param x 16-bit integer.
+ * @returns The number of set bits in the input.
+ */
+function popcount16(x: number) {
+  x -= (x >> 1) & 0x5555;
+  x = (x & 0x3333) + ((x >> 2) & 0x3333);
+  x = (x + (x >> 4)) & 0x0f0f;
+  return (x + (x >> 8)) & 0x1f;
 }
 
 /**
@@ -257,8 +243,13 @@ export function flood(source: Puyos, target: Puyos) {
   source[0] &= target[0];
   source[1] &= target[1];
   source[2] &= target[2];
+  source[3] &= target[3];
+  source[4] &= target[4];
+  source[5] &= target[5];
 
-  if (!(source[0] | source[1] | source[2])) {
+  if (
+    !(source[0] | source[1] | source[2] | source[3] | source[4] | source[5])
+  ) {
     return;
   }
   const temp = emptyPuyos();
@@ -266,38 +257,27 @@ export function flood(source: Puyos, target: Puyos) {
     temp[0] = source[0];
     temp[1] = source[1];
     temp[2] = source[2];
+    temp[3] = source[3];
+    temp[4] = source[4];
+    temp[5] = source[5];
 
-    // Top slice
-    source[0] |=
-      (((source[0] & RIGHT_BLOCK) >> H_SHIFT) |
-        ((source[0] << H_SHIFT) & RIGHT_BLOCK) |
-        (source[0] << V_SHIFT) |
-        (source[0] >> V_SHIFT) |
-        ((source[1] & TOP) << TOP_TO_BOTTOM)) &
-      target[0];
-
-    // Middle slice
+    source[0] |= (source[1] | (source[0] >> 1) | (source[0] << 1)) & target[0];
     source[1] |=
-      (((source[1] & RIGHT_BLOCK) >> H_SHIFT) |
-        ((source[1] << H_SHIFT) & RIGHT_BLOCK) |
-        (source[1] << V_SHIFT) |
-        (source[1] >> V_SHIFT) |
-        ((source[0] & BOTTOM) >> TOP_TO_BOTTOM) |
-        ((source[2] & TOP) << TOP_TO_BOTTOM)) &
-      target[1];
-
-    // Bottom slice
+      (source[0] | (source[1] >> 1) | (source[1] << 1) | source[2]) & target[1];
     source[2] |=
-      (((source[2] & RIGHT_BLOCK) >> H_SHIFT) |
-        ((source[2] << H_SHIFT) & RIGHT_BLOCK) |
-        (source[2] << V_SHIFT) |
-        (source[2] >> V_SHIFT) |
-        ((source[1] & BOTTOM) >> TOP_TO_BOTTOM)) &
-      target[2];
+      (source[1] | (source[2] >> 1) | (source[2] << 1) | source[3]) & target[2];
+    source[3] |=
+      (source[2] | (source[3] >> 1) | (source[3] << 1) | source[4]) & target[3];
+    source[4] |=
+      (source[3] | (source[4] >> 1) | (source[4] << 1) | source[5]) & target[4];
+    source[5] |= (source[4] | (source[5] >> 1) | (source[5] << 1)) & target[5];
   } while (
     temp[0] !== source[0] ||
     temp[1] !== source[1] ||
-    temp[2] !== source[2]
+    temp[2] !== source[2] ||
+    temp[3] !== source[3] ||
+    temp[4] !== source[4] ||
+    temp[5] !== source[5]
   );
 }
 
@@ -310,6 +290,9 @@ export function merge(a: Puyos, b: Puyos) {
   a[0] |= b[0];
   a[1] |= b[1];
   a[2] |= b[2];
+  a[3] |= b[3];
+  a[4] |= b[4];
+  a[5] |= b[5];
 }
 
 export function getMask(grid: Puyos[]): Puyos {
@@ -318,23 +301,21 @@ export function getMask(grid: Puyos[]): Puyos {
     result[0] |= grid[i][0];
     result[1] |= grid[i][1];
     result[2] |= grid[i][2];
+    result[3] |= grid[i][3];
+    result[4] |= grid[i][4];
+    result[5] |= grid[i][5];
   }
   return result;
 }
 
 export function trimUnsupported(puyos: Puyos) {
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    puyos[2] &= ~((FULL & ~puyos[2]) >> V_SHIFT);
-  }
-
-  puyos[1] &= ~((TOP & ~puyos[2]) << TOP_TO_BOTTOM);
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    puyos[1] &= ~((FULL & ~puyos[1]) >> V_SHIFT);
-  }
-
-  puyos[0] &= ~((TOP & ~puyos[1]) << TOP_TO_BOTTOM);
-  for (let i = 0; i < SLICE_HEIGHT - 1; ++i) {
-    puyos[0] &= ~((FULL & ~puyos[0]) >> V_SHIFT);
+  for (let i = 0; i < HEIGHT - 1; ++i) {
+    puyos[0] &= (puyos[0] >> 1) | BOTTOM;
+    puyos[1] &= (puyos[1] >> 1) | BOTTOM;
+    puyos[2] &= (puyos[2] >> 1) | BOTTOM;
+    puyos[3] &= (puyos[3] >> 1) | BOTTOM;
+    puyos[4] &= (puyos[4] >> 1) | BOTTOM;
+    puyos[5] &= (puyos[5] >> 1) | BOTTOM;
   }
 
   return puyos;
@@ -344,12 +325,18 @@ export function invert(puyos: Puyos) {
   puyos[0] = ~puyos[0];
   puyos[1] = ~puyos[1];
   puyos[2] = ~puyos[2];
+  puyos[3] = ~puyos[3];
+  puyos[4] = ~puyos[4];
+  puyos[5] = ~puyos[5];
 }
 
 export function applyMask(puyos: Puyos, mask: Puyos) {
   puyos[0] &= mask[0];
   puyos[1] &= mask[1];
   puyos[2] &= mask[2];
+  puyos[3] &= mask[3];
+  puyos[4] &= mask[4];
+  puyos[5] &= mask[5];
 }
 
 export function inMask(puyos: Puyos, mask: Puyos) {
@@ -362,6 +349,9 @@ export function applyXor(puyos: Puyos, diff: Puyos) {
   puyos[0] ^= diff[0];
   puyos[1] ^= diff[1];
   puyos[2] ^= diff[2];
+  puyos[3] ^= diff[3];
+  puyos[4] ^= diff[4];
+  puyos[5] ^= diff[5];
 }
 
 /**
@@ -378,26 +368,18 @@ export function fallOne(grid: Puyos[]): Puyos {
   applyMask(unsupported, mask);
 
   grid.forEach(puyos => {
-    const unsupported0 = puyos[0] & unsupported[0];
-    const unsupported1 = puyos[1] & unsupported[1];
-    const unsupported2 = puyos[2] & unsupported[2];
-
-    puyos[0] ^= unsupported0 ^ (FULL & (unsupported0 << V_SHIFT));
-    puyos[1] ^=
-      unsupported1 ^
-      ((FULL & (unsupported1 << V_SHIFT)) |
-        ((unsupported0 & BOTTOM) >> TOP_TO_BOTTOM));
-    puyos[2] ^=
-      unsupported2 ^
-      ((unsupported2 << V_SHIFT) | ((unsupported1 & BOTTOM) >> TOP_TO_BOTTOM));
+    for (let i = 0; i < NUM_SLICES; ++i) {
+      const falling = puyos[i] & unsupported[i];
+      puyos[i] ^= falling ^ (falling << 1);
+    }
   });
 
-  unsupported[2] =
-    (unsupported[2] << V_SHIFT) | ((unsupported[1] & BOTTOM) >> TOP_TO_BOTTOM);
-  unsupported[1] =
-    (FULL & (unsupported[1] << V_SHIFT)) |
-    ((unsupported[0] & BOTTOM) >> TOP_TO_BOTTOM);
-  unsupported[0] = FULL & (unsupported[0] << V_SHIFT);
+  unsupported[0] <<= 1;
+  unsupported[1] <<= 1;
+  unsupported[2] <<= 1;
+  unsupported[3] <<= 1;
+  unsupported[4] <<= 1;
+  unsupported[5] <<= 1;
 
   return unsupported;
 }
@@ -410,44 +392,24 @@ export function fallOne(grid: Puyos[]): Puyos {
 export function resolveGravity(grid: Puyos[]): boolean {
   const all = getMask(grid);
 
-  let didSomething = false;
-  let didFall = true;
-  while (didFall) {
-    let unsupported: number;
+  let did_something = false;
+  for (let j = 0; j < NUM_SLICES; ++j) {
+    let did_fall = true;
+    while (did_fall) {
+      did_fall = false;
 
-    unsupported = all[2] & ~((all[2] >> V_SHIFT) | BOTTOM);
-    didFall = !!unsupported;
-    all[2] ^= unsupported ^ (unsupported << V_SHIFT);
-    grid.forEach(puyos => {
-      const falling = puyos[2] & unsupported;
-      puyos[2] ^= falling ^ (falling << V_SHIFT);
-    });
+      const unsupported = all[j] & ~((all[j] >> 1) | BOTTOM);
+      did_fall = did_fall || !!unsupported;
+      all[j] ^= unsupported ^ (unsupported << 1);
+      for (let i = 0; i < grid.length; ++i) {
+        const falling = grid[i][j] & unsupported;
+        grid[i][j] ^= falling ^ (falling << 1);
+      }
+    }
 
-    unsupported =
-      all[1] & ~((all[1] >> V_SHIFT) | ((all[2] & TOP) << TOP_TO_BOTTOM));
-    didFall = didFall || !!unsupported;
-    all[2] |= (unsupported & BOTTOM) >> TOP_TO_BOTTOM;
-    all[1] ^= unsupported ^ ((unsupported << V_SHIFT) & FULL);
-    grid.forEach(puyos => {
-      const falling = puyos[1] & unsupported;
-      puyos[2] |= (falling & BOTTOM) >> TOP_TO_BOTTOM;
-      puyos[1] ^= falling ^ ((falling << V_SHIFT) & FULL);
-    });
-
-    unsupported =
-      all[0] & ~((all[0] >> V_SHIFT) | ((all[1] & TOP) << TOP_TO_BOTTOM));
-    didFall = didFall || !!unsupported;
-    all[1] |= (unsupported & BOTTOM) >> TOP_TO_BOTTOM;
-    all[0] ^= unsupported ^ ((unsupported << V_SHIFT) & FULL);
-    grid.forEach(puyos => {
-      const falling = puyos[0] & unsupported;
-      puyos[1] |= (falling & BOTTOM) >> TOP_TO_BOTTOM;
-      puyos[0] ^= falling ^ ((falling << V_SHIFT) & FULL);
-    });
-
-    didSomething = didSomething || didFall;
+    did_something = did_something || did_fall;
   }
-  return didSomething;
+  return did_something;
 }
 
 /**
@@ -456,7 +418,14 @@ export function resolveGravity(grid: Puyos[]): boolean {
  * @returns The number of puyos present.
  */
 export function puyoCount(puyos: Puyos): number {
-  return popcount(puyos[0]) + popcount(puyos[1]) + popcount(puyos[2]);
+  return (
+    popcount16(puyos[0]) +
+    popcount16(puyos[1]) +
+    popcount16(puyos[2]) +
+    popcount16(puyos[3]) +
+    popcount16(puyos[4]) +
+    popcount16(puyos[5])
+  );
 }
 
 function getGroupBonus(group_size: number) {
@@ -473,13 +442,17 @@ export function sparkGroups(puyos: Puyos): ClearResult {
   const sparks = emptyPuyos();
   const group = emptyPuyos();
   const temp = clone(puyos);
-  temp[0] &= VISIBLE_BLOCK;
+  temp[0] &= VISIBLE;
+  temp[1] &= VISIBLE;
+  temp[2] &= VISIBLE;
+  temp[3] &= VISIBLE;
+  temp[4] &= VISIBLE;
+  temp[5] &= VISIBLE;
   // Clear from the bottom up hoping for an early exit.
-  for (let i = NUM_SLICES - 1; i >= 0; i--) {
-    // Only iterate within the visible grid.
-    const min = i === 0 ? WIDTH * (GHOST_Y + 1) : 0;
-    for (let j = WIDTH * SLICE_HEIGHT - 2; j >= min; j -= 2) {
-      group[i] = 3 << j;
+  // Only iterate within the visible grid.
+  for (let y = BOTTOM_Y - 1; y > GHOST_Y; y -= 2) {
+    for (let x = 0; x < NUM_SLICES; ++x) {
+      group[x] = 3 << y;
       flood(group, temp);
       applyXor(temp, group);
       const groupSize = puyoCount(group);
@@ -508,28 +481,16 @@ export function sparkGroups(puyos: Puyos): ClearResult {
 export function sparkGarbage(garbage: Puyos, cleared: Puyos): Puyos {
   const eliminated = clone(garbage);
 
-  eliminated[0] &=
-    (((cleared[0] & RIGHT_BLOCK) >> H_SHIFT) |
-      ((cleared[0] << H_SHIFT) & RIGHT_BLOCK) |
-      (cleared[0] << V_SHIFT) |
-      (cleared[0] >> V_SHIFT) |
-      ((cleared[1] & TOP) << TOP_TO_BOTTOM)) &
-    SEMI_VISIBLE_BLOCK;
-
+  eliminated[0] &= (cleared[0] << 1) | (cleared[0] >> 1) | cleared[1];
   eliminated[1] &=
-    ((cleared[1] & RIGHT_BLOCK) >> H_SHIFT) |
-    ((cleared[1] << H_SHIFT) & RIGHT_BLOCK) |
-    (cleared[1] << V_SHIFT) |
-    (cleared[1] >> V_SHIFT) |
-    ((cleared[0] & BOTTOM) >> TOP_TO_BOTTOM) |
-    ((cleared[2] & TOP) << TOP_TO_BOTTOM);
-
+    (cleared[1] << 1) | (cleared[1] >> 1) | cleared[0] | cleared[2];
   eliminated[2] &=
-    ((cleared[2] & RIGHT_BLOCK) >> H_SHIFT) |
-    ((cleared[2] << H_SHIFT) & RIGHT_BLOCK) |
-    (cleared[2] << V_SHIFT) |
-    (cleared[2] >> V_SHIFT) |
-    ((cleared[1] & BOTTOM) >> TOP_TO_BOTTOM);
+    (cleared[2] << 1) | (cleared[2] >> 1) | cleared[1] | cleared[3];
+  eliminated[3] &=
+    (cleared[3] << 1) | (cleared[3] >> 1) | cleared[2] | cleared[4];
+  eliminated[4] &=
+    (cleared[4] << 1) | (cleared[4] >> 1) | cleared[3] | cleared[5];
+  eliminated[5] &= (cleared[5] << 1) | (cleared[5] >> 1) | cleared[4];
 
   return eliminated;
 }
@@ -548,45 +509,54 @@ export function collides(testPuyos: Puyos, ...rest: Puyos[]) {
 }
 
 export function vanishTop(puyos: Puyos) {
-  puyos[0] &= SEMI_VISIBLE_BLOCK;
+  puyos[0] &= SEMI_VISIBLE;
+  puyos[1] &= SEMI_VISIBLE;
+  puyos[2] &= SEMI_VISIBLE;
+  puyos[3] &= SEMI_VISIBLE;
+  puyos[4] &= SEMI_VISIBLE;
+  puyos[5] &= SEMI_VISIBLE;
 }
 
 export function clear(puyos: Puyos) {
-  puyos[0] = 0;
-  puyos[1] = 0;
-  puyos[2] = 0;
+  puyos.fill(0);
 }
 
 export function topLine(): Puyos {
-  const result = emptyPuyos();
-  result[0] = TOP;
-  return result;
+  return emptyPuyos().fill(TOP);
 }
 
 export function connections(puyos: Puyos): Puyos[] {
   const down = clone(puyos);
-  down[0] &= VISIBLE_BLOCK;
-  down[0] &= (down[0] >> V_SHIFT) | ((down[1] & TOP) << TOP_TO_BOTTOM);
-  down[1] &= (down[1] >> V_SHIFT) | ((down[2] & TOP) << TOP_TO_BOTTOM);
-  down[2] &= down[2] >> V_SHIFT;
+  down[0] &= (down[0] >> 1) & VISIBLE;
+  down[1] &= (down[1] >> 1) & VISIBLE;
+  down[2] &= (down[2] >> 1) & VISIBLE;
+  down[3] &= (down[3] >> 1) & VISIBLE;
+  down[4] &= (down[4] >> 1) & VISIBLE;
+  down[5] &= (down[5] >> 1) & VISIBLE;
 
   const up = clone(puyos);
-  up[0] &= VISIBLE_BLOCK;
-  up[2] &= (up[2] << V_SHIFT) | ((up[1] & BOTTOM) >> TOP_TO_BOTTOM);
-  up[1] &= (up[1] << V_SHIFT) | ((up[0] & BOTTOM) >> TOP_TO_BOTTOM);
-  up[0] &= up[0] << V_SHIFT;
+  up[0] &= (up[0] & VISIBLE) << 1;
+  up[1] &= (up[1] & VISIBLE) << 1;
+  up[2] &= (up[2] & VISIBLE) << 1;
+  up[3] &= (up[3] & VISIBLE) << 1;
+  up[4] &= (up[4] & VISIBLE) << 1;
+  up[5] &= (up[5] & VISIBLE) << 1;
 
   const right = clone(puyos);
-  right[0] &= VISIBLE_BLOCK;
-  right[0] &= (right[0] & RIGHT_BLOCK) >> H_SHIFT;
-  right[1] &= (right[1] & RIGHT_BLOCK) >> H_SHIFT;
-  right[2] &= (right[2] & RIGHT_BLOCK) >> H_SHIFT;
+  right[0] &= puyos[1];
+  right[1] &= puyos[2];
+  right[2] &= puyos[3];
+  right[3] &= puyos[4];
+  right[4] &= puyos[5];
+  right[5] = 0;
 
   const left = clone(puyos);
-  left[0] &= VISIBLE_BLOCK;
-  left[0] &= (left[0] << H_SHIFT) & RIGHT_BLOCK;
-  left[1] &= (left[1] << H_SHIFT) & RIGHT_BLOCK;
-  left[2] &= (left[2] << H_SHIFT) & RIGHT_BLOCK;
+  left[0] = 0;
+  left[1] &= puyos[0];
+  left[2] &= puyos[1];
+  left[3] &= puyos[2];
+  left[4] &= puyos[3];
+  left[5] &= puyos[4];
 
   return [down, up, right, left];
 }
@@ -597,22 +567,36 @@ export function connections(puyos: Puyos): Puyos[] {
  * @returns `true` if the game should be over.
  */
 export function toppedUp(puyos: Puyos): boolean {
-  return !(TOPPING_LINE & ~puyos[0]);
+  return !!(
+    puyos[0] &
+    puyos[1] &
+    puyos[2] &
+    puyos[3] &
+    puyos[4] &
+    puyos[5] &
+    TOPPING_LINE
+  );
 }
 
 export function visible(puyos: Puyos): Puyos {
   const result = clone(puyos);
-  result[0] &= VISIBLE_BLOCK;
+  result[0] &= VISIBLE;
+  result[1] &= VISIBLE;
+  result[2] &= VISIBLE;
+  result[3] &= VISIBLE;
+  result[4] &= VISIBLE;
+  result[5] &= VISIBLE;
   return result;
 }
 
 export function shatter(puyos: Puyos): Puyos[] {
   const result = [];
-  for (let j = 0; j < NUM_SLICES; ++j) {
-    for (let i = 0; i < WIDTH * SLICE_HEIGHT; ++i) {
-      if (puyos[j] & (1 << i)) {
+  for (let y = 0; y < HEIGHT; ++y) {
+    const p = 1 << y;
+    for (let x = 0; x < NUM_SLICES; ++x) {
+      if (puyos[x] & p) {
         const puyo = emptyPuyos();
-        puyo[j] = 1 << i;
+        puyo[x] = p;
         result.push(puyo);
       }
     }
