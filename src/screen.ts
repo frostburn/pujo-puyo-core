@@ -127,7 +127,6 @@ function gridFromLines(lines: string[]) {
  */
 export class SimplePuyoScreen {
   grid: Puyos[];
-  chainNumber: number;
   bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
   garbageSlots: number[]; // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
   // No deterministic RNG, knowing the correct seed would be cheating.
@@ -140,7 +139,6 @@ export class SimplePuyoScreen {
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
       this.grid.push(emptyPuyos());
     }
-    this.chainNumber = 0;
     this.bufferedGarbage = 0;
     this.garbageSlots = [];
   }
@@ -195,7 +193,7 @@ export class SimplePuyoScreen {
       ignited: toArray(ignitionMask),
       jiggling: [],
       sparking: [],
-      chainNumber: this.chainNumber,
+      chainNumber: 0,
     };
   }
 
@@ -278,7 +276,6 @@ export class SimplePuyoScreen {
       result.push(line);
     }
     result.push('╚════════════╝');
-    result.push(`Chain: ${this.chainNumber}`);
     return result;
   }
 
@@ -358,7 +355,7 @@ export class SimplePuyoScreen {
       );
 
       const colorBonus = COLOR_BONUS[numColors];
-      const chainPower = CHAIN_POWERS[this.chainNumber];
+      const chainPower = CHAIN_POWERS[result.chainNumber];
       const clearBonus = Math.max(
         1,
         Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus)
@@ -368,10 +365,7 @@ export class SimplePuyoScreen {
       if (didClear) {
         result.didClear = true;
         active = true;
-        this.chainNumber++;
-        result.chainNumber = this.chainNumber;
-      } else {
-        this.chainNumber = 0;
+        result.chainNumber++;
       }
     }
     if (this.grid.every(isEmpty)) {
@@ -413,7 +407,6 @@ export class SimplePuyoScreen {
   toSimpleScreen() {
     const result = new SimplePuyoScreen();
     result.grid = this.grid.map(clone);
-    result.chainNumber = this.chainNumber;
     result.garbageSlots = [...this.garbageSlots];
     // Shuffle remaining slots to avoid revealing RNG information.
     result.garbageSlots.sort(() => Math.random() - 0.5);
@@ -508,6 +501,7 @@ export class SimplePuyoScreen {
  * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
  */
 export class PuyoScreen extends SimplePuyoScreen {
+  chainNumber: number;
   doJiggles: boolean;
   jiggles: Puyos;
   sparks: Puyos;
@@ -519,6 +513,7 @@ export class PuyoScreen extends SimplePuyoScreen {
    */
   constructor(seed?: number) {
     super();
+    this.chainNumber = 0;
     this.doJiggles = false;
     this.jiggles = emptyPuyos();
     this.sparks = emptyPuyos();
