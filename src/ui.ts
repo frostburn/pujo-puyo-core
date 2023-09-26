@@ -1,5 +1,5 @@
 import {sleep} from 'bun';
-import {WIDTH} from './bitboard';
+import {WIDTH, clear} from './bitboard';
 import {SimplePuyoScreen, colorOf} from './screen';
 import {stdin, stdout} from 'process';
 import {MOVES, MultiplayerGame, SimpleGame, SinglePlayerGame} from './game';
@@ -9,6 +9,22 @@ console.log();
 console.log(
   'Welcome to \x1b[3mPujo Puyo\x1b[0m, powered by \x1b[4mBun\x1b[0m!'
 );
+
+// Benchmark of sorts.
+if (process.argv.length === 4) {
+  const screen = new SimplePuyoScreen();
+  const game = new SimpleGame(screen, 0, 0, 0, [], [], 0);
+  for (let j = 0; j < 100000; ++j) {
+    game.screen.grid.forEach(puyos => clear(puyos));
+    for (let i = 0; i < 36; ++i) {
+      game.bag = [Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)];
+      game.playAndTick(Math.floor(Math.random() * MOVES.length));
+    }
+  }
+  game.screen.log();
+  // eslint-disable-next-line
+  process.exit();
+}
 
 // Play a demo game.
 if (process.argv.length === 3) {
