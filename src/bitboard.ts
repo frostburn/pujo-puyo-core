@@ -317,8 +317,6 @@ export function trimUnsupported(puyos: Puyos) {
     puyos[4] &= (puyos[4] >> 1) | BOTTOM;
     puyos[5] &= (puyos[5] >> 1) | BOTTOM;
   }
-
-  return puyos;
 }
 
 export function invert(puyos: Puyos) {
