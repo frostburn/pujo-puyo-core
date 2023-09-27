@@ -242,22 +242,16 @@ test('Top group elimination', () => {
   expect(score).toBe(40);
 });
 
-test('Simple screen garbage slot boundary resolution', () => {
+test('Simple screen partial garbage line', () => {
   const screen = new SimplePuyoScreen();
   screen.bufferedGarbage = 2;
-  screen.garbageSlots = [0, 0, 1, 2, 3, 4, 5];
   screen.tick();
   expect(puyoCount(screen.grid[GARBAGE])).toBe(2);
-  expect(puyoAt(screen.grid[GARBAGE], 0, HEIGHT - 2)).toBeTrue();
-  expect(puyoAt(screen.grid[GARBAGE], 0, HEIGHT - 1)).toBeTrue();
 });
 
-test('Screen garbage slot boundary resolution', () => {
+test('Screen partial garbage line', () => {
   const screen = new PuyoScreen();
   screen.bufferedGarbage = 2;
-  screen.garbageSlots = [0, 0, 1, 2, 3, 4, 5];
-  screen.tick();
-  expect(puyoCount(screen.grid[GARBAGE])).toBe(1);
   screen.tick();
   expect(puyoCount(screen.grid[GARBAGE])).toBe(2);
 });

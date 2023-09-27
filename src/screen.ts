@@ -128,7 +128,6 @@ function gridFromLines(lines: string[]) {
 export class SimplePuyoScreen {
   grid: Puyos[];
   bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
-  garbageSlots: number[]; // Ensure a perfectly even distribution. (Not part of Tsu, but I like it.)
   // No deterministic RNG, knowing the correct seed would be cheating.
 
   /**
@@ -140,17 +139,12 @@ export class SimplePuyoScreen {
       this.grid.push(emptyPuyos());
     }
     this.bufferedGarbage = 0;
-    // There should always be at least five slots decided so that partial garbage lines can be generated.
-    // We maintain at least six slots for ease of implementation.
-    this.garbageSlots = [...Array(WIDTH).keys()];
-    this.garbageSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
   }
 
   toJSON() {
     return {
       grid: this.grid.map(puyos => [...puyos]),
       bufferedGarbage: this.bufferedGarbage,
-      garbageSlots: this.garbageSlots,
     };
   }
 
@@ -163,7 +157,6 @@ export class SimplePuyoScreen {
       }
     }
     result.bufferedGarbage = obj.bufferedGarbage;
-    result.garbageSlots = obj.garbageSlots;
     return result;
   }
 
@@ -332,22 +325,12 @@ export class SimplePuyoScreen {
         merge(this.grid[GARBAGE], topLine());
         this.bufferedGarbage -= WIDTH;
       } else if (this.bufferedGarbage) {
-        const line = Array(WIDTH).fill(false);
-        while (this.bufferedGarbage) {
-          if (line[this.garbageSlots[0]]) {
-            // Ran into a slot boundary. Need to make space.
-            break;
-          } else {
-            line[this.garbageSlots.shift()!] = true;
-            this.bufferedGarbage--;
-            if (this.garbageSlots.length < WIDTH) {
-              const newSlots = [...Array(WIDTH).keys()];
-              newSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
-              this.garbageSlots.push(...newSlots);
-            }
-          }
-        }
+        const line = Array(this.bufferedGarbage)
+          .fill(true)
+          .concat(Array(WIDTH - this.bufferedGarbage).fill(false));
+        line.sort(() => Math.random() - 0.5);
         merge(this.grid[GARBAGE], fromArray(line));
+        this.bufferedGarbage = 0;
       }
       fallOne(this.grid);
     }
@@ -437,7 +420,6 @@ export class SimplePuyoScreen {
   toSimpleScreen() {
     const result = new SimplePuyoScreen();
     result.grid = this.grid.map(clone);
-    result.garbageSlots = [...this.garbageSlots];
     return result;
   }
 
@@ -650,22 +632,12 @@ export class PuyoScreen extends SimplePuyoScreen {
       merge(this.grid[GARBAGE], topLine());
       this.bufferedGarbage -= WIDTH;
     } else if (this.bufferedGarbage) {
-      const line = Array(WIDTH).fill(false);
-      while (this.bufferedGarbage) {
-        if (line[this.garbageSlots[0]]) {
-          // Ran into a slot boundary. Need to make space.
-          break;
-        } else {
-          line[this.garbageSlots.shift()!] = true;
-          this.bufferedGarbage--;
-          if (this.garbageSlots.length < WIDTH) {
-            const newSlots = [...Array(WIDTH).keys()];
-            this.jkiss.shuffle(newSlots);
-            this.garbageSlots.push(...newSlots);
-          }
-        }
-      }
+      const line = Array(this.bufferedGarbage)
+        .fill(true)
+        .concat(Array(WIDTH - this.bufferedGarbage).fill(false));
+      this.jkiss.shuffle(line);
       merge(this.grid[GARBAGE], fromArray(line));
+      this.bufferedGarbage = 0;
     }
 
     // Make everything unsupported fall down one grid unit.
@@ -775,7 +747,6 @@ export class PuyoScreen extends SimplePuyoScreen {
     const result = new PuyoScreen();
     result.grid = this.grid.map(clone);
     result.chainNumber = this.chainNumber;
-    result.garbageSlots = [...this.garbageSlots];
     result.doJiggles = this.doJiggles;
     result.jiggles = clone(this.jiggles);
     result.sparks = clone(this.sparks);

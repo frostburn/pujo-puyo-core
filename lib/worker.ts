@@ -39,7 +39,6 @@ onmessage = e => {
   const screen = new SimplePuyoScreen();
   screen.grid = gameData.screen.grid;
   screen.bufferedGarbage = gameData.screen.bufferedGarbage;
-  screen.garbageSlots = gameData.screen.garbageSlots;
   const moveTime =
     (Math.max(
       0,
