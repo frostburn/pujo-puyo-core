@@ -1,7 +1,16 @@
 import {expect, test} from 'bun:test';
-import {MOVES, MultiplayerGame} from '../game';
+import {MOVES, MultiplayerGame, SimpleGame} from '../game';
 import {JKISS32} from '../jkiss';
-import {GARBAGE, PuyoScreen, RED, puyoCount} from '..';
+import {
+  BLUE,
+  GARBAGE,
+  GREEN,
+  PuyoScreen,
+  RED,
+  SimplePuyoScreen,
+  YELLOW,
+  puyoCount,
+} from '..';
 
 test('Pending commit time', () => {
   const game = new MultiplayerGame();
@@ -100,6 +109,45 @@ test('Garbage offset in a symmetric game', () => {
       }
     }
     game.tick();
-    // game.log();
   }
+});
+
+test('Simple game late garbage offsetting', () => {
+  const screen = SimplePuyoScreen.fromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
+  screen.tick();
+
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    0,
+    1000,
+    1000,
+    [RED, GREEN, YELLOW, BLUE],
+    [YELLOW, YELLOW]
+  );
+
+  game.playAndTick(0);
+
+  expect(game.lateGarbage).toBeLessThan(1000);
+});
+
+test('Simple game pending garbage offsetting', () => {
+  const screen = SimplePuyoScreen.fromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
+  screen.tick();
+
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    1000,
+    0,
+    0,
+    [RED, GREEN, YELLOW, BLUE],
+    [YELLOW, YELLOW]
+  );
+
+  game.playAndTick(0);
+
+  expect(game.lateGarbage).toBeLessThan(1000 - 30);
 });

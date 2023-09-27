@@ -13,7 +13,7 @@ console.log(
 // Benchmark of sorts.
 if (process.argv.length === 4) {
   const screen = new SimplePuyoScreen();
-  const game = new SimpleGame(screen, 0, 0, 0, [], [], 0);
+  const game = new SimpleGame(screen, 0, false, 0, 0, 0, [], [], 0);
   for (let j = 0; j < 100000; ++j) {
     game.screen.grid.forEach(puyos => clear(puyos));
     for (let i = 0; i < 36; ++i) {
@@ -60,6 +60,8 @@ if (process.argv.length === 3) {
   const screen = new SimplePuyoScreen();
   const game = new SimpleGame(
     screen,
+    0,
+    false,
     0,
     0,
     0,

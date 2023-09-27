@@ -118,11 +118,11 @@ function gridFromLines(lines: string[]) {
 }
 
 /**
- * A 6x15 screen of puyos, optimized for AI planning.
+ * A 6x16 screen of puyos, optimized for AI planning.
  * Gravity and chains resolve instantly and there are no sparks.
  * Only the bottom 6x12 area is chainable.
  * The 13th row acts as a ghost line which holds puyos that do not yet participate in chains.
- * The 14th and 15th rows are vanished once everything has landed.
+ * The 14th, 15th and 16th rows are vanished once everything has landed.
  * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
  */
 export class SimplePuyoScreen {
@@ -132,7 +132,7 @@ export class SimplePuyoScreen {
   // No deterministic RNG, knowing the correct seed would be cheating.
 
   /**
-   * Construct a new 6x15 screen of puyos.
+   * Construct a new 6x16 screen of puyos.
    */
   constructor() {
     this.grid = [];
@@ -167,7 +167,7 @@ export class SimplePuyoScreen {
   /**
    * Construct a new screen from ASCII representation of the grid.
    * @param lines Array of strings consisting of characters "RGYBPN", "N" stands for nuisance i.e. garbage.
-   * @returns A 6x15 screen of puyos filled from top to bottom.
+   * @returns A 6x16 screen of puyos filled from top to bottom.
    */
   static fromLines(lines: string[]) {
     const result = new SimplePuyoScreen();
@@ -515,10 +515,10 @@ export class SimplePuyoScreen {
 }
 
 /**
- * A 6x15 screen of puyos.
+ * A 6x16 screen of puyos.
  * Only the bottom 6x12 area is chainable.
  * The 13th row acts as a ghost line which holds puyos that do not yet participate in chains.
- * The 14th and 15th rows are vanished once everything has landed.
+ * The 14th, 15th and 16th rows are vanished once everything has landed.
  * There are 5 different colors of puyos and 1 type of garbage/nuisance puyo.
  */
 export class PuyoScreen extends SimplePuyoScreen {
@@ -529,7 +529,7 @@ export class PuyoScreen extends SimplePuyoScreen {
   jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
   /**
-   * Construct a new 6x15 screen of puyos.
+   * Construct a new 6x16 screen of puyos.
    * @param seed Seed for the pseudo random number generator.
    */
   constructor(seed?: number) {
@@ -544,7 +544,7 @@ export class PuyoScreen extends SimplePuyoScreen {
   /**
    * Construct a new screen from ASCII representation of the grid.
    * @param lines Array of strings consisting of characters "RGYBPN", "N" stands for nuisance i.e. garbage.
-   * @returns A 6x15 screen of puyos filled from top to bottom.
+   * @returns A 6x16 screen of puyos filled from top to bottom.
    */
   static fromLines(lines: string[]) {
     const result = new PuyoScreen();

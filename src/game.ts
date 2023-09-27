@@ -428,6 +428,8 @@ export class MultiplayerGame {
     }
     return new SimpleGame(
       this.games[player].screen.toSimpleScreen(),
+      this.pointResidues[player],
+      this.allClearBonus[player],
       this.pendingGarbage[player],
       lateGarbage,
       lateTimeRemaining,
@@ -494,6 +496,8 @@ export const SIMPLE_GAME_OVER = -1000000;
  */
 export class SimpleGame {
   screen: SimplePuyoScreen;
+  pointResidue: number;
+  allClearBonus: boolean;
   // Garbage to be received as soon as possible, one stone at a time.
   pendingGarbage: number;
   // Garbage to be received later.
@@ -507,6 +511,8 @@ export class SimpleGame {
 
   constructor(
     screen: SimplePuyoScreen,
+    pointResidue: number,
+    allClearBonus: boolean,
     pendingGarbage: number,
     lateGarbage: number,
     lateTimeRemaining: number,
@@ -515,6 +521,8 @@ export class SimpleGame {
     moveTime = DEFAULT_MOVE_TIME
   ) {
     this.screen = screen;
+    this.pointResidue = pointResidue;
+    this.allClearBonus = allClearBonus;
     this.pendingGarbage = pendingGarbage;
     this.lateGarbage = lateGarbage;
     this.lateTimeRemaining = lateTimeRemaining;
@@ -522,6 +530,8 @@ export class SimpleGame {
     this.bag = bag;
     this.moveTime = moveTime;
 
+    // Normalize
+    this.lateTimeRemaining += this.moveTime;
     this.resolve();
   }
 
@@ -554,17 +564,44 @@ export class SimpleGame {
     this.pendingGarbage -= releasedGarbage;
     this.screen.bufferedGarbage += releasedGarbage;
     const tickResult = this.resolve();
+
     return tickResult;
   }
 
   resolve() {
     const tickResult = this.screen.tick();
     this.lateTimeRemaining -= tickResult.chainNumber + this.moveTime;
+
+    if (tickResult.didClear && this.allClearBonus) {
+      this.pointResidue += SIMPLE_ALL_CLEAR_BONUS;
+      this.allClearBonus = false;
+    }
+    this.pointResidue += tickResult.score;
+
+    let generatedGarbage = Math.floor(this.pointResidue / TARGET_POINTS);
+    this.pointResidue -= TARGET_POINTS * generatedGarbage;
+
+    if (this.pendingGarbage > generatedGarbage) {
+      this.pendingGarbage -= generatedGarbage;
+      generatedGarbage = 0;
+    } else {
+      generatedGarbage -= this.pendingGarbage;
+      this.pendingGarbage = 0;
+    }
+    if (this.lateGarbage > generatedGarbage) {
+      this.lateGarbage -= generatedGarbage;
+      generatedGarbage = 0;
+    } else {
+      generatedGarbage -= this.lateGarbage;
+      this.lateGarbage = 0;
+    }
+
     if (this.lateTimeRemaining <= 0) {
       this.pendingGarbage += this.lateGarbage;
       this.lateGarbage = 0;
     }
     if (tickResult.allClear) {
+      this.allClearBonus = true;
       tickResult.score += SIMPLE_ALL_CLEAR_BONUS;
     }
     if (tickResult.lockedOut) {
@@ -576,6 +613,8 @@ export class SimpleGame {
   clone() {
     return new SimpleGame(
       this.screen.toSimpleScreen(),
+      this.pointResidue,
+      this.allClearBonus,
       this.pendingGarbage,
       this.lateGarbage,
       this.lateTimeRemaining,
@@ -584,10 +623,64 @@ export class SimpleGame {
     );
   }
 
+  displayLines() {
+    const lines = this.screen.displayLines();
+    if (this.bag.length >= 2) {
+      lines[0] = `╔════${colorOf(this.bag[0])}● \x1b[0m${colorOf(
+        this.bag[1]
+      )}● \x1b[0m════╗`;
+    }
+    lines[0] += '┌──┐';
+    if (this.bag.length >= 4) {
+      lines[1] += `│${colorOf(this.bag[3])}● \x1b[0m│`;
+      lines[2] += `│${colorOf(this.bag[2])}● \x1b[0m│`;
+    } else {
+      lines[1] += '│  │';
+      lines[2] += '│  │';
+    }
+    lines[3] += '└┐ └┐';
+    if (this.bag.length >= 6) {
+      lines[4] += ` │${colorOf(this.bag[5])}● \x1b[0m│`;
+      lines[5] += ` │${colorOf(this.bag[4])}● \x1b[0m│`;
+    } else {
+      lines[4] += ' │  │';
+      lines[5] += ' │  │';
+    }
+    lines[6] += ' └──┘';
+    if (this.bag.length > 6) {
+      lines[7] += ` +${this.bag.length - 6}`;
+    }
+    if (this.allClearBonus) {
+      lines[lines.length - 1] += 'All Clear';
+    }
+    const garbageUnits = [];
+    if (this.screen.bufferedGarbage) {
+      garbageUnits.push(`$${this.screen.bufferedGarbage}`);
+    }
+    if (this.pendingGarbage) {
+      garbageUnits.push(`${this.pendingGarbage}`);
+    }
+    if (this.lateGarbage) {
+      garbageUnits.push(`${this.lateGarbage} in ${this.lateTimeRemaining}`);
+    }
+    lines.push('G: ' + garbageUnits.join(' + '));
+
+    return lines;
+  }
+
+  /**
+   * Render the game in the console.
+   */
+  log(): void {
+    console.log(this.displayLines().join('\n'));
+  }
+
   static fromJSON(obj: any) {
     const screen = SimplePuyoScreen.fromJSON(obj.screen);
     return new SimpleGame(
       screen,
+      obj.pointResidue,
+      obj.allClearBonus,
       obj.pendingGarbage,
       obj.lateGarbage,
       obj.lateTimeRemaining,

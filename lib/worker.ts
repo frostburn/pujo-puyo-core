@@ -38,7 +38,6 @@ onmessage = e => {
   // Revive the class instance.
   const screen = new SimplePuyoScreen();
   screen.grid = gameData.screen.grid;
-  screen.chainNumber = gameData.screen.chainNumber;
   screen.bufferedGarbage = gameData.screen.bufferedGarbage;
   screen.garbageSlots = gameData.screen.garbageSlots;
   const moveTime =
@@ -50,6 +49,8 @@ onmessage = e => {
     CHAIN_FRAMES;
   const game = new SimpleGame(
     screen,
+    gameData.pointResidue,
+    gameData.allClearBonus,
     gameData.pendingGarbage,
     gameData.lateGarbage,
     gameData.lateTimeRemaining,
