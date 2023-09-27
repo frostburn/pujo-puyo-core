@@ -18,7 +18,7 @@ socket.addEventListener('message', event => {
   } else if (data.type === 'simple state') {
     const game = SimpleGame.fromJSON(data.state);
     const strategy = flexDropletStrategy2(game);
-    game.screen.log();
+    game.log();
     console.log('Heuristic score:', strategy.score);
     console.log(`Wins / Draws / Losses: ${wins} / ${draws} / ${losses}`);
 

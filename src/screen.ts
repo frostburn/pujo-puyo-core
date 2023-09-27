@@ -140,7 +140,10 @@ export class SimplePuyoScreen {
       this.grid.push(emptyPuyos());
     }
     this.bufferedGarbage = 0;
-    this.garbageSlots = [];
+    // There should always be at least five slots decided so that partial garbage lines can be generated.
+    // We maintain at least six slots for ease of implementation.
+    this.garbageSlots = [...Array(WIDTH).keys()];
+    this.garbageSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
   }
 
   toJSON() {
@@ -331,12 +334,18 @@ export class SimplePuyoScreen {
       } else if (this.bufferedGarbage) {
         const line = Array(WIDTH).fill(false);
         while (this.bufferedGarbage) {
-          if (!this.garbageSlots.length) {
-            this.garbageSlots = [...Array(WIDTH).keys()];
-            this.garbageSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
+          if (line[this.garbageSlots[0]]) {
+            // Ran into a slot boundary. Need to make space.
+            break;
+          } else {
+            line[this.garbageSlots.shift()!] = true;
+            this.bufferedGarbage--;
+            if (this.garbageSlots.length < WIDTH) {
+              const newSlots = [...Array(WIDTH).keys()];
+              newSlots.sort(() => Math.random() - 0.5); // Poor man's shuffle.
+              this.garbageSlots.push(...newSlots);
+            }
           }
-          line[this.garbageSlots.pop()!] = true;
-          this.bufferedGarbage--;
         }
         merge(this.grid[GARBAGE], fromArray(line));
       }
@@ -429,8 +438,6 @@ export class SimplePuyoScreen {
     const result = new SimplePuyoScreen();
     result.grid = this.grid.map(clone);
     result.garbageSlots = [...this.garbageSlots];
-    // Shuffle remaining slots to avoid revealing RNG information.
-    result.garbageSlots.sort(() => Math.random() - 0.5);
     return result;
   }
 
@@ -645,12 +652,18 @@ export class PuyoScreen extends SimplePuyoScreen {
     } else if (this.bufferedGarbage) {
       const line = Array(WIDTH).fill(false);
       while (this.bufferedGarbage) {
-        if (!this.garbageSlots.length) {
-          this.garbageSlots = [...Array(WIDTH).keys()];
-          this.jkiss.shuffle(this.garbageSlots);
+        if (line[this.garbageSlots[0]]) {
+          // Ran into a slot boundary. Need to make space.
+          break;
+        } else {
+          line[this.garbageSlots.shift()!] = true;
+          this.bufferedGarbage--;
+          if (this.garbageSlots.length < WIDTH) {
+            const newSlots = [...Array(WIDTH).keys()];
+            this.jkiss.shuffle(newSlots);
+            this.garbageSlots.push(...newSlots);
+          }
         }
-        line[this.garbageSlots.pop()!] = true;
-        this.bufferedGarbage--;
       }
       merge(this.grid[GARBAGE], fromArray(line));
     }
@@ -763,8 +776,6 @@ export class PuyoScreen extends SimplePuyoScreen {
     result.grid = this.grid.map(clone);
     result.chainNumber = this.chainNumber;
     result.garbageSlots = [...this.garbageSlots];
-    // Shuffle remaining slots to avoid revealing RNG information.
-    result.garbageSlots.sort(() => Math.random() - 0.5);
     result.doJiggles = this.doJiggles;
     result.jiggles = clone(this.jiggles);
     result.sparks = clone(this.sparks);
