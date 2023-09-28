@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "description": "Core engine for a Puyo Puyo clone",
   "license": "MIT",
+  "main": "dist/index",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/frostburn/pujo-puyo-core.git"
@@ -19,7 +20,10 @@
     "Puyo Puyo",
     "Mean Bean Machine"
   ],
-  "module": "src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "types": "dist/index.d.ts",
   "devDependencies": {
     "bun-types": "latest",
     "gts": "^5.0.1",
@@ -33,12 +37,12 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser && bun build lib/sound.ts --outdir=build --target=browser && bun build lib/worker.ts --outdir=build --target=browser",
+    "build": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser && bun build lib/sound.ts --outdir=build --target=browser && bun build lib/worker.ts --outdir=build --target=browser",
+    "compile": "tsc",
     "fix": "gts fix",
-    "prepare": "bun run compile",
-    "pretest": "bun run compile",
-    "posttest": "bun run lint",
-    "start": "bun x serve ."
-  },
-  "type": "module"
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run lint",
+    "start": "npx serve ."
+  }
 }
