@@ -97,6 +97,9 @@ export const CONNECTS_LEFT = 8;
  * @returns A string with the ANSI color switch instruction.
  */
 export function colorOf(n: number, dark = false) {
+  if (n < 0) {
+    return '\x1b[0m';
+  }
   if (dark) {
     return `\x1b[3${n + 1}m`;
   }
@@ -289,7 +292,7 @@ export class SimplePuyoScreen {
           line += ' ';
         }
       }
-      line += '\x1b[0m ║';
+      line += `${colorOf(AIR)} ║`;
       result.push(line);
     }
     result.push('╚════════════╝');
@@ -597,7 +600,7 @@ export class PuyoScreen extends SimplePuyoScreen {
           line += ' ';
         }
       }
-      line += '\x1b[0m ║';
+      line += `${colorOf(AIR)} ║`;
       result.push(line);
     }
     result.push('╚════════════╝');

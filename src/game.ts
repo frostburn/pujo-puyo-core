@@ -1,11 +1,14 @@
 import {GHOST_Y, HEIGHT, WIDTH, isNonEmpty, puyoAt} from './bitboard';
 import {JKISS32, randomSeed} from './jkiss';
 import {
+  AIR,
+  GARBAGE,
   NUM_PUYO_COLORS,
   PuyoScreen,
   ScreenState,
   SimplePuyoScreen,
   TickResult,
+  YELLOW,
   colorOf,
 } from './screen';
 
@@ -216,11 +219,11 @@ export class OnePlayerGame {
     const lines = this.screen.displayLines();
     const i = this.busy ? [1, 0, 3, 2] : [3, 2, 5, 4];
     lines[0] += '┌──┐';
-    lines[1] += `│${colorOf(this.bag[i[0]])}● \x1b[0m│`;
-    lines[2] += `│${colorOf(this.bag[i[1]])}● \x1b[0m│`;
+    lines[1] += `│${colorOf(this.bag[i[0]])}● ${colorOf(AIR)}│`;
+    lines[2] += `│${colorOf(this.bag[i[1]])}● ${colorOf(AIR)}│`;
     lines[3] += '└┐ └┐';
-    lines[4] += ` │${colorOf(this.bag[i[2]])}● \x1b[0m│`;
-    lines[5] += ` │${colorOf(this.bag[i[3]])}● \x1b[0m│`;
+    lines[4] += ` │${colorOf(this.bag[i[2]])}● ${colorOf(AIR)}│`;
+    lines[5] += ` │${colorOf(this.bag[i[3]])}● ${colorOf(AIR)}│`;
     lines[6] += ' └──┘';
     lines.push(`Score: ${this.score}`);
     return lines;
@@ -626,22 +629,22 @@ export class SimpleGame {
   displayLines() {
     const lines = this.screen.displayLines();
     if (this.bag.length >= 2) {
-      lines[0] = `╔════${colorOf(this.bag[0])}● \x1b[0m${colorOf(
+      lines[0] = `╔════${colorOf(this.bag[0])}● ${colorOf(AIR)}${colorOf(
         this.bag[1]
-      )}● \x1b[0m════╗`;
+      )}● ${colorOf(AIR)}════╗`;
     }
     lines[0] += '┌──┐';
     if (this.bag.length >= 4) {
-      lines[1] += `│${colorOf(this.bag[3])}● \x1b[0m│`;
-      lines[2] += `│${colorOf(this.bag[2])}● \x1b[0m│`;
+      lines[1] += `│${colorOf(this.bag[3])}● ${colorOf(AIR)}│`;
+      lines[2] += `│${colorOf(this.bag[2])}● ${colorOf(AIR)}│`;
     } else {
       lines[1] += '│  │';
       lines[2] += '│  │';
     }
     lines[3] += '└┐ └┐';
     if (this.bag.length >= 6) {
-      lines[4] += ` │${colorOf(this.bag[5])}● \x1b[0m│`;
-      lines[5] += ` │${colorOf(this.bag[4])}● \x1b[0m│`;
+      lines[4] += ` │${colorOf(this.bag[5])}● ${colorOf(AIR)}│`;
+      lines[5] += ` │${colorOf(this.bag[4])}● ${colorOf(AIR)}│`;
     } else {
       lines[4] += ' │  │';
       lines[5] += ' │  │';
@@ -655,15 +658,23 @@ export class SimpleGame {
     }
     const garbageUnits = [];
     if (this.screen.bufferedGarbage) {
-      garbageUnits.push(`$${this.screen.bufferedGarbage}`);
+      garbageUnits.push(
+        `${colorOf(YELLOW)}${this.screen.bufferedGarbage}${colorOf(AIR)}`
+      );
     }
     if (this.pendingGarbage) {
-      garbageUnits.push(`${this.pendingGarbage}`);
+      garbageUnits.push(
+        `${colorOf(GARBAGE)}${this.pendingGarbage}${colorOf(AIR)}`
+      );
     }
     if (this.lateGarbage) {
       garbageUnits.push(`${this.lateGarbage} in ${this.lateTimeRemaining}`);
     }
-    lines.push('G: ' + garbageUnits.join(' + '));
+    if (garbageUnits.length) {
+      lines.push('G: ' + garbageUnits.join(' + '));
+    } else {
+      lines.push('G: 0');
+    }
 
     return lines;
   }
