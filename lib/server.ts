@@ -81,6 +81,9 @@ class WebSocketGameSession {
         state: this.game.toSimpleGame(index),
       });
     } else if (content.type === 'move') {
+      if (!this.waitingForMove[index]) {
+        return;
+      }
       this.game.play(
         index,
         content.x1,
