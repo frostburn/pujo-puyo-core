@@ -1,5 +1,5 @@
 import {expect, test} from 'bun:test';
-import {MOVES, MultiplayerGame, SimpleGame} from '../game';
+import {MOVES, MultiplayerGame, OnePlayerGame, SimpleGame} from '../game';
 import {JKISS32} from '../jkiss';
 import {
   BLUE,
@@ -150,4 +150,11 @@ test('Simple game pending garbage offsetting', () => {
   game.playAndTick(0);
 
   expect(game.lateGarbage).toBeLessThan(1000 - 30);
+});
+
+test('Roof play', () => {
+  const game = new OnePlayerGame();
+  // Not recommended to play on the garbage insert line but kicks should still apply.
+  game.play(0, 1, 0);
+  expect(puyoCount(game.screen.mask)).toBe(2);
 });

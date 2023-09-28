@@ -140,7 +140,7 @@ export class OnePlayerGame {
       x1--;
       x2--;
     }
-    while (y1 < 0 || y2 < 0) {
+    while (y1 <= 0 || y2 <= 0) {
       y1++;
       y2++;
     }
@@ -354,7 +354,7 @@ export class MultiplayerGame {
     this.canReceive[player] = true;
   }
 
-  tick() {
+  tick(): TickResult[] {
     const tickResults = [];
     for (let i = 0; i < this.games.length; ++i) {
       const tickResult = this.games[i].tick();
