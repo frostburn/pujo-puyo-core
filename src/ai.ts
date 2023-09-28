@@ -271,9 +271,13 @@ export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
 }
 
 // Use high quality randomness for the moves.
-const RANDOM_JKISS = new JKISS32();
+let RANDOM_JKISS: JKISS32 | undefined;
 
 export function randomStrategy(game: SimpleGame): StrategyResult {
+  if (RANDOM_JKISS === undefined) {
+    RANDOM_JKISS = new JKISS32();
+  }
+
   const moves = game.availableMoves;
   if (moves.length) {
     const entropy = RANDOM_JKISS.step();
