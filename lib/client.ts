@@ -42,6 +42,7 @@ socket.addEventListener('message', event => {
 
     const response = JSON.parse(JSON.stringify(MOVES[strategy.move]));
     response.type = 'move';
+    response.kickDown = true;
     socket.send(JSON.stringify(response));
   } else if (data.type === 'game result') {
     if (data.result === 'win') {

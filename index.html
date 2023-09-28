@@ -832,6 +832,8 @@ function draw(timeStamp) {
             name: botName,
             game: workerGame.toSimpleGame(1),
             anticipation: workerAnticipation,
+            throttleFrames: botInitialThrottleFrames,
+            kickDown: botKickDown,
           }
           // Make sure that the bot doesn't hallucinate.
           message.game.bag = game.games[1].visibleBag;

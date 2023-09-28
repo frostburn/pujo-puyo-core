@@ -411,16 +411,14 @@ export class MultiplayerGame {
     if (this.allClearBonus[opponent] && this.canSend[opponent]) {
       lateGarbage += ALL_CLEAR_GARBAGE;
     }
-    let lateTimeRemaining = 0.5;
+    let lateTimeRemaining = 0;
     if (this.games[opponent].busy) {
-      // TODO: If we cannot simplify this, we should start measuring late time in frames.
       const opponentScreen = this.games[opponent].screen.clone();
       let score = 0;
-      let chainNumber = opponentScreen.chainNumber;
       while (true) {
         const tickResult = opponentScreen.tick();
         score += tickResult.score;
-        chainNumber = Math.max(chainNumber, tickResult.chainNumber);
+        lateTimeRemaining++;
         if (!tickResult.busy) {
           break;
         }
@@ -428,7 +426,6 @@ export class MultiplayerGame {
       lateGarbage += Math.floor(
         (score + this.pointResidues[opponent]) / TARGET_POINTS
       );
-      lateTimeRemaining = chainNumber - this.games[opponent].screen.chainNumber;
     }
     return new SimpleGame(
       this.games[player].screen.toSimpleScreen(),
@@ -487,8 +484,9 @@ export const MOVES = [
   {x1: 4, y1: 1, x2: 5, y2: 1, orientation: 3},
 ];
 
-// How long a single move takes compared to one link in a chain.
-const DEFAULT_MOVE_TIME = JIGGLE_TIME / (JIGGLE_TIME + SPARK_TIME + 4);
+// How long a single move takes on average.
+// +1 added for occasional splits even when kickdown is applied.
+const DEFAULT_MOVE_TIME = JIGGLE_TIME + 1;
 
 // Value all-clears based on the amount of garbage they send.
 const SIMPLE_ALL_CLEAR_BONUS = 2100;

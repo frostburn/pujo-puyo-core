@@ -1,6 +1,8 @@
 import {ServerWebSocket} from 'bun';
 import {MultiplayerGame} from '../src';
 
+const LOG_GAMES = false;
+
 const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
 const MAX_GAME_AGE = NOMINAL_FRAME_RATE * 60 * 10;
@@ -35,6 +37,10 @@ class WebSocketGameSession {
 
   start() {
     this.players.forEach((player, i) => {
+      if (LOG_GAMES) {
+        this.game.log();
+        console.log(`Requesting move from ${i}`);
+      }
       player.send({
         type: 'move request',
         bag: this.game.games[i].visibleBag,
@@ -138,6 +144,10 @@ class WebSocketGameSession {
 
       for (let i = 0; i < this.players.length; ++i) {
         if (!this.game.games[i].busy && !this.waitingForMove[i]) {
+          if (LOG_GAMES) {
+            this.game.log();
+            console.log(`Requesting move from ${i}`);
+          }
           this.players[i].send({
             type: 'move request',
             bag: this.game.games[i].visibleBag,

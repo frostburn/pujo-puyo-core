@@ -1,6 +1,5 @@
 import {
   JIGGLE_TIME,
-  SPARK_TIME,
   SimpleGame,
   SimplePuyoScreen,
   randomStrategy,
@@ -27,8 +26,7 @@ const THINKING = {
 // Milliseconds per frame
 const FRAME_RATE = 30 / 1000;
 
-const CHAIN_FRAMES = JIGGLE_TIME + SPARK_TIME + 4;
-const DROP_FRAMES = 10 + JIGGLE_TIME;
+const FALL_FRAMES = 10;
 
 onmessage = e => {
   const name: StrategyName = e.data.name;
@@ -40,12 +38,10 @@ onmessage = e => {
   screen.grid = gameData.screen.grid;
   screen.bufferedGarbage = gameData.screen.bufferedGarbage;
   const moveTime =
-    (Math.max(
-      0,
-      thinking.totalFrames / thinking.samples - e.data.anticipation
-    ) +
-      DROP_FRAMES) /
-    CHAIN_FRAMES;
+    Math.max(0, thinking.totalFrames / thinking.samples - e.data.anticipation) +
+    (e.data.kickDown ? 1 : FALL_FRAMES) +
+    JIGGLE_TIME +
+    e.data.throttleFrames;
   const game = new SimpleGame(
     screen,
     gameData.pointResidue,
@@ -71,7 +67,8 @@ onmessage = e => {
       name,
       thinkingFrames / FRAME_RATE,
       'ms → moveTime =',
-      moveTime
+      moveTime,
+      'frames'
     );
     console.log('Heuristic score =', strategy.score);
   }
