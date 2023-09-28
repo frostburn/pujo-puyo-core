@@ -1,4 +1,19 @@
-import {MOVES, SimpleGame, flexDropletStrategy2} from '../src';
+import {
+  MOVES,
+  SimpleGame,
+  flexDropletStrategy2,
+  nullStrategy,
+  randomStrategy,
+} from '../src';
+
+let bot = flexDropletStrategy2;
+if (process.argv.length === 3) {
+  console.log('Using random strategy');
+  bot = randomStrategy;
+} else if (process.argv.length === 4) {
+  console.log('Using null strategy with confirmation');
+  bot = nullStrategy;
+}
 
 const socket = new WebSocket('ws://localhost:3003');
 
@@ -17,7 +32,10 @@ socket.addEventListener('message', event => {
     );
   } else if (data.type === 'simple state') {
     const game = SimpleGame.fromJSON(data.state);
-    const strategy = flexDropletStrategy2(game);
+    if (bot === nullStrategy) {
+      prompt('Press enter to play the next move...');
+    }
+    const strategy = bot(game);
     game.log();
     console.log('Heuristic score:', strategy.score);
     console.log(`Wins / Draws / Losses: ${wins} / ${draws} / ${losses}`);

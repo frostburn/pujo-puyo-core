@@ -292,3 +292,10 @@ export function randomStrategy(game: SimpleGame): StrategyResult {
     };
   }
 }
+
+export function nullStrategy(): StrategyResult {
+  return {
+    move: 0,
+    score: 0,
+  };
+}

@@ -378,22 +378,14 @@ export class MultiplayerGame {
       tickResults.push(tickResult);
     }
     for (let i = 0; i < tickResults.length; ++i) {
+      const opponent = 1 - i;
       // Send accumulated garbage as soon as the chain is over.
       if (this.canSend[i] && !tickResults[i].busy) {
-        this.pendingGarbage[1 - i] += this.accumulatedGarbage[i];
+        this.pendingGarbage[opponent] += this.accumulatedGarbage[i];
         this.accumulatedGarbage[i] = 0;
-        this.pendingGarbage[1 - i] += this.allClearBonus[i]
+        this.pendingGarbage[opponent] += this.allClearBonus[i]
           ? ALL_CLEAR_GARBAGE
           : 0;
-
-        // Offset outgoing garbage.
-        if (this.pendingGarbage[1 - i] >= this.accumulatedGarbage[1 - i]) {
-          this.pendingGarbage[1 - i] -= this.accumulatedGarbage[1 - i];
-          this.accumulatedGarbage[1 - i] = 0;
-        } else {
-          this.accumulatedGarbage[1 - i] -= this.pendingGarbage[1 - i];
-          this.pendingGarbage[1 - i] = 0;
-        }
 
         this.allClearBonus[i] = this.allClearQueued[i];
         this.allClearQueued[i] = false;
@@ -403,7 +395,7 @@ export class MultiplayerGame {
     for (let i = 0; i < tickResults.length; ++i) {
       if (this.canReceive[i] && !tickResults[i].busy) {
         const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[i]);
-        this.games[i].screen.bufferedGarbage = releasedGarbage;
+        this.games[i].screen.bufferedGarbage += releasedGarbage;
         this.pendingGarbage[i] -= releasedGarbage;
         this.canReceive[i] = false;
 
@@ -421,13 +413,22 @@ export class MultiplayerGame {
     }
     let lateTimeRemaining = 0.5;
     if (this.games[opponent].busy) {
-      const opponentScreen = this.games[opponent].screen.toSimpleScreen();
-      const tickResult = opponentScreen.tick();
+      // TODO: If we cannot simplify this, we should start measuring late time in frames.
+      const opponentScreen = this.games[opponent].screen.clone();
+      let score = 0;
+      let chainNumber = opponentScreen.chainNumber;
+      while (true) {
+        const tickResult = opponentScreen.tick();
+        score += tickResult.score;
+        chainNumber = Math.max(chainNumber, tickResult.chainNumber);
+        if (!tickResult.busy) {
+          break;
+        }
+      }
       lateGarbage += Math.floor(
-        (tickResult.score + this.pointResidues[opponent]) / TARGET_POINTS
+        (score + this.pointResidues[opponent]) / TARGET_POINTS
       );
-      lateTimeRemaining =
-        tickResult.chainNumber - this.games[opponent].screen.chainNumber;
+      lateTimeRemaining = chainNumber - this.games[opponent].screen.chainNumber;
     }
     return new SimpleGame(
       this.games[player].screen.toSimpleScreen(),
