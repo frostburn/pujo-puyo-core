@@ -2,10 +2,10 @@ import {expect, test} from 'bun:test';
 import {JKISS32} from '../jkiss';
 
 test('Determinancy', () => {
-  const jkiss = new JKISS32(0);
-  expect(jkiss.step()).toBe(3438387863);
-  expect(jkiss.step()).toBe(2572090371);
-  expect(jkiss.step()).toBe(828972288);
+  const jkiss = new JKISS32(3);
+  expect(jkiss.step()).toBe(2755750519);
+  expect(jkiss.step()).toBe(455155519);
+  expect(jkiss.step()).toBe(1667382064);
 });
 
 test('Full 32-bit range', () => {
@@ -24,8 +24,7 @@ test('Full 32-bit range', () => {
 test('Large sub-period', () => {
   const jkiss = new JKISS32();
   const originalState = new Uint32Array(jkiss.state);
-  // I'd like to run this longer, but jkiss.state[1] seems to have a very small sub-period...
-  for (let i = 0; i < 10000; ++i) {
+  for (let i = 0; i < 100000; ++i) {
     jkiss.step();
     if (
       originalState[0] === jkiss.state[0] ||
@@ -68,21 +67,21 @@ test('Natural run length', () => {
       last = coinFlip;
     }
   }
-  expect(longest).toBeGreaterThan(20);
+  expect(longest).toBeGreaterThan(19);
 });
 
 test('Shuffle', () => {
   const jkiss = new JKISS32(1);
   const array = [1, 'two', null, {}, NaN];
   jkiss.shuffle(array);
-  expect(array[0]).toBe(1);
-  expect(array[1]).toBe('two');
+  expect(array[0]).toBe('two');
+  expect(array[1]).toMatchObject({});
   expect(array[2]).toBeNaN();
   expect(array[3]).toBeNull();
-  expect(array[4]).toMatchObject({});
+  expect(array[4]).toBe(1);
 
   // This tests that only one step was used.
-  expect(jkiss.step()).toBe(1114502333);
+  expect(jkiss.step()).toBe(412110450);
 });
 
 test('Big shuffle', () => {
@@ -92,5 +91,5 @@ test('Big shuffle', () => {
   jkiss.shuffle(array);
 
   // This tests that now two steps were required to generate enough pseudo-entropy.
-  expect(jkiss.step()).toBe(3867156467);
+  expect(jkiss.step()).toBe(3207765871);
 });

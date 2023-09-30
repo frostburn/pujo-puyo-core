@@ -91,7 +91,7 @@ test('Garbage schedule', () => {
     game.tick();
   }
 
-  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(8);
+  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(3);
 });
 
 test('Garbage offset in a symmetric game', () => {
