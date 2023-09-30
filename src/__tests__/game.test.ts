@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test';
 import {MOVES, MultiplayerGame, OnePlayerGame, SimpleGame} from '../game';
-import {JKISS32} from '../jkiss';
+import {JKISS32, randomSeed} from '../jkiss';
 import {
   BLUE,
   GARBAGE,
@@ -94,11 +94,31 @@ test('Garbage schedule', () => {
   expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(3);
 });
 
-test('Garbage offset in a symmetric game', () => {
+test('Garbage offset in a fixed symmetric game', () => {
+  // Create a random game.
+  // The random one failed. TODO: Find the broken one.
+  const game = new MultiplayerGame(69);
+  // Create players with identical strategies.
+  const players = [new JKISS32(777), new JKISS32(777)];
+
+  for (let j = 0; j < 1337; ++j) {
+    for (let i = 0; i < players.length; ++i) {
+      expect(game.pendingGarbage[i]).toBe(0);
+      if (!game.games[i].busy) {
+        const {x1, y1, orientation} = MOVES[players[i].step() % MOVES.length];
+        game.play(i, x1, y1, orientation);
+      }
+    }
+    game.tick();
+  }
+});
+
+test('Garbage offset in a random symmetric game', () => {
   // Create a random game.
   const game = new MultiplayerGame();
   // Create players with identical strategies.
-  const players = [new JKISS32(777), new JKISS32(777)];
+  const seed = randomSeed();
+  const players = [new JKISS32(seed), new JKISS32(seed)];
 
   for (let j = 0; j < 1337; ++j) {
     for (let i = 0; i < players.length; ++i) {

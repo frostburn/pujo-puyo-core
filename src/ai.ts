@@ -8,6 +8,7 @@ import {
   flood,
   inMask,
   invert,
+  merge,
   puyoCount,
   shatter,
   verticalLine,
@@ -49,28 +50,41 @@ function topPenalty(game: SimpleGame) {
 /**
  * Determine if the game is effectively locked out.
  */
-function effectiveLockout(game: SimpleGame) {
-  const mask = game.screen.mask;
-  if (puyoCount(visible(mask)) < WIDTH * VISIBLE_HEIGHT - 2) {
+export function effectiveLockout(game: SimpleGame) {
+  let mask = game.screen.mask;
+  const count = puyoCount(visible(mask));
+  if (count < WIDTH * VISIBLE_HEIGHT - 2) {
     return 0;
   }
+  if (count >= WIDTH * VISIBLE_HEIGHT) {
+    return SIMPLE_GAME_OVER;
+  }
   invert(mask);
+  mask = visible(mask);
+  const pieces = shatter(mask);
+  const testPiece = pieces[0];
+  flood(testPiece, mask);
   if (game.bag.length >= 2) {
-    if (game.bag[0] === game.bag[1]) {
-      flood(mask, visible(game.screen.grid[game.bag[0]]));
-      if (puyoCount(mask) < CLEAR_THRESHOLD) {
-        return SIMPLE_GAME_OVER;
+    if (game.bag[0] === game.bag[1] && puyoCount(testPiece) === 2) {
+      const puyos = visible(game.screen.grid[game.bag[0]]);
+      merge(puyos, mask);
+      flood(mask, puyos);
+      if (puyoCount(mask) >= CLEAR_THRESHOLD) {
+        return 0;
       }
     } else {
-      const pieces = shatter(mask);
       for (let i = 0; i < pieces.length; ++i) {
         let spot = clone(pieces[i]);
-        flood(spot, visible(game.screen.grid[game.bag[0]]));
+        let puyos = visible(game.screen.grid[game.bag[0]]);
+        merge(puyos, spot);
+        flood(spot, puyos);
         if (puyoCount(spot) >= CLEAR_THRESHOLD) {
           return 0;
         }
         spot = clone(pieces[i]);
-        flood(spot, visible(game.screen.grid[game.bag[0]]));
+        puyos = visible(game.screen.grid[game.bag[1]]);
+        merge(puyos, spot);
+        flood(spot, puyos);
         if (puyoCount(spot) >= CLEAR_THRESHOLD) {
           return 0;
         }
@@ -78,19 +92,23 @@ function effectiveLockout(game: SimpleGame) {
       return SIMPLE_GAME_OVER;
     }
   } else {
-    const pieces = shatter(mask);
     for (let j = 0; j < game.colorSelection.length; ++j) {
       const color = game.colorSelection[j];
-      for (let i = 0; i < pieces.length; ++i) {
-        const spot = clone(pieces[i]);
-        flood(spot, visible(game.screen.grid[color]));
+      const puyos = visible(game.screen.grid[color]);
+      if (puyoCount(testPiece) === 2) {
+        const spot = clone(mask);
+        const target = clone(puyos);
+        merge(target, spot);
+        flood(spot, target);
         if (puyoCount(spot) >= CLEAR_THRESHOLD) {
           return 0;
         }
       }
-      if (pieces.length === 2) {
-        const spot = clone(mask);
-        flood(spot, visible(game.screen.grid[color]));
+      for (let i = 0; i < pieces.length; ++i) {
+        const spot = clone(pieces[i]);
+        const target = clone(puyos);
+        merge(spot, target);
+        flood(spot, puyos);
         if (puyoCount(spot) >= CLEAR_THRESHOLD) {
           return 0;
         }
