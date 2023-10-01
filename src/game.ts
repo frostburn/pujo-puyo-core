@@ -439,6 +439,16 @@ export class MultiplayerGame {
         this.canSend[i] = false;
       }
     }
+    // Offset outgoing garbage.
+    if (this.pendingGarbage[0] >= this.pendingGarbage[1]) {
+      this.pendingGarbage[0] -= this.pendingGarbage[1];
+      this.pendingGarbage[1] = 0;
+    }
+    if (this.pendingGarbage[1] >= this.pendingGarbage[0]) {
+      this.pendingGarbage[1] -= this.pendingGarbage[0];
+      this.pendingGarbage[0] = 0;
+    }
+
     for (let i = 0; i < tickResults.length; ++i) {
       if (this.canReceive[i] && !tickResults[i].busy) {
         const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[i]);

@@ -102,7 +102,6 @@ test('Garbage schedule', () => {
   expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(3);
 });
 
-// TODO: Fix
 test('Garbage offset in a fixed symmetric game', () => {
   // Create a random game.
   const game = new MultiplayerGame(592624221);
