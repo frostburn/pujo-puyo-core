@@ -710,7 +710,7 @@ export class SimpleGame {
       lines[7] += ` +${this.bag.length - 6}`;
     }
     if (this.allClearBonus) {
-      lines[lines.length - 1] += 'All Clear';
+      lines[lines.length - 1] += ' All Clear';
     }
     const garbageUnits = [];
     if (this.screen.bufferedGarbage) {

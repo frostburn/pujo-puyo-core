@@ -27,7 +27,7 @@ function sanitizeMove(player: number, content: any): Move {
     type: 'move',
     player,
     x1: Math.max(0, Math.min(WIDTH - 1, parseInt(content.x1, 10))),
-    y1: Math.max(1, Math.min(HEIGHT - 1), parseInt(content.y1, 10)),
+    y1: Math.max(1, Math.min(HEIGHT - 1, parseInt(content.y1, 10))),
     orientation: parseInt(content.orientation, 10) & 3,
     kickDown: !!content.kickDown,
   };
@@ -201,7 +201,7 @@ class WebSocketGameSession {
           );
           if (LOG_GAMES) {
             this.game.log();
-            console.log(`Sent bag of ${i}`);
+            console.log('Sent bag of', i, this.game.games[i].visibleBag);
           }
           this.waitingForMove[i] = true;
         }
