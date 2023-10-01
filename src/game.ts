@@ -40,25 +40,59 @@ const TARGET_POINTS = 70;
 const ONE_STONE = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
 
+export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
+  if (size < 0) {
+    throw new Error('Negative size');
+  } else if (size > NUM_PUYO_COLORS) {
+    throw new Error(`Maximum size is ${NUM_PUYO_COLORS}`);
+  }
+  const result = new Set<number>();
+  while (result.size < size) {
+    result.add(Math.floor(Math.random() * NUM_PUYO_COLORS));
+  }
+  return [...result];
+}
+
 export class OnePlayerGame {
   score: number;
   jiggleTime: number;
   sparkTime: number;
   active: boolean;
-  jkiss: JKISS32;
+  jkiss: JKISS32 | null;
   screen: PuyoScreen;
   colorSelection: number[];
   bag: number[];
 
-  constructor(seed?: number, colorSelection?: number[]) {
+  constructor(
+    seed?: number | null,
+    colorSelection?: number[],
+    screenSeed?: number
+  ) {
     this.score = 0;
     this.jiggleTime = 0;
     this.sparkTime = 0;
     this.active = false;
-    this.jkiss = new JKISS32(seed);
-    this.screen = new PuyoScreen(this.jkiss.step());
+    if (seed === null) {
+      this.jkiss = null;
+      if (screenSeed === undefined) {
+        throw new Error(
+          'Screen seed must be explicitly provided when running as a mirror.'
+        );
+      }
+    } else {
+      this.jkiss = new JKISS32(seed);
+      if (screenSeed === undefined) {
+        screenSeed = this.jkiss.step();
+      }
+    }
+    this.screen = new PuyoScreen(screenSeed);
 
     if (colorSelection === undefined) {
+      if (this.jkiss === null) {
+        throw new Error(
+          'Color selection must be explicitly provided when running as a mirror.'
+        );
+      }
       this.colorSelection = this.jkiss.subset(
         [...Array(NUM_PUYO_COLORS).keys()],
         COLOR_SELECTION_SIZE
@@ -89,6 +123,9 @@ export class OnePlayerGame {
   advanceColors() {
     this.bag.shift();
     this.bag.shift();
+    if (this.jkiss === null) {
+      return;
+    }
     // Make sure that there are at least two puyos in the hand and four in the preview.
     while (this.bag.length < 6) {
       // Bag implementation prevents extreme droughts.
@@ -119,6 +156,9 @@ export class OnePlayerGame {
   }
 
   play(x1: number, y1: number, orientation: number, kickDown = false) {
+    if (this.bag.length < 2) {
+      throw new Error('Out of bag');
+    }
     let x2 = x1;
     let y2 = y1;
     orientation &= 3; // Wrap to 0, 1, 2 or 3.
@@ -278,11 +318,18 @@ export class MultiplayerGame {
   // Incoming garbage lock is needed so that chains have time time to resolve and make room for the nuisance puyos.
   canReceive: boolean[];
 
-  constructor(seed?: number) {
+  constructor(
+    seed?: number | null,
+    colorSelection?: number[],
+    screenSeed?: number
+  ) {
     if (seed === undefined) {
       seed = randomSeed();
     }
-    this.games = [new OnePlayerGame(seed), new OnePlayerGame(seed)];
+    this.games = [
+      new OnePlayerGame(seed, colorSelection, screenSeed),
+      new OnePlayerGame(seed, colorSelection, screenSeed),
+    ];
 
     this.pendingGarbage = [0, 0];
     this.accumulatedGarbage = [0, 0];

@@ -96,7 +96,10 @@ export const CONNECTS_LEFT = 8;
  * @param dark Return a darkened version of the color.
  * @returns A string with the ANSI color switch instruction.
  */
-export function colorOf(n: number, dark = false) {
+export function colorOf(n?: number, dark = false) {
+  if (n === undefined) {
+    return '\x1b[30m';
+  }
   if (n < 0) {
     return '\x1b[0m';
   }

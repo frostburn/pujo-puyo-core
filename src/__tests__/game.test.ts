@@ -1,5 +1,11 @@
 import {expect, test} from 'bun:test';
-import {MOVES, MultiplayerGame, OnePlayerGame, SimpleGame} from '../game';
+import {
+  MOVES,
+  MultiplayerGame,
+  OnePlayerGame,
+  SimpleGame,
+  randomColorSelection,
+} from '../game';
 import {JKISS32, randomSeed} from '../jkiss';
 import {
   BLUE,
@@ -8,8 +14,10 @@ import {
   PuyoScreen,
   RED,
   SimplePuyoScreen,
+  WIDTH,
   YELLOW,
   puyoCount,
+  puyosEqual,
 } from '..';
 
 test('Pending commit time', () => {
@@ -94,12 +102,12 @@ test('Garbage schedule', () => {
   expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(3);
 });
 
+// TODO: Fix
 test('Garbage offset in a fixed symmetric game', () => {
   // Create a random game.
-  // The random one failed. TODO: Find the broken one.
-  const game = new MultiplayerGame(69);
+  const game = new MultiplayerGame(592624221);
   // Create players with identical strategies.
-  const players = [new JKISS32(777), new JKISS32(777)];
+  const players = [new JKISS32(3848740175), new JKISS32(3848740175)];
 
   for (let j = 0; j < 1337; ++j) {
     for (let i = 0; i < players.length; ++i) {
@@ -115,10 +123,11 @@ test('Garbage offset in a fixed symmetric game', () => {
 
 test('Garbage offset in a random symmetric game', () => {
   // Create a random game.
-  const game = new MultiplayerGame();
+  const gameSeed = randomSeed();
+  const game = new MultiplayerGame(gameSeed);
   // Create players with identical strategies.
-  const seed = randomSeed();
-  const players = [new JKISS32(seed), new JKISS32(seed)];
+  const playerSeed = randomSeed();
+  const players = [new JKISS32(playerSeed), new JKISS32(playerSeed)];
 
   for (let j = 0; j < 1337; ++j) {
     for (let i = 0; i < players.length; ++i) {
@@ -177,4 +186,40 @@ test('Roof play', () => {
   // Not recommended to play on the garbage insert line but kicks should still apply.
   game.play(0, 1, 0);
   expect(puyoCount(game.screen.mask)).toBe(2);
+});
+
+test('Mirror driving', () => {
+  const mainSeed = randomSeed();
+  const colorSelection = randomColorSelection();
+  const screenSeed = randomSeed();
+  const main = new MultiplayerGame(mainSeed, colorSelection, screenSeed);
+
+  const mirror = new MultiplayerGame(null, colorSelection, screenSeed);
+
+  // No independent moves.
+  expect(() => mirror.play(0, 0, 2, 0)).toThrow();
+
+  for (let j = 0; j < 50; ++j) {
+    // Send data
+    for (let i = 0; i < main.games.length; ++i) {
+      mirror.games[i].bag = main.games[i].visibleBag;
+    }
+    const player = Math.floor(Math.random() * 2);
+    const x = Math.floor(Math.random() * WIDTH);
+    main.play(player, x, 2, 0);
+    mirror.play(player, x, 2, 0);
+    // Run individually
+    while (main.games.some(game => game.active)) {
+      main.tick();
+      mirror.tick();
+    }
+  }
+
+  for (let i = 0; i < main.games.length; ++i) {
+    for (let j = 0; j < main.games[i].screen.grid.length; ++j) {
+      expect(
+        puyosEqual(main.games[i].screen.grid[j], mirror.games[i].screen.grid[j])
+      ).toBeTrue();
+    }
+  }
 });
