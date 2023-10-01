@@ -1,11 +1,37 @@
 import {ServerWebSocket} from 'bun';
-import {MultiplayerGame} from '../src';
+import {
+  HEIGHT,
+  MultiplayerGame,
+  WIDTH,
+  randomColorSelection,
+  randomSeed,
+} from '../src';
 
 const LOG_GAMES = false;
 
 const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
 const MAX_GAME_AGE = NOMINAL_FRAME_RATE * 60 * 10;
+
+type Move = {
+  type: 'move';
+  player: number;
+  x1: number;
+  y1: number;
+  orientation: number;
+  kickDown: boolean;
+};
+
+function sanitizeMove(player: number, content: any): Move {
+  return {
+    type: 'move',
+    player,
+    x1: Math.max(0, Math.min(WIDTH - 1, parseInt(content.x1, 10))),
+    y1: Math.max(1, Math.min(HEIGHT - 1), parseInt(content.y1, 10)),
+    orientation: parseInt(content.orientation, 10) & 3,
+    kickDown: !!content.kickDown,
+  };
+}
 
 class Player {
   socket: ServerWebSocket<{authToken: string}>;
@@ -21,6 +47,9 @@ class Player {
 
 class WebSocketGameSession {
   age: number;
+  gameSeed: number;
+  screenSeed: number;
+  colorSelection: number[];
   game: MultiplayerGame;
   players: Player[];
   waitingForMove: boolean[];
@@ -28,7 +57,14 @@ class WebSocketGameSession {
 
   constructor(player: Player) {
     this.age = 0;
-    this.game = new MultiplayerGame();
+    this.gameSeed = randomSeed();
+    this.screenSeed = randomSeed();
+    this.colorSelection = randomColorSelection();
+    this.game = new MultiplayerGame(
+      this.gameSeed,
+      this.colorSelection,
+      this.screenSeed
+    );
     this.players = [player];
     // TODO: True multiplayer
     this.waitingForMove = [false, false];
@@ -37,16 +73,28 @@ class WebSocketGameSession {
 
   start() {
     this.players.forEach((player, i) => {
-      if (LOG_GAMES) {
-        this.game.log();
-        console.log(`Requesting move from ${i}`);
-      }
       player.send({
-        type: 'move request',
-        bag: this.game.games[i].visibleBag,
+        type: 'identity',
+        player: i,
       });
+      player.send({
+        type: 'game params',
+        colorSelection: this.colorSelection,
+        screenSeed: this.screenSeed,
+      });
+      for (let j = 0; j < this.game.games.length; ++j) {
+        player.send({
+          type: 'bag',
+          player: j,
+          bag: this.game.games[j].visibleBag,
+        });
+      }
       this.waitingForMove[i] = true;
     });
+    if (LOG_GAMES) {
+      this.game.log();
+      console.log('Starting game');
+    }
   }
 
   complete() {
@@ -54,9 +102,7 @@ class WebSocketGameSession {
       return;
     }
     this.done = true;
-    this.players.forEach(player => {
-      sessionByPlayer.delete(player);
-    });
+    this.players.forEach(player => sessionByPlayer.delete(player));
   }
 
   disconnect(player: Player) {
@@ -90,13 +136,15 @@ class WebSocketGameSession {
       if (!this.waitingForMove[index]) {
         return;
       }
+      const move = sanitizeMove(index, content);
       this.game.play(
-        index,
-        content.x1,
-        content.y1,
-        content.orientation,
-        content.kickDown
+        move.player,
+        move.x1,
+        move.y1,
+        move.orientation,
+        move.kickDown
       );
+      this.players.forEach(p => p.send(move));
       this.waitingForMove[index] = false;
 
       while (this.game.games.every(game => game.busy)) {
@@ -104,13 +152,13 @@ class WebSocketGameSession {
         this.age++;
 
         if (tickResults[0].lockedOut && tickResults[1].lockedOut) {
-          this.players.forEach(player => {
-            player.send({
+          this.players.forEach(p =>
+            p.send({
               type: 'game result',
               result: 'draw',
               reason: 'double lockout',
-            });
-          });
+            })
+          );
           this.complete();
         } else if (tickResults[0].lockedOut || tickResults[1].lockedOut) {
           const winner = tickResults[0].lockedOut ? 1 : 0;
@@ -127,13 +175,13 @@ class WebSocketGameSession {
           });
           this.complete();
         } else if (this.age > MAX_GAME_AGE) {
-          this.players.forEach(player => {
-            player.send({
+          this.players.forEach(p =>
+            p.send({
               type: 'game result',
               result: 'draw',
               reason: 'time limit exceeded',
-            });
-          });
+            })
+          );
           this.complete();
         }
       }
@@ -144,14 +192,17 @@ class WebSocketGameSession {
 
       for (let i = 0; i < this.players.length; ++i) {
         if (!this.game.games[i].busy && !this.waitingForMove[i]) {
+          this.players.forEach(p =>
+            p.send({
+              type: 'bag',
+              player: i,
+              bag: this.game.games[i].visibleBag,
+            })
+          );
           if (LOG_GAMES) {
             this.game.log();
-            console.log(`Requesting move from ${i}`);
+            console.log(`Sent bag of ${i}`);
           }
-          this.players[i].send({
-            type: 'move request',
-            bag: this.game.games[i].visibleBag,
-          });
           this.waitingForMove[i] = true;
         }
       }
