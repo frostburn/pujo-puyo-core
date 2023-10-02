@@ -30,7 +30,7 @@ export type StrategyResult = {
  * @returns The amount of material in the playing grid.
  */
 function materialCount(game: SimpleGame) {
-  return puyoCount(game.screen.mask);
+  return puyoCount(game.screen.coloredMask);
 }
 
 /**

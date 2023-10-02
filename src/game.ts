@@ -535,6 +535,7 @@ export class MultiplayerGame {
   }
 }
 
+export const PASS = -1;
 // All possible locations and orientations right below the garbage buffer line.
 export const MOVES = [
   // Orientation = 0
@@ -631,10 +632,25 @@ export class SimpleGame {
         result.push(index);
       }
     });
+    if (this.lateGarbage > 0 && this.lateTimeRemaining > 0) {
+      result.push(PASS);
+    }
     return result;
   }
 
-  playAndTick(move: number) {
+  playAndTick(move: number): TickResult {
+    if (move === PASS) {
+      this.lateTimeRemaining = 0;
+      return {
+        score: 0,
+        chainNumber: 0,
+        didClear: false,
+        didJiggle: false,
+        allClear: false,
+        busy: false,
+        lockedOut: false,
+      };
+    }
     if (this.bag.length < 2) {
       throw new Error('Out of moves');
     }
@@ -653,7 +669,12 @@ export class SimpleGame {
 
   resolve() {
     const tickResult = this.screen.tick();
-    this.lateTimeRemaining -= tickResult.chainNumber + this.moveTime;
+    this.lateTimeRemaining -=
+      tickResult.chainNumber * (JIGGLE_TIME + 2) + this.moveTime;
+    if (this.lateTimeRemaining <= 0) {
+      this.pendingGarbage += this.lateGarbage;
+      this.lateGarbage = 0;
+    }
 
     if (tickResult.didClear && this.allClearBonus) {
       this.pointResidue += SIMPLE_ALL_CLEAR_BONUS;
@@ -679,10 +700,6 @@ export class SimpleGame {
       this.lateGarbage = 0;
     }
 
-    if (this.lateTimeRemaining <= 0) {
-      this.pendingGarbage += this.lateGarbage;
-      this.lateGarbage = 0;
-    }
     if (tickResult.allClear) {
       this.allClearBonus = true;
       tickResult.score += SIMPLE_ALL_CLEAR_BONUS;

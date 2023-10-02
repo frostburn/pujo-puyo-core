@@ -13,7 +13,7 @@
     }
   </style>
 <script type="module">
-import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay, randomSeed } from "./build/index.js";
+import { MultiplayerGame, RED, GREEN, YELLOW, BLUE, PURPLE, WIDTH, VISIBLE_HEIGHT, HEIGHT, GHOST_Y, MOVES, GARBAGE, combinedGarbageDisplay, randomSeed, PASS } from "./build/index.js";
 import { transformPath, svgElement, makeDefs } from "./build/svgdefs.js";
 import { createSoftSquare, arpegiate, PingPongDelay, edArpeggio } from "./build/sound.js";
 
@@ -828,15 +828,17 @@ function draw(timeStamp) {
       // Worker thread for the CPU opponent.
       if (!tickResults[1].busy && workerStrategy !== undefined) {
         const {move, score} = workerStrategy;
-        const {x1, y1, orientation} = MOVES[move];
-        if (game.toSimpleGame(1).availableMoves.length) {
-          game.play(1, x1, y1, orientation, botKickDown);
-          moves.push([gameAge, 1, x1, y1, orientation, botKickDown]);
-          workerGame = game.clone();
-          workerGameAge = gameAge;
-          while(workerGameAge < gameAge + workerAnticipation) {
-            workerGame.tick();
-            workerGameAge++;
+        if (move !== PASS) {
+          const {x1, y1, orientation} = MOVES[move];
+          if (game.toSimpleGame(1).availableMoves.length) {
+            game.play(1, x1, y1, orientation, botKickDown);
+            moves.push([gameAge, 1, x1, y1, orientation, botKickDown]);
+            workerGame = game.clone();
+            workerGameAge = gameAge;
+            while(workerGameAge < gameAge + workerAnticipation) {
+              workerGame.tick();
+              workerGameAge++;
+            }
           }
         }
         workerStrategy = undefined;

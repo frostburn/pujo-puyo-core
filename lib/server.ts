@@ -17,16 +17,31 @@ const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
 const MAX_GAME_AGE = NOMINAL_FRAME_RATE * 60 * 10;
 
-type Move = {
+type NormalMove = {
   type: 'move';
   player: number;
   x1: number;
   y1: number;
   orientation: number;
   hardDrop: boolean;
+  pass: false;
+};
+type PassingMove = {
+  type: 'move';
+  player: number;
+  pass: true;
 };
 
+type Move = NormalMove | PassingMove;
+
 function sanitizeMove(player: number, content: any): Move {
+  if (content.pass) {
+    return {
+      type: 'move',
+      player,
+      pass: true,
+    };
+  }
   return {
     type: 'move',
     player,
@@ -34,6 +49,7 @@ function sanitizeMove(player: number, content: any): Move {
     y1: Math.max(1, Math.min(HEIGHT - 1, parseInt(content.y1, 10))),
     orientation: parseInt(content.orientation, 10) & 3,
     hardDrop: !!content.hardDrop,
+    pass: false,
   };
 }
 
@@ -143,13 +159,15 @@ class WebSocketGameSession {
         return;
       }
       const move = sanitizeMove(index, content);
-      this.game.play(
-        move.player,
-        move.x1,
-        move.y1,
-        move.orientation,
-        move.hardDrop
-      );
+      if (!move.pass) {
+        this.game.play(
+          move.player,
+          move.x1,
+          move.y1,
+          move.orientation,
+          move.hardDrop
+        );
+      }
       // Hide the first of simultaneous moves
       if (this.waitingForMove.every(w => w)) {
         if (LOG) {
@@ -169,7 +187,10 @@ class WebSocketGameSession {
       }
       this.waitingForMove[index] = false;
 
-      while (this.game.games.every(game => game.busy)) {
+      while (
+        this.game.games.every(game => game.busy) ||
+        (move.pass && this.game.games.some(game => game.busy))
+      ) {
         const tickResults = this.game.tick();
         this.age++;
 
