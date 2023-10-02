@@ -19,6 +19,7 @@ export type GameState = {
   pendingGarbage: number;
   lateGarbage: number;
   allClearBonus: boolean;
+  busy: boolean;
 };
 
 // Timings (gravity acts in units of one)
@@ -117,6 +118,7 @@ export class OnePlayerGame {
       pendingGarbage: 0,
       lateGarbage: 0,
       allClearBonus: false,
+      busy: this.busy,
     };
   }
 
@@ -344,17 +346,28 @@ export class MultiplayerGame {
     const states = this.games.map(game => game.state);
     for (let i = 0; i < this.games.length; ++i) {
       const opponent = 1 - i;
-      states[i].pendingGarbage = this.pendingGarbage[i];
-      if (this.allClearBonus[opponent] && this.canSend[opponent]) {
-        states[i].lateGarbage = ALL_CLEAR_GARBAGE;
+      let pendingGarbage = this.pendingGarbage[i];
+      let accumulatedGarbage = this.accumulatedGarbage[i];
+      if (this.allClearBonus[i] && this.canSend[i]) {
+        accumulatedGarbage += ALL_CLEAR_GARBAGE;
       }
-      states[i].lateGarbage = Math.max(
-        0,
-        states[i].lateGarbage +
-          this.accumulatedGarbage[opponent] -
-          this.accumulatedGarbage[i]
-      );
+      if (pendingGarbage > accumulatedGarbage) {
+        pendingGarbage -= accumulatedGarbage;
+        accumulatedGarbage = 0;
+      } else {
+        accumulatedGarbage -= pendingGarbage;
+        pendingGarbage = 0;
+      }
+      states[i].pendingGarbage = pendingGarbage;
+      states[opponent].lateGarbage = accumulatedGarbage;
       states[i].allClearBonus = this.allClearBonus[i];
+    }
+    if (states[0].lateGarbage > states[1].lateGarbage) {
+      states[0].lateGarbage -= states[1].lateGarbage;
+      states[1].lateGarbage = 0;
+    } else {
+      states[1].lateGarbage -= states[0].lateGarbage;
+      states[0].lateGarbage = 0;
     }
     return states;
   }
