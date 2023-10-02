@@ -7,7 +7,11 @@ import {
   randomSeed,
 } from '../src';
 
-const LOG_GAMES = false;
+let LOG = false;
+
+if (process.argv.length >= 3) {
+  LOG = true;
+}
 
 const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
@@ -54,6 +58,7 @@ class WebSocketGameSession {
   players: Player[];
   waitingForMove: boolean[];
   done: boolean;
+  hiddenMove: Move | null;
 
   constructor(player: Player) {
     this.age = 0;
@@ -69,6 +74,7 @@ class WebSocketGameSession {
     // TODO: True multiplayer
     this.waitingForMove = [false, false];
     this.done = false;
+    this.hiddenMove = null;
   }
 
   start() {
@@ -91,7 +97,7 @@ class WebSocketGameSession {
       }
       this.waitingForMove[i] = true;
     });
-    if (LOG_GAMES) {
+    if (LOG) {
       this.game.log();
       console.log('Starting game');
     }
@@ -144,7 +150,23 @@ class WebSocketGameSession {
         move.orientation,
         move.kickDown
       );
-      this.players.forEach(p => p.send(move));
+      // Hide the first of simultaneous moves
+      if (this.waitingForMove.every(w => w)) {
+        if (LOG) {
+          console.log('Hiding move by', move.player);
+        }
+        this.players[move.player].send(move);
+        this.hiddenMove = move;
+      } else if (this.hiddenMove !== null) {
+        if (LOG) {
+          console.log('Revealing move by', this.hiddenMove.player);
+        }
+        this.players[1 - this.hiddenMove.player].send(this.hiddenMove);
+        this.hiddenMove = null;
+        this.players.forEach(p => p.send(move));
+      } else {
+        this.players.forEach(p => p.send(move));
+      }
       this.waitingForMove[index] = false;
 
       while (this.game.games.every(game => game.busy)) {
@@ -199,7 +221,7 @@ class WebSocketGameSession {
               bag: this.game.games[i].visibleBag,
             })
           );
-          if (LOG_GAMES) {
+          if (LOG) {
             this.game.log();
             console.log('Sent bag of', i, this.game.games[i].visibleBag);
           }
