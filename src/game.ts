@@ -361,6 +361,9 @@ export class MultiplayerGame {
       states[i].pendingGarbage = pendingGarbage;
       states[opponent].lateGarbage = accumulatedGarbage;
       states[i].allClearBonus = this.allClearBonus[i];
+      // There's a frame where only the buffer remains.
+      // No way to offset that.
+      states[i].pendingGarbage += this.games[i].screen.bufferedGarbage;
     }
     if (states[0].lateGarbage > states[1].lateGarbage) {
       states[0].lateGarbage -= states[1].lateGarbage;
