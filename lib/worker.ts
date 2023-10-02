@@ -39,7 +39,7 @@ onmessage = e => {
   screen.bufferedGarbage = gameData.screen.bufferedGarbage;
   const moveTime =
     Math.max(0, thinking.totalFrames / thinking.samples - e.data.anticipation) +
-    (e.data.kickDown ? 1 : FALL_FRAMES) +
+    (e.data.hardDrop ? 1 : FALL_FRAMES) +
     JIGGLE_TIME +
     e.data.throttleFrames;
   const game = new SimpleGame(

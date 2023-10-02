@@ -157,7 +157,7 @@ export class OnePlayerGame {
     return this.bag[1];
   }
 
-  play(x1: number, y1: number, orientation: number, kickDown = false) {
+  play(x1: number, y1: number, orientation: number, hardDrop = false) {
     if (this.bag.length < 2) {
       throw new Error('Out of bag');
     }
@@ -198,7 +198,7 @@ export class OnePlayerGame {
       y2--;
     }
 
-    if (kickDown) {
+    if (hardDrop) {
       while (
         y1 < HEIGHT - 1 &&
         y2 < HEIGHT - 1 &&
@@ -408,9 +408,9 @@ export class MultiplayerGame {
     x1: number,
     y1: number,
     orientation: number,
-    kickDown = false
+    hardDrop = false
   ) {
-    this.games[player].play(x1, y1, orientation, kickDown);
+    this.games[player].play(x1, y1, orientation, hardDrop);
     this.canReceive[player] = true;
   }
 
@@ -555,7 +555,7 @@ export const MOVES = [
 ];
 
 // How long a single move takes on average.
-// +1 added for occasional splits even when kickdown is applied.
+// +1 added for occasional splits even when hard dropping.
 const DEFAULT_MOVE_TIME = JIGGLE_TIME + 1;
 
 // Value all-clears based on the amount of garbage they send.

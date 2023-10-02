@@ -23,7 +23,7 @@ type Move = {
   x1: number;
   y1: number;
   orientation: number;
-  kickDown: boolean;
+  hardDrop: boolean;
 };
 
 function sanitizeMove(player: number, content: any): Move {
@@ -33,7 +33,7 @@ function sanitizeMove(player: number, content: any): Move {
     x1: Math.max(0, Math.min(WIDTH - 1, parseInt(content.x1, 10))),
     y1: Math.max(1, Math.min(HEIGHT - 1, parseInt(content.y1, 10))),
     orientation: parseInt(content.orientation, 10) & 3,
-    kickDown: !!content.kickDown,
+    hardDrop: !!content.hardDrop,
   };
 }
 
@@ -148,7 +148,7 @@ class WebSocketGameSession {
         move.x1,
         move.y1,
         move.orientation,
-        move.kickDown
+        move.hardDrop
       );
       // Hide the first of simultaneous moves
       if (this.waitingForMove.every(w => w)) {

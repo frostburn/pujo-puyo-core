@@ -42,7 +42,7 @@ socket.addEventListener('message', event => {
 
     const response = JSON.parse(JSON.stringify(MOVES[strategy.move]));
     response.type = 'move';
-    response.kickDown = true;
+    response.hardDrop = true;
     socket.send(JSON.stringify(response));
   }
 
@@ -72,7 +72,7 @@ socket.addEventListener('message', event => {
 
       const response = JSON.parse(JSON.stringify(MOVES[strategy.move]));
       response.type = 'move';
-      response.kickDown = true;
+      response.hardDrop = true;
       socket.send(JSON.stringify(response));
     }
   }
@@ -82,7 +82,7 @@ socket.addEventListener('message', event => {
       data.x1,
       data.y1,
       data.orientation,
-      data.kickDown
+      data.hardDrop
     );
     while (mirrorGame!.games.every(game => game.busy)) {
       mirrorGame!.tick();
