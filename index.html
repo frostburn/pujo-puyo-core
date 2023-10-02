@@ -684,7 +684,7 @@ function renderGame() {
       x += 1
     });
 
-    const previewBag = gameState[i].visibleBag.slice(-4);
+    const previewBag = gameState[i].preview;
     newChildren.push(panelAt(WIDTH + 0.5, 1, previewBag[0]));
     newChildren.push(panelAt(WIDTH + 0.5, 0, previewBag[1]));
     newChildren.push(panelAt(WIDTH + 1, 3.2, previewBag[2]));
@@ -897,13 +897,13 @@ mainPanel.setAttribute("href", "#panel0");
 mainPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + 0.5);
 mainPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + 0.5);
 mainPanel.setAttribute("fill", "none");
-mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
+mainPanel.setAttribute("stroke", STROKES[game.games[0].bag[0]]);
 mainPanel.setAttribute("stroke-width", STROKE_WIDTH);
 svg.appendChild(mainPanel);
 
 const mainGlyph = svgElement("use");
 mainGlyph.setAttribute("fill", "none");
-mainGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[0]));
+mainGlyph.setAttribute("href", panelSymbol(game.games[0].bag[0]));
 svg.appendChild(mainGlyph);
 
 // Extra indicator when cursor overlaps with a similar color
@@ -921,13 +921,13 @@ secondPanel.setAttribute("href", "#panel0");
 secondPanel.setAttribute("x", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
 secondPanel.setAttribute("y", LEFT_SCREEN_Y + mainGridY + secondDeltaY + 0.5);
 secondPanel.setAttribute("fill", "none");
-secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
+secondPanel.setAttribute("stroke", STROKES[game.games[0].bag[1]]);
 secondPanel.setAttribute("stroke-width", STROKE_WIDTH * 0.5);
 svg.appendChild(secondPanel);
 
 const secondGlyph = svgElement("use");
 secondGlyph.setAttribute("fill", "none");
-secondGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[1]));
+secondGlyph.setAttribute("href", panelSymbol(game.games[0].bag[1]));
 svg.appendChild(secondGlyph);
 
 // Small landing indicators
@@ -935,7 +935,7 @@ const mainDroplet = svgElement("circle");
 mainDroplet.setAttribute("r", 0.1);
 mainDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + 0.5);
 mainDroplet.setAttribute("cy", LEFT_SCREEN_Y + VISIBLE_HEIGHT - 1 + 0.5);
-mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
+mainDroplet.setAttribute("fill", STROKES[game.games[0].bag[0]]);
 mainDroplet.setAttribute("stroke", "white");
 mainDroplet.setAttribute("stroke-width", "0.03");
 mainDroplet.setAttribute("opacity", 0.7);
@@ -945,7 +945,7 @@ const secondDroplet = svgElement("circle");
 secondDroplet.setAttribute("r", 0.1);
 secondDroplet.setAttribute("cx", LEFT_SCREEN_X + mainGridX + secondDeltaX + 0.5);
 secondDroplet.setAttribute("cy", LEFT_SCREEN_Y + VISIBLE_HEIGHT - 1 + secondDeltaY + 0.5);
-secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
+secondDroplet.setAttribute("fill", STROKES[game.games[0].bag[1]]);
 secondDroplet.setAttribute("stroke", "white");
 secondDroplet.setAttribute("stroke-width", "0.03");
 secondDroplet.setAttribute("opacity", 0.7);
@@ -973,7 +973,7 @@ function disableUserInput() {
 }
 
 function helpMainPanel() {
-  if (screenColors[0][mainGridX + mainGridY * WIDTH] === game.games[0].visibleBag[0]) {
+  if (screenColors[0][mainGridX + mainGridY * WIDTH] === game.games[0].hand[0]) {
     mainPanelHelper.setAttribute("fill", "rgba(255, 255, 255, 0.1)");
     mainPanelHelper.setAttribute("stroke", "white");
   } else {
@@ -987,11 +987,11 @@ function enableUserInput() {
     return;
   }
   inputEnabled = true;
-  mainPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[0]]);
-  secondPanel.setAttribute("stroke", STROKES[game.games[0].visibleBag[1]]);
-  mainDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
+  mainPanel.setAttribute("stroke", STROKES[game.games[0].hand[0]]);
+  secondPanel.setAttribute("stroke", STROKES[game.games[0].hand[1]]);
+  mainDroplet.setAttribute("fill", STROKES[game.games[0].hand[0]]);
   mainDroplet.setAttribute("stroke", "white");
-  secondDroplet.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
+  secondDroplet.setAttribute("fill", STROKES[game.games[0].hand[1]]);
   secondDroplet.setAttribute("stroke", "white");
   moveCursor(lastCursorX, lastCursorY);
 }
@@ -1038,11 +1038,11 @@ function updateDropletPositions() {
     if (hintX === mainGridX && secondY === mainGridY) {
       mainPanel.setAttribute("fill", "none");
     } else {
-      mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
+      mainPanel.setAttribute("fill", FILLS[game.games[0].hand[0]]);
     }
   }
 
-  preIgnitions[0] = game.games[0].screen.preIgnite(mainGridX, mainY + GHOST_Y + 1, game.games[0].visibleBag[0], hintX, secondY + GHOST_Y + 1, game.games[0].visibleBag[1]);
+  preIgnitions[0] = game.games[0].screen.preIgnite(mainGridX, mainY + GHOST_Y + 1, game.games[0].hand[0], hintX, secondY + GHOST_Y + 1, game.games[0].hand[1]);
 }
 
 function updateGlyphPositions() {
@@ -1106,13 +1106,13 @@ function lockMainPanel(x, y) {
 
   mainPanelLocked = true;
 
-  mainPanel.setAttribute("fill", FILLS[game.games[0].visibleBag[0]]);
+  mainPanel.setAttribute("fill", FILLS[game.games[0].hand[0]]);
 
-  mainGlyph.setAttribute("fill", STROKES[game.games[0].visibleBag[0]]);
-  mainGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[0]));
+  mainGlyph.setAttribute("fill", STROKES[game.games[0].hand[0]]);
+  mainGlyph.setAttribute("href", panelSymbol(game.games[0].hand[0]));
 
-  secondGlyph.setAttribute("fill", STROKES[game.games[0].visibleBag[1]]);
-  secondGlyph.setAttribute("href", panelSymbol(game.games[0].visibleBag[1]));
+  secondGlyph.setAttribute("fill", STROKES[game.games[0].hand[1]]);
+  secondGlyph.setAttribute("href", panelSymbol(game.games[0].hand[1]));
 }
 
 function unlockMainPanel(x, y) {

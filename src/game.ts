@@ -15,7 +15,8 @@ import {
 export type GameState = {
   screen: ScreenState;
   score: number;
-  visibleBag: number[];
+  hand: number[];
+  preview: number[];
   pendingGarbage: number;
   lateGarbage: number;
   allClearBonus: boolean;
@@ -114,7 +115,8 @@ export class OnePlayerGame {
     return {
       screen: this.screen.state,
       score: this.score,
-      visibleBag: this.visibleBag,
+      hand: this.hand,
+      preview: this.preview,
       pendingGarbage: 0,
       lateGarbage: 0,
       allClearBonus: false,
@@ -255,6 +257,12 @@ export class OnePlayerGame {
 
   get visibleBag() {
     return this.bag.slice(0, this.busy ? 4 : 6);
+  }
+  get hand() {
+    return this.busy ? [] : this.bag.slice(0, 2);
+  }
+  get preview() {
+    return this.busy ? this.bag.slice(0, 4) : this.bag.slice(2, 6);
   }
 
   displayLines() {
