@@ -178,6 +178,9 @@ export function logPuyos(puyos: Puyos): void {
  * @returns `true` if there is a puyo at the given coordinates.
  */
 export function puyoAt(puyos: Puyos, x: number, y: number) {
+  if (y < 0 || y >= HEIGHT) {
+    return false;
+  }
   return !!(puyos[x] & (1 << y));
 }
 

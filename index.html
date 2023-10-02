@@ -648,8 +648,9 @@ function renderGame() {
 
     const newChildren = [];
 
-    const garbageDisplay = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
-    garbageDisplay.forEach((symbol, x) => {
+    const {pending, late} = combinedGarbageDisplay(gameState[i].pendingGarbage, gameState[i].lateGarbage);
+    let x = 0;
+    pending.forEach((symbol) => {
       if (symbol === "rock") {
         symbol = "spade";
       } else if (symbol === "crown") {
@@ -663,6 +664,24 @@ function renderGame() {
       glyph.setAttribute("x", x + 0.5);
       glyph.setAttribute("y", -1);
       newChildren.push(glyph);
+      x += 1
+    });
+    late.forEach((symbol) => {
+      if (symbol === "rock") {
+        symbol = "spade";
+      } else if (symbol === "crown") {
+        symbol = "diamond";
+      }
+      const glyph = svgElement("use");
+      glyph.setAttribute("href", "#" + symbol);
+      glyph.setAttribute("fill", FILLS[GARBAGE]);
+      glyph.setAttribute("opacity", 0.5);
+      glyph.setAttribute("stroke", STROKES[GARBAGE]);
+      glyph.setAttribute("stroke-width", STROKE_WIDTH);
+      glyph.setAttribute("x", x + 0.5);
+      glyph.setAttribute("y", -1);
+      newChildren.push(glyph);
+      x += 1
     });
 
     const previewBag = gameState[i].visibleBag.slice(-4);
