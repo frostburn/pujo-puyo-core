@@ -11,6 +11,7 @@ import {
   BLUE,
   GARBAGE,
   GREEN,
+  HEIGHT,
   PuyoScreen,
   RED,
   SimplePuyoScreen,
@@ -221,4 +222,19 @@ test('Mirror driving', () => {
       ).toBeTrue();
     }
   }
+});
+
+test('No 1-frame cheese', () => {
+  const game = new MultiplayerGame();
+  game.pendingGarbage[1] = 44;
+
+  game.play(1, 0, HEIGHT - 1, 0);
+
+  for (let i = 0; i < 20; ++i) {
+    game.tick();
+    if (!game.games[1].busy) {
+      game.play(1, 1, HEIGHT - 1, 0);
+    }
+  }
+  expect(puyoCount(game.games[1].screen.coloredMask)).toBe(2);
 });

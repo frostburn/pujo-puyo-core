@@ -420,6 +420,13 @@ export class SimplePuyoScreen {
   }
 
   /**
+   * Mask of all the occupied space in the grid.
+   */
+  get coloredMask(): Puyos {
+    return getMask(this.grid.slice(0, -1));
+  }
+
+  /**
    * Clone this screen as a SimplePuyoScreen.
    * @returns Copy of the screen with simplified mechanics.
    */

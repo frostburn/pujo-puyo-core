@@ -17,16 +17,31 @@ const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
 const MAX_GAME_AGE = NOMINAL_FRAME_RATE * 60 * 10;
 
-type Move = {
+type NormalMove = {
   type: 'move';
   player: number;
   x1: number;
   y1: number;
   orientation: number;
   hardDrop: boolean;
+  pass: false;
+};
+type PassingMove = {
+  type: 'move';
+  player: number;
+  pass: true;
 };
 
+type Move = NormalMove | PassingMove;
+
 function sanitizeMove(player: number, content: any): Move {
+  if (content.pass) {
+    return {
+      type: 'move',
+      player,
+      pass: true,
+    };
+  }
   return {
     type: 'move',
     player,
@@ -34,13 +49,14 @@ function sanitizeMove(player: number, content: any): Move {
     y1: Math.max(1, Math.min(HEIGHT - 1, parseInt(content.y1, 10))),
     orientation: parseInt(content.orientation, 10) & 3,
     hardDrop: !!content.hardDrop,
+    pass: false,
   };
 }
 
 class Player {
-  socket: ServerWebSocket<{authToken: string}>;
+  socket: ServerWebSocket<{socketId: number}>;
 
-  constructor(socket: ServerWebSocket<{authToken: string}>) {
+  constructor(socket: ServerWebSocket<{socketId: number}>) {
     this.socket = socket;
   }
 
@@ -99,7 +115,7 @@ class WebSocketGameSession {
     });
     if (LOG) {
       this.game.log();
-      console.log('Starting game');
+      console.log(`Starting game ${this.gameSeed} (${this.screenSeed})`);
     }
   }
 
@@ -108,7 +124,9 @@ class WebSocketGameSession {
       return;
     }
     this.done = true;
-    this.players.forEach(player => sessionByPlayer.delete(player));
+    this.players.forEach(player =>
+      sessionBySocketId.delete(player.socket.data.socketId)
+    );
   }
 
   disconnect(player: Player) {
@@ -143,13 +161,15 @@ class WebSocketGameSession {
         return;
       }
       const move = sanitizeMove(index, content);
-      this.game.play(
-        move.player,
-        move.x1,
-        move.y1,
-        move.orientation,
-        move.hardDrop
-      );
+      if (!move.pass) {
+        this.game.play(
+          move.player,
+          move.x1,
+          move.y1,
+          move.orientation,
+          move.hardDrop
+        );
+      }
       // Hide the first of simultaneous moves
       if (this.waitingForMove.every(w => w)) {
         if (LOG) {
@@ -169,9 +189,16 @@ class WebSocketGameSession {
       }
       this.waitingForMove[index] = false;
 
-      while (this.game.games.every(game => game.busy)) {
+      while (
+        this.game.games.every(game => game.busy) ||
+        (move.pass && this.game.games.some(game => game.busy))
+      ) {
         const tickResults = this.game.tick();
         this.age++;
+
+        if (this.done) {
+          return;
+        }
 
         if (tickResults[0].lockedOut && tickResults[1].lockedOut) {
           this.players.forEach(p =>
@@ -232,15 +259,16 @@ class WebSocketGameSession {
   }
 }
 
-const playerBySocket: Map<
-  ServerWebSocket<{authToken: string}>,
-  Player
-> = new Map();
-const sessionByPlayer: Map<Player, WebSocketGameSession> = new Map();
+const playerBySocketId: Map<number, Player> = new Map();
+const sessionBySocketId: Map<number, WebSocketGameSession> = new Map();
 
-const server = Bun.serve<{authToken: string}>({
+const server = Bun.serve<{socketId: number}>({
   fetch(req, server) {
-    const success = server.upgrade(req);
+    const success = server.upgrade(req, {
+      data: {
+        socketId: randomSeed(),
+      },
+    });
     if (success) {
       // Bun automatically returns a 101 Switching Protocols
       // if the upgrade succeeds
@@ -254,22 +282,22 @@ const server = Bun.serve<{authToken: string}>({
   },
   websocket: {
     async open(ws) {
-      console.log('New connection opened.');
-      playerBySocket.set(ws, new Player(ws));
+      console.log(`New connection opened by ${ws.data.socketId}.`);
+      playerBySocketId.set(ws.data.socketId, new Player(ws));
     },
     async close(ws, code, reason) {
       console.log('Connection closed.', code, reason);
 
-      const player = playerBySocket.get(ws)!;
-      playerBySocket.delete(ws);
-      const session = sessionByPlayer.get(player);
+      const player = playerBySocketId.get(ws.data.socketId)!;
+      playerBySocketId.delete(ws.data.socketId);
+      const session = sessionBySocketId.get(ws.data.socketId);
       if (session !== undefined) {
         session.disconnect(player);
       }
     },
     // this is called when a message is received
     async message(ws, message) {
-      console.log(`Received ${message}`);
+      console.log(`Received ${message} from ${ws.data.socketId}`);
 
       let content;
       if (message instanceof Buffer) {
@@ -278,23 +306,26 @@ const server = Bun.serve<{authToken: string}>({
         content = JSON.parse(message);
       }
 
-      const player = playerBySocket.get(ws)!;
+      const player = playerBySocketId.get(ws.data.socketId)!;
 
       if (content.type === 'game request') {
         // TODO: Keep an array of open games.
-        for (const session of sessionByPlayer.values()) {
+        for (const session of sessionBySocketId.values()) {
           if (session.players.length < 2) {
             session.players.push(player);
-            sessionByPlayer.set(player, session);
+            sessionBySocketId.set(ws.data.socketId, session);
             session.start();
             return;
           }
         }
-        sessionByPlayer.set(player, new WebSocketGameSession(player));
+        sessionBySocketId.set(
+          ws.data.socketId,
+          new WebSocketGameSession(player)
+        );
         return;
       }
 
-      const session = sessionByPlayer.get(player);
+      const session = sessionBySocketId.get(ws.data.socketId);
       if (session !== undefined) {
         session.message(player, content);
       }

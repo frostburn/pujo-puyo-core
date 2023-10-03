@@ -1,11 +1,14 @@
 import {
   MOVES,
   MultiplayerGame,
+  PASS,
   SimpleGame,
   flexDropletStrategy2,
   nullStrategy,
   randomStrategy,
 } from '../src';
+
+const LOG = false;
 
 let bot = flexDropletStrategy2;
 if (process.argv.length === 3) {
@@ -28,7 +31,9 @@ let losses = 0;
 
 socket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
-  // console.log('Message received', data);
+  if (LOG) {
+    console.log('Message received', data);
+  }
   if (data.type === 'simple state') {
     console.warn('Unexpected simple state response');
     const game = SimpleGame.fromJSON(data.state);
@@ -70,21 +75,31 @@ socket.addEventListener('message', event => {
       console.log('Heuristic score:', strategy.score);
       console.log(`Wins / Draws / Losses: ${wins} / ${draws} / ${losses}`);
 
-      const response = JSON.parse(JSON.stringify(MOVES[strategy.move]));
+      let response;
+      if (strategy.move === PASS) {
+        response = {pass: true};
+      } else {
+        response = JSON.parse(JSON.stringify(MOVES[strategy.move]));
+      }
       response.type = 'move';
       response.hardDrop = true;
       socket.send(JSON.stringify(response));
     }
   }
   if (data.type === 'move') {
-    mirrorGame!.play(
-      data.player,
-      data.x1,
-      data.y1,
-      data.orientation,
-      data.hardDrop
-    );
-    while (mirrorGame!.games.every(game => game.busy)) {
+    if (!data.pass) {
+      mirrorGame!.play(
+        data.player,
+        data.x1,
+        data.y1,
+        data.orientation,
+        data.hardDrop
+      );
+    }
+    while (
+      mirrorGame!.games.every(game => game.busy) ||
+      (data.pass && mirrorGame!.games.some(game => game.busy))
+    ) {
       mirrorGame!.tick();
     }
   }
