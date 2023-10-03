@@ -8,6 +8,8 @@ import {
   randomStrategy,
 } from '../src';
 
+const LOG = false;
+
 let bot = flexDropletStrategy2;
 if (process.argv.length === 3) {
   console.log('Using random strategy');
@@ -29,7 +31,9 @@ let losses = 0;
 
 socket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
-  // console.log('Message received', data);
+  if (LOG) {
+    console.log('Message received', data);
+  }
   if (data.type === 'simple state') {
     console.warn('Unexpected simple state response');
     const game = SimpleGame.fromJSON(data.state);
