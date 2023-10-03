@@ -385,12 +385,54 @@ export class MultiplayerGame {
 
   displayLines() {
     const lines = this.games[0].displayLines();
+    if (this.allClearBonus[0]) {
+      lines[17] += 'AC';
+    }
+    const garbageUnits = [];
+    let lengthCompensation = 0;
+    if (this.games[0].screen.bufferedGarbage) {
+      garbageUnits.push(
+        `${colorOf(YELLOW)}${this.games[0].screen.bufferedGarbage}${colorOf(
+          AIR
+        )}`
+      );
+      lengthCompensation += 11;
+    }
+    if (this.pendingGarbage[0]) {
+      garbageUnits.push(
+        `${colorOf(GARBAGE)}${this.pendingGarbage[0]}${colorOf(AIR)}`
+      );
+      lengthCompensation += 11;
+    }
+    if (!garbageUnits.length) {
+      garbageUnits.push('0');
+    }
     lines.push(
-      `G: ${this.pendingGarbage[0]} ←  ${this.accumulatedGarbage[1]} `
+      `G: ${garbageUnits.join('+')} ←  ${this.accumulatedGarbage[1]} `
     );
+
+    garbageUnits.length = 0;
+    if (this.games[1].screen.bufferedGarbage) {
+      garbageUnits.push(
+        `${colorOf(YELLOW)}${this.games[1].screen.bufferedGarbage}${colorOf(
+          AIR
+        )}`
+      );
+    }
+    if (this.pendingGarbage[1]) {
+      garbageUnits.push(
+        `${colorOf(GARBAGE)}${this.pendingGarbage[1]}${colorOf(AIR)}`
+      );
+    }
+    if (!garbageUnits.length) {
+      garbageUnits.push('0');
+    }
     const rightLines = this.games[1].displayLines();
+    if (this.allClearBonus[1]) {
+      rightLines[17] += 'AC';
+    }
     rightLines.push(
-      `G: ${this.pendingGarbage[1]} ←  ${this.accumulatedGarbage[0]} `
+      `G: ${garbageUnits.join('+')} ←  ${this.accumulatedGarbage[0]} `
     );
     for (let i = 0; i < lines.length; ++i) {
       if (i < PADDING.length) {
@@ -398,7 +440,7 @@ export class MultiplayerGame {
           lines[i] += ' ';
         }
       } else {
-        while (lines[i].length < 19) {
+        while (lines[i].length < 19 + (i === 20 ? lengthCompensation : 0)) {
           lines[i] += ' ';
         }
       }
@@ -480,6 +522,7 @@ export class MultiplayerGame {
         this.pendingGarbage[i] -= releasedGarbage;
         this.canReceive[i] = false;
 
+        this.games[i].active = true;
         tickResults[i].busy = true;
       }
     }
