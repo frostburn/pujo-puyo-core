@@ -14,7 +14,7 @@ import {
   verticalLine,
   visible,
 } from './bitboard';
-import {SIMPLE_GAME_OVER, SimpleGame} from './game';
+import {PASS, SIMPLE_GAME_OVER, SimpleGame} from './game';
 
 const HEURISTIC_FAIL = -2000000;
 const PREFER_LONGER = 1.1;
@@ -119,6 +119,13 @@ export function effectiveLockout(game: SimpleGame) {
   return 0;
 }
 
+function passPenalty(move: number, game: SimpleGame): number {
+  if (move === PASS) {
+    return Math.min(0, -10 * game.lateTimeRemaining);
+  }
+  return 0;
+}
+
 /**
  * Heuristic score from dropping a single puyo onto the playing field.
  * @param game Game state to evaluate.
@@ -168,6 +175,7 @@ export function maxDropletStrategy1(game: SimpleGame): StrategyResult {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
     const score =
+      passPenalty(moves[i], game) +
       tickResult.score +
       PREFER_LONGER * maxDroplet(clone) +
       materialCount(clone) +
@@ -194,7 +202,9 @@ export function maxDropletStrategy2(game: SimpleGame): StrategyResult {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
     const score =
-      tickResult.score + PREFER_LONGER * maxDropletStrategy1(clone).score;
+      passPenalty(moves[i], game) +
+      tickResult.score +
+      PREFER_LONGER * maxDropletStrategy1(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];
@@ -218,6 +228,7 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
     const score =
+      passPenalty(moves[i], game) +
       tickResult.score +
       PREFER_LONGER * flexDroplet(clone) +
       materialCount(clone) +
@@ -248,7 +259,9 @@ export function flexDropletStrategy2(game: SimpleGame): StrategyResult {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
     const score =
-      tickResult.score + PREFER_LONGER * flexDropletStrategy1(clone).score;
+      passPenalty(moves[i], game) +
+      tickResult.score +
+      PREFER_LONGER * flexDropletStrategy1(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];
@@ -274,7 +287,9 @@ export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
     const score =
-      tickResult.score + PREFER_LONGER * flexDropletStrategy2(clone).score;
+      passPenalty(moves[i], game) +
+      tickResult.score +
+      PREFER_LONGER * flexDropletStrategy2(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];
