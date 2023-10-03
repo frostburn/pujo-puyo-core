@@ -16,6 +16,8 @@ if (process.argv.length >= 3) {
 const NOMINAL_FRAME_RATE = 30;
 // Terminate games that last longer than 10 virtual minutes.
 const MAX_GAME_AGE = NOMINAL_FRAME_RATE * 60 * 10;
+// These 10 minutes are measured in wall clock time to prune players who leave their browsers open.
+const MAX_MOVE_TIME = 10 * 60 * 1000;
 
 type NormalMove = {
   type: 'move';
@@ -75,6 +77,7 @@ class WebSocketGameSession {
   waitingForMove: boolean[];
   done: boolean;
   hiddenMove: Move | null;
+  timeouts: (NodeJS.Timeout | null)[];
 
   constructor(player: Player) {
     this.age = 0;
@@ -91,6 +94,21 @@ class WebSocketGameSession {
     this.waitingForMove = [false, false];
     this.done = false;
     this.hiddenMove = null;
+    this.timeouts = [null, null];
+  }
+
+  disqualifyPlayer(player: number) {
+    this.players[player].send({
+      type: 'game result',
+      result: 'loss',
+      reason: 'maximum move time exceeded',
+    });
+    this.players[1 - player].send({
+      type: 'game result',
+      result: 'win',
+      reason: 'opponent timeout',
+    });
+    this.complete();
   }
 
   start() {
@@ -112,6 +130,11 @@ class WebSocketGameSession {
         });
       }
       this.waitingForMove[i] = true;
+      const latePlayer = i;
+      this.timeouts[i] = setTimeout(
+        () => this.disqualifyPlayer(latePlayer),
+        MAX_MOVE_TIME
+      );
     });
     if (LOG) {
       this.game.log();
@@ -161,6 +184,7 @@ class WebSocketGameSession {
         return;
       }
       const move = sanitizeMove(index, content);
+      clearTimeout(this.timeouts[move.player]!);
       if (!move.pass) {
         this.game.play(
           move.player,
@@ -253,6 +277,11 @@ class WebSocketGameSession {
             console.log('Sent bag of', i, this.game.games[i].visibleBag);
           }
           this.waitingForMove[i] = true;
+          const latePlayer = i;
+          this.timeouts[i] = setTimeout(
+            () => this.disqualifyPlayer(latePlayer),
+            MAX_MOVE_TIME
+          );
         }
       }
     }
