@@ -109,8 +109,11 @@ socket.addEventListener('message', event => {
         if (tickResults[identity!].didJiggle) {
           fx.push('jiggle');
         }
-        if (tickResults[identity!].didLand) {
-          fx.push('land');
+        if (tickResults[identity!].coloredLanded) {
+          fx.push('colored landed');
+        }
+        if (tickResults[identity!].garbageLanded) {
+          fx.push('garbage landed');
         }
         if (fx.length) {
           console.log(fx.join(' '));

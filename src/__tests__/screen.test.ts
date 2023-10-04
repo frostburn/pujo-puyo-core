@@ -27,9 +27,16 @@ test('Gravity', () => {
 test('Landing signal', () => {
   const screen = new PuyoScreen();
   screen.insertPuyo(3, HEIGHT - 3, YELLOW);
-  expect(screen.tick().didLand).toBeFalse();
-  expect(screen.tick().didLand).toBeTrue();
-  expect(screen.tick().didLand).toBeFalse();
+  screen.insertPuyo(4, HEIGHT - 4, GARBAGE);
+  const firstTick = screen.tick();
+  const secondTick = screen.tick();
+  const thirdTick = screen.tick();
+  expect(firstTick.coloredLanded).toBeFalse();
+  expect(firstTick.garbageLanded).toBeFalse();
+  expect(secondTick.coloredLanded).toBeTrue();
+  expect(secondTick.garbageLanded).toBeFalse();
+  expect(thirdTick.coloredLanded).toBeFalse();
+  expect(thirdTick.garbageLanded).toBeTrue();
 });
 
 test('Garbage clearing', () => {
