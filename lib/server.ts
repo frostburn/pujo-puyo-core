@@ -147,6 +147,11 @@ class WebSocketGameSession {
       return;
     }
     this.done = true;
+    this.timeouts.forEach(timeout => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
+    });
     this.players.forEach(player =>
       sessionBySocketId.delete(player.socket.data.socketId)
     );
