@@ -28,6 +28,11 @@ export type ClearResult = {
   sparks: Puyos;
 };
 
+export type FallResult = {
+  fallen: Puyos;
+  landed: Puyos;
+};
+
 /**
  * Obtain an empty bitboard stack of puyos.
  * @returns A screenful of air.
@@ -358,13 +363,14 @@ export function applyXor(puyos: Puyos, diff: Puyos) {
 /**
  * Apply linear gravity for one grid step.
  * @param grid An array of puyos to apply gravity to.
- * @returns A mask of everything that fell.
+ * @returns A mask of everything that fell and a flag for anything that landed.
  */
-export function fallOne(grid: Puyos[]): Puyos {
+export function fallOne(grid: Puyos[]): FallResult {
   const mask = getMask(grid);
 
-  const unsupported = clone(mask);
-  trimUnsupported(unsupported);
+  const supported = clone(mask);
+  trimUnsupported(supported);
+  const unsupported = clone(supported);
   invert(unsupported);
   applyMask(unsupported, mask);
 
@@ -382,7 +388,19 @@ export function fallOne(grid: Puyos[]): Puyos {
   unsupported[4] <<= 1;
   unsupported[5] <<= 1;
 
-  return unsupported;
+  supported[0] = (supported[0] >> 1) | BOTTOM;
+  supported[1] = (supported[1] >> 1) | BOTTOM;
+  supported[2] = (supported[2] >> 1) | BOTTOM;
+  supported[3] = (supported[3] >> 1) | BOTTOM;
+  supported[4] = (supported[4] >> 1) | BOTTOM;
+  supported[5] = (supported[5] >> 1) | BOTTOM;
+
+  applyMask(supported, unsupported);
+
+  return {
+    fallen: unsupported,
+    landed: supported,
+  };
 }
 
 /**

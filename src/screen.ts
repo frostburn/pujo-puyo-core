@@ -46,6 +46,7 @@ export type TickResult = {
   chainNumber: number;
   didJiggle: boolean;
   didClear: boolean;
+  didLand: boolean;
   allClear: boolean;
   busy: boolean;
   lockedOut: boolean;
@@ -319,6 +320,7 @@ export class SimplePuyoScreen {
       chainNumber: 0,
       didJiggle: false,
       didClear: false,
+      didLand: false,
       allClear: false,
       busy: false,
       lockedOut: false,
@@ -345,6 +347,7 @@ export class SimplePuyoScreen {
     while (active) {
       // Make everything fall down.
       active = resolveGravity(this.grid);
+      result.didLand = result.didLand || active;
 
       // Make everything above the ghost line disappear.
       this.grid.forEach(vanishTop);
@@ -634,6 +637,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
+        didLand: false,
         allClear: this.grid.every(isEmpty),
         busy: true,
         lockedOut: false,
@@ -654,15 +658,16 @@ export class PuyoScreen extends SimplePuyoScreen {
     }
 
     // Make everything unsupported fall down one grid unit.
-    const jiggles = fallOne(this.grid);
-    if (isNonEmpty(jiggles)) {
+    const {fallen, landed} = fallOne(this.grid);
+    if (isNonEmpty(fallen)) {
       this.doJiggles = true;
-      merge(this.jiggles, jiggles);
+      merge(this.jiggles, fallen);
       return {
         score: 0,
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
+        didLand: isNonEmpty(landed),
         allClear: false,
         busy: true,
         lockedOut: false,
@@ -680,6 +685,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         chainNumber: this.chainNumber,
         didJiggle: true,
         didClear: false,
+        didLand: false,
         allClear: false,
         busy: true,
         lockedOut: false,
@@ -729,6 +735,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       chainNumber: this.chainNumber,
       didJiggle: false,
       didClear,
+      didLand: false,
       allClear: false,
       busy: didClear,
       lockedOut,

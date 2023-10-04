@@ -100,7 +100,22 @@ socket.addEventListener('message', event => {
       mirrorGame!.games.every(game => game.busy) ||
       (data.pass && mirrorGame!.games.some(game => game.busy))
     ) {
-      mirrorGame!.tick();
+      const tickResults = mirrorGame!.tick();
+      if (LOG) {
+        const fx: string[] = [];
+        if (tickResults[identity!].didClear) {
+          fx.push('clear');
+        }
+        if (tickResults[identity!].didJiggle) {
+          fx.push('jiggle');
+        }
+        if (tickResults[identity!].didLand) {
+          fx.push('land');
+        }
+        if (fx.length) {
+          console.log(fx.join(' '));
+        }
+      }
     }
   }
   if (data.type === 'game result') {
