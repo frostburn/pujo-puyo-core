@@ -21,6 +21,7 @@ export type GameState = {
   lateGarbage: number;
   allClearBonus: boolean;
   busy: boolean;
+  lockedOut: boolean;
 };
 
 // Timings (gravity acts in units of one)
@@ -64,6 +65,7 @@ export class OnePlayerGame {
   screen: PuyoScreen;
   colorSelection: number[];
   bag: number[];
+  lockedOut: boolean;
 
   constructor(
     seed?: number | null,
@@ -105,6 +107,7 @@ export class OnePlayerGame {
 
     this.bag = [];
     this.advanceColors();
+    this.lockedOut = false;
   }
 
   get busy(): boolean {
@@ -121,6 +124,7 @@ export class OnePlayerGame {
       lateGarbage: 0,
       allClearBonus: false,
       busy: this.busy,
+      lockedOut: this.lockedOut,
     };
   }
 
@@ -239,6 +243,12 @@ export class OnePlayerGame {
       } else if (isNonEmpty(this.screen.sparks)) {
         this.sparkTime = SPARK_TIME;
       }
+      if (tickResult.lockedOut) {
+        this.lockedOut = true;
+      }
+      if (this.lockedOut) {
+        tickResult.lockedOut = true;
+      }
       return tickResult;
     }
     const wasBusy = this.busy;
@@ -253,7 +263,7 @@ export class OnePlayerGame {
       garbageLanded: false,
       allClear: false,
       busy: wasBusy,
-      lockedOut: false,
+      lockedOut: this.lockedOut,
     };
   }
 

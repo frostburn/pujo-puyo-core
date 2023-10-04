@@ -4,6 +4,7 @@ import {
   MultiplayerGame,
   OnePlayerGame,
   SimpleGame,
+  SinglePlayerGame,
   randomColorSelection,
 } from '../game';
 import {JKISS32, randomSeed} from '../jkiss';
@@ -237,4 +238,20 @@ test('No 1-frame cheese', () => {
     }
   }
   expect(puyoCount(game.games[1].screen.coloredMask)).toBe(2);
+});
+
+test('Permanent lockout', () => {
+  const game = new SinglePlayerGame();
+  while (!game.lockedOut) {
+    game.play(Math.floor(Math.random() * WIDTH), 2, 0, Math.random() < 0.5);
+    while (game.tick().busy);
+  }
+  for (let i = 0; i < 100; ++i) {
+    const tickResult = game.tick();
+    expect(tickResult.lockedOut).toBeTrue();
+    expect(game.state.lockedOut).toBeTrue();
+    if (!tickResult.busy) {
+      game.play(Math.floor(Math.random() * WIDTH), 2, 0, Math.random() < 0.5);
+    }
+  }
 });
