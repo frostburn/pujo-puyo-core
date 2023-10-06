@@ -14,6 +14,7 @@ import {
 
 export type GameState = {
   screen: ScreenState;
+  age: number;
   score: number;
   hand: number[];
   preview: number[];
@@ -22,6 +23,16 @@ export type GameState = {
   allClearBonus: boolean;
   busy: boolean;
   lockedOut: boolean;
+};
+
+export type PlayedMove = {
+  player: number;
+  time: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  orientation: number;
 };
 
 // Timings (gravity acts in units of one)
@@ -40,7 +51,7 @@ const ALL_CLEAR_BONUS = 8500;
 
 // Multiplayer
 const TARGET_POINTS = 70;
-const ONE_STONE = WIDTH * 5;
+const ONE_ROCK = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
 
 export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
@@ -57,6 +68,7 @@ export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
 }
 
 export class OnePlayerGame {
+  age: number;
   score: number;
   jiggleTime: number;
   sparkTime: number;
@@ -72,6 +84,7 @@ export class OnePlayerGame {
     colorSelection?: number[],
     screenSeed?: number
   ) {
+    this.age = 0;
     this.score = 0;
     this.jiggleTime = 0;
     this.sparkTime = 0;
@@ -117,6 +130,7 @@ export class OnePlayerGame {
   get state(): GameState {
     return {
       screen: this.screen.state,
+      age: this.age,
       score: this.score,
       hand: this.hand,
       preview: this.preview,
@@ -163,7 +177,12 @@ export class OnePlayerGame {
     return this.bag[1];
   }
 
-  play(x1: number, y1: number, orientation: number, hardDrop = false) {
+  play(
+    x1: number,
+    y1: number,
+    orientation: number,
+    hardDrop = false
+  ): PlayedMove {
     if (this.bag.length < 2) {
       throw new Error('Out of bag');
     }
@@ -227,9 +246,12 @@ export class OnePlayerGame {
     this.advanceColors();
 
     this.active = true;
+
+    return {player: 0, time: this.age, x1, y1, x2, y2, orientation};
   }
 
   tick(): TickResult {
+    this.age++;
     if (
       this.jiggleTime <= 0 &&
       this.sparkTime <= 0 &&
@@ -259,6 +281,7 @@ export class OnePlayerGame {
       chainNumber: this.screen.chainNumber,
       didJiggle: false,
       didClear: false,
+      didFall: false,
       coloredLanded: false,
       garbageLanded: false,
       allClear: false,
@@ -325,7 +348,7 @@ export class MultiplayerGame {
   games: OnePlayerGame[];
   // Buffered gargabe is sent on the next tick.
   // Stored on games[i].screen.bufferedGarbage.
-  // Pending garbage is received after the next move. At most one stone at a time.
+  // Pending garbage is received after the next move. At most one rock at a time.
   pendingGarbage: number[];
   // These labels are sort of swapped.
   // Left accumulated garbage comes from the left screen to be sent to the right.
@@ -360,6 +383,14 @@ export class MultiplayerGame {
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
     this.canReceive = [false, false];
+  }
+
+  get age(): number {
+    const result = this.games[0].age;
+    if (this.games.some(g => g.age !== result)) {
+      throw new Error('Game desync');
+    }
+    return result;
   }
 
   get state(): GameState[] {
@@ -474,9 +505,11 @@ export class MultiplayerGame {
     y1: number,
     orientation: number,
     hardDrop = false
-  ) {
-    this.games[player].play(x1, y1, orientation, hardDrop);
+  ): PlayedMove {
+    const result = this.games[player].play(x1, y1, orientation, hardDrop);
     this.canReceive[player] = true;
+    result.player = player;
+    return result;
   }
 
   tick(): TickResult[] {
@@ -529,7 +562,7 @@ export class MultiplayerGame {
 
     for (let i = 0; i < tickResults.length; ++i) {
       if (this.canReceive[i] && !tickResults[i].busy) {
-        const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage[i]);
+        const releasedGarbage = Math.min(ONE_ROCK, this.pendingGarbage[i]);
         this.games[i].screen.bufferedGarbage += releasedGarbage;
         this.pendingGarbage[i] -= releasedGarbage;
         this.canReceive[i] = false;
@@ -637,7 +670,7 @@ export class SimpleGame {
   screen: SimplePuyoScreen;
   pointResidue: number;
   allClearBonus: boolean;
-  // Garbage to be received as soon as possible, one stone at a time.
+  // Garbage to be received as soon as possible, one rock at a time.
   pendingGarbage: number;
   // Garbage to be received later.
   lateGarbage: number;
@@ -701,6 +734,7 @@ export class SimpleGame {
         chainNumber: 0,
         didClear: false,
         didJiggle: false,
+        didFall: false,
         coloredLanded: false,
         garbageLanded: false,
         allClear: false,
@@ -716,7 +750,7 @@ export class SimpleGame {
     const {x1, y1, x2, y2} = MOVES[move];
     this.screen.insertPuyo(x1, y1, color1);
     this.screen.insertPuyo(x2, y2, color2);
-    const releasedGarbage = Math.min(ONE_STONE, this.pendingGarbage);
+    const releasedGarbage = Math.min(ONE_ROCK, this.pendingGarbage);
     this.pendingGarbage -= releasedGarbage;
     this.screen.bufferedGarbage += releasedGarbage;
     const tickResult = this.resolve();

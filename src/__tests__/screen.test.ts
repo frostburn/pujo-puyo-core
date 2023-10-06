@@ -156,7 +156,7 @@ test('Ghost garbage elimination', () => {
   expect(isEmpty(screen.grid[GARBAGE])).toBeTruthy();
 });
 
-test('Stones of garbage', () => {
+test('Rocks of garbage', () => {
   const screen = new PuyoScreen();
   screen.insertPuyo(0, 1, RED);
   screen.insertPuyo(1, 1, GREEN);
@@ -177,7 +177,7 @@ test('Stones of garbage', () => {
   expect(puyoAt(screen.grid[YELLOW], 1, 9)).toBeTruthy();
   expect(puyoAt(screen.grid[PURPLE], 5, 5)).toBeTruthy();
   expect(puyoAt(screen.grid[PURPLE], 5, 4)).toBeTruthy();
-  // Two stones and a line of garbage with one garbage puyo vanishing beyond the ghost line.
+  // Two rocks and a line of garbage with one garbage puyo vanishing beyond the ghost line.
   expect(puyoCount(screen.grid[GARBAGE])).toBe(30 + 30 + 6 - 1);
 });
 

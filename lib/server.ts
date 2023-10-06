@@ -24,7 +24,9 @@ type NormalMove = {
   player: number;
   x1: number;
   y1: number;
-  orientation: number;
+  x2?: number;
+  y2?: number;
+  orientation?: number;
   hardDrop: boolean;
   pass: false;
 };
@@ -43,6 +45,19 @@ function sanitizeMove(player: number, content: any): Move {
       player,
       pass: true,
     };
+  }
+  if (content.x2 !== undefined) {
+    if (content.y2 === content.y1 - 1) {
+      content.orientation = 0;
+    } else if (content.y2 === content.y1 + 1) {
+      content.orientation = 2;
+    } else if (content.x2 === content.x1 - 1) {
+      content.orientation = 1;
+    } else if (content.x2 === content.x1 + 1) {
+      content.orientation = 3;
+    } else {
+      throw new Error('Unable to sanitize move coordinates');
+    }
   }
   return {
     type: 'move',
@@ -68,7 +83,6 @@ class Player {
 }
 
 class WebSocketGameSession {
-  age: number;
   gameSeed: number;
   screenSeed: number;
   colorSelection: number[];
@@ -80,7 +94,6 @@ class WebSocketGameSession {
   timeouts: (NodeJS.Timeout | null)[];
 
   constructor(player: Player) {
-    this.age = 0;
     this.gameSeed = randomSeed();
     this.screenSeed = randomSeed();
     this.colorSelection = randomColorSelection();
@@ -102,11 +115,13 @@ class WebSocketGameSession {
       type: 'game result',
       result: 'loss',
       reason: 'maximum move time exceeded',
+      gameSeed: this.gameSeed,
     });
     this.players[1 - player].send({
       type: 'game result',
       result: 'win',
       reason: 'opponent timeout',
+      gameSeed: this.gameSeed,
     });
     this.complete();
   }
@@ -167,6 +182,7 @@ class WebSocketGameSession {
           type: 'game result',
           result: 'win',
           reason: 'opponent disconnected',
+          gameSeed: this.gameSeed,
         });
       }
     });
@@ -191,13 +207,17 @@ class WebSocketGameSession {
       const move = sanitizeMove(index, content);
       clearTimeout(this.timeouts[move.player]!);
       if (!move.pass) {
-        this.game.play(
+        const playedMove = this.game.play(
           move.player,
           move.x1,
           move.y1,
-          move.orientation,
+          move.orientation!,
           move.hardDrop
         );
+        move.x1 = playedMove.x1;
+        move.y1 = playedMove.y1;
+        move.x2 = playedMove.x2;
+        move.y2 = playedMove.y2;
       }
       // Hide the first of simultaneous moves
       if (this.waitingForMove.every(w => w)) {
@@ -223,7 +243,6 @@ class WebSocketGameSession {
         (move.pass && this.game.games.some(game => game.busy))
       ) {
         const tickResults = this.game.tick();
-        this.age++;
 
         if (this.done) {
           return;
@@ -235,6 +254,7 @@ class WebSocketGameSession {
               type: 'game result',
               result: 'draw',
               reason: 'double lockout',
+              gameSeed: this.gameSeed,
             })
           );
           this.complete();
@@ -245,19 +265,22 @@ class WebSocketGameSession {
             type: 'game result',
             result: 'win',
             reason: 'opponent lockout',
+            gameSeed: this.gameSeed,
           });
           this.players[loser].send({
             type: 'game result',
             result: 'loss',
             reason: 'lockout',
+            gameSeed: this.gameSeed,
           });
           this.complete();
-        } else if (this.age > MAX_GAME_AGE) {
+        } else if (this.game.age > MAX_GAME_AGE) {
           this.players.forEach(p =>
             p.send({
               type: 'game result',
               result: 'draw',
               reason: 'time limit exceeded',
+              gameSeed: this.gameSeed,
             })
           );
           this.complete();

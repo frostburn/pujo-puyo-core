@@ -633,3 +633,41 @@ export function puyosEqual(a: Puyos, b: Puyos) {
     a[5] === b[5]
   );
 }
+
+export function semiVisible(puyos: Puyos): Puyos {
+  const result = clone(puyos);
+  result[0] &= SEMI_VISIBLE;
+  result[1] &= SEMI_VISIBLE;
+  result[2] &= SEMI_VISIBLE;
+  result[3] &= SEMI_VISIBLE;
+  result[4] &= SEMI_VISIBLE;
+  result[5] &= SEMI_VISIBLE;
+  return result;
+}
+
+export function columnCounts(puyos: Puyos): number[] {
+  return [...puyos.map(popcount16)];
+}
+
+export function mergeColumns(puyos: Puyos, xs: number[], height: number) {
+  for (let y = 0; y < height; ++y) {
+    const p = 1 << y;
+    xs.forEach(x => (puyos[x] |= p));
+  }
+}
+
+/**
+ * Returns an array of booleans indicating if the columns are full.
+ * @param puyos Collection of puyos to check
+ * @returns True if there is no air in the semi-visible portion for each column.
+ */
+export function columnsFull(puyos: Puyos): boolean[] {
+  return [
+    !(SEMI_VISIBLE & ~puyos[0]),
+    !(SEMI_VISIBLE & ~puyos[1]),
+    !(SEMI_VISIBLE & ~puyos[2]),
+    !(SEMI_VISIBLE & ~puyos[3]),
+    !(SEMI_VISIBLE & ~puyos[4]),
+    !(SEMI_VISIBLE & ~puyos[5]),
+  ];
+}

@@ -5,6 +5,8 @@ export * from './bitboard';
 export * from './game';
 export * from './jkiss';
 export * from './screen';
+export * from './replay';
+export * from './algebraic';
 
 type GarbageSymbols = {
   pending: string[];
