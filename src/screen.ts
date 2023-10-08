@@ -46,6 +46,7 @@ export type TickResult = {
   chainNumber: number;
   didJiggle: boolean;
   didClear: boolean;
+  didFall: boolean;
   coloredLanded: boolean;
   garbageLanded: boolean;
   allClear: boolean;
@@ -135,7 +136,8 @@ function gridFromLines(lines: string[]) {
  */
 export class SimplePuyoScreen {
   grid: Puyos[];
-  bufferedGarbage: number; // Implementation detail. We don't have the space to drop a stone of garbage at once.
+  bufferedGarbage: number;
+  // Buffering is an implementation detail. We don't have the space to drop a rock of garbage at once.
   // No deterministic RNG, knowing the correct seed would be cheating.
 
   /**
@@ -321,6 +323,7 @@ export class SimplePuyoScreen {
       chainNumber: 0,
       didJiggle: false,
       didClear: false,
+      didFall: false,
       coloredLanded: false,
       garbageLanded: false,
       allClear: false,
@@ -351,6 +354,7 @@ export class SimplePuyoScreen {
       active = resolveGravity(this.grid);
 
       // XXX: Gravity resultion doesn't differentiate between colored and garbage so we don't send landing signals.
+      result.didFall = result.didFall || active;
 
       // Make everything above the ghost line disappear.
       this.grid.forEach(vanishTop);
@@ -640,6 +644,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
+        didFall: false,
         coloredLanded: false,
         garbageLanded: false,
         allClear: this.grid.every(isEmpty),
@@ -674,6 +679,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
+        didFall: true,
         coloredLanded: isNonEmpty(colored),
         garbageLanded: isNonEmpty(landed),
         allClear: false,
@@ -693,6 +699,7 @@ export class PuyoScreen extends SimplePuyoScreen {
         chainNumber: this.chainNumber,
         didJiggle: true,
         didClear: false,
+        didFall: false,
         coloredLanded: false,
         garbageLanded: false,
         allClear: false,
@@ -744,6 +751,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       chainNumber: this.chainNumber,
       didJiggle: false,
       didClear,
+      didFall: false,
       coloredLanded: false,
       garbageLanded: false,
       allClear: false,
