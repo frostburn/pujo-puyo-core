@@ -13,11 +13,11 @@ export class JKISS32 {
   state: Uint32Array;
   temp: Int32Array;
 
-  constructor(seed?: number) {
-    this.state = new Uint32Array(5);
+  constructor(seed?: number | Uint32Array) {
     this.temp = new Int32Array(1);
 
     if (seed === undefined) {
+      this.state = new Uint32Array(5);
       this.state[0] = randomSeed();
       this.state[1] = randomSeed();
       this.state[2] = randomSeed();
@@ -26,7 +26,19 @@ export class JKISS32 {
       if (this.state[1] === 0) {
         this.state[1] = 7;
       }
+    } else if (seed instanceof Uint32Array) {
+      if (seed.length !== 5) {
+        throw new Error('Requires state of size 5');
+      }
+      if (!seed[1]) {
+        throw new Error('Second state element cannot be 0');
+      }
+      if (seed[4] > 1) {
+        throw new Error('Fifth state element must be a bit');
+      }
+      this.state = new Uint32Array(seed);
     } else {
+      this.state = new Uint32Array(5);
       this.state[0] = seed;
 
       this.state[1] = seed;
@@ -66,6 +78,10 @@ export class JKISS32 {
     this.state[4] = this.temp[0] < 0 ? 1 : 0;
 
     return result;
+  }
+
+  clone(): JKISS32 {
+    return new JKISS32(this.state);
   }
 
   shuffle(array: any[]) {

@@ -137,19 +137,22 @@ function gridFromLines(lines: string[]) {
  */
 export class SimplePuyoScreen {
   grid: Puyos[];
-  bufferedGarbage: number;
   // Buffering is an implementation detail. We don't have the space to drop a rock of garbage at once.
-  // No deterministic RNG, knowing the correct seed would be cheating.
+  bufferedGarbage: number;
+  // Replays and netcode benefit from deterministic randomness.
+  // Knowing the correct garbage seed can be considered cheating on the AIs part, but that's minor enough.
+  jkiss: JKISS32;
 
   /**
    * Construct a new 6x16 screen of puyos.
    */
-  constructor() {
+  constructor(seed?: number | Uint32Array) {
     this.grid = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
       this.grid.push(emptyPuyos());
     }
     this.bufferedGarbage = 0;
+    this.jkiss = new JKISS32(seed);
   }
 
   toJSON() {
@@ -314,6 +317,21 @@ export class SimplePuyoScreen {
     console.log(this.displayLines().join('\n'));
   }
 
+  // Create (up to) one line of garbage.
+  protected commitGarbageLine() {
+    if (this.bufferedGarbage >= WIDTH) {
+      merge(this.grid[GARBAGE], topLine());
+      this.bufferedGarbage -= WIDTH;
+    } else if (this.bufferedGarbage) {
+      const line = Array(this.bufferedGarbage)
+        .fill(true)
+        .concat(Array(WIDTH - this.bufferedGarbage).fill(false));
+      this.jkiss.shuffle(line);
+      merge(this.grid[GARBAGE], fromArray(line));
+      this.bufferedGarbage = 0;
+    }
+  }
+
   /**
    * Resolve the screen of all spontaneous activity.
    * @returns The score accumulated.
@@ -335,18 +353,7 @@ export class SimplePuyoScreen {
 
     // Commit garbage buffer.
     while (this.bufferedGarbage) {
-      // Create (up to) one line of garbage.
-      if (this.bufferedGarbage >= WIDTH) {
-        merge(this.grid[GARBAGE], topLine());
-        this.bufferedGarbage -= WIDTH;
-      } else if (this.bufferedGarbage) {
-        const line = Array(this.bufferedGarbage)
-          .fill(true)
-          .concat(Array(WIDTH - this.bufferedGarbage).fill(false));
-        line.sort(() => Math.random() - 0.5);
-        merge(this.grid[GARBAGE], fromArray(line));
-        this.bufferedGarbage = 0;
-      }
+      this.commitGarbageLine();
       fallOne(this.grid);
     }
 
@@ -451,7 +458,7 @@ export class SimplePuyoScreen {
    * @returns Copy of the screen with simplified mechanics.
    */
   toSimpleScreen() {
-    const result = new SimplePuyoScreen();
+    const result = new SimplePuyoScreen(this.jkiss.state);
     result.grid = this.grid.map(clone);
     return result;
   }
@@ -548,19 +555,17 @@ export class PuyoScreen extends SimplePuyoScreen {
   doJiggles: boolean;
   jiggles: Puyos;
   sparks: Puyos;
-  jkiss: JKISS32; // Replays and netcode benefit from deterministic randomness.
 
   /**
    * Construct a new 6x16 screen of puyos.
    * @param seed Seed for the pseudo random number generator.
    */
-  constructor(seed?: number) {
-    super();
+  constructor(seed?: number | Uint32Array) {
+    super(seed);
     this.chainNumber = 0;
     this.doJiggles = false;
     this.jiggles = emptyPuyos();
     this.sparks = emptyPuyos();
-    this.jkiss = new JKISS32(seed);
   }
 
   /**
@@ -665,17 +670,7 @@ export class PuyoScreen extends SimplePuyoScreen {
     }
 
     // Create (up to) one line of garbage.
-    if (this.bufferedGarbage >= WIDTH) {
-      merge(this.grid[GARBAGE], topLine());
-      this.bufferedGarbage -= WIDTH;
-    } else if (this.bufferedGarbage) {
-      const line = Array(this.bufferedGarbage)
-        .fill(true)
-        .concat(Array(WIDTH - this.bufferedGarbage).fill(false));
-      this.jkiss.shuffle(line);
-      merge(this.grid[GARBAGE], fromArray(line));
-      this.bufferedGarbage = 0;
-    }
+    this.commitGarbageLine();
 
     // Make everything unsupported fall down one grid unit.
     const {fallen, landed} = fallOne(this.grid);
@@ -791,12 +786,8 @@ export class PuyoScreen extends SimplePuyoScreen {
     return true;
   }
 
-  /**
-   * Clone the screen.
-   * @returns Copy of the screen with different randomness.
-   */
-  clone() {
-    const result = new PuyoScreen();
+  clone(preserveSeed = false) {
+    const result = new PuyoScreen(preserveSeed ? this.jkiss.state : undefined);
     result.grid = this.grid.map(clone);
     result.chainNumber = this.chainNumber;
     result.doJiggles = this.doJiggles;

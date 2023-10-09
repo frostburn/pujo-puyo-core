@@ -322,15 +322,27 @@ export class OnePlayerGame {
     console.log(this.displayLines().join('\n'));
   }
 
-  clone() {
-    // Random seed, don't leak original.
+  // Random seed, don't leak original unless specified.
+  clone(preserveSeed = false) {
     const result = new OnePlayerGame(undefined, this.colorSelection);
+    if (preserveSeed) {
+      if (!this.jkiss) {
+        throw new Error('Cannot make a true clone of a mirror game');
+      }
+      result.jkiss = this.jkiss.clone();
+    }
+    result.age = this.age;
     result.score = this.score;
     result.jiggleTime = this.jiggleTime;
     result.sparkTime = this.sparkTime;
     result.active = this.active;
-    result.screen = this.screen.clone();
-    result.bag = this.visibleBag;
+    result.screen = this.screen.clone(preserveSeed || !this.jkiss);
+    if (preserveSeed) {
+      result.bag = [...this.bag];
+    } else {
+      result.bag = this.visibleBag;
+    }
+    result.lockedOut = this.lockedOut;
     return result;
   }
 }
@@ -583,7 +595,7 @@ export class MultiplayerGame {
     }
     let lateTimeRemaining = 0;
     if (this.games[opponent].busy) {
-      const opponentScreen = this.games[opponent].screen.clone();
+      const opponentScreen = this.games[opponent].screen.clone(true);
       let score = 0;
       while (true) {
         const tickResult = opponentScreen.tick();
@@ -609,10 +621,10 @@ export class MultiplayerGame {
     );
   }
 
-  clone() {
-    // Random seed. Don't leak original.
+  // Random seed. Don't leak original unless specified.
+  clone(preserveSeed = false) {
     const result = new MultiplayerGame();
-    result.games = this.games.map(game => game.clone());
+    result.games = this.games.map(game => game.clone(preserveSeed));
     result.pendingGarbage = [...this.pendingGarbage];
     result.accumulatedGarbage = [...this.accumulatedGarbage];
     result.pointResidues = [...this.pointResidues];
