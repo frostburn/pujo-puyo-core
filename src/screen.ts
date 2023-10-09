@@ -43,6 +43,7 @@ import {JKISS32} from './jkiss';
  */
 export type TickResult = {
   score: number;
+  colors: number[];
   chainNumber: number;
   didJiggle: boolean;
   didClear: boolean;
@@ -320,6 +321,7 @@ export class SimplePuyoScreen {
   tick(): TickResult {
     const result: TickResult = {
       score: 0,
+      colors: [],
       chainNumber: 0,
       didJiggle: false,
       didClear: false,
@@ -360,7 +362,7 @@ export class SimplePuyoScreen {
       this.grid.forEach(vanishTop);
 
       // Clear groups and give score accordingly.
-      let numColors = 0;
+      const colors: number[] = [];
       let didClear = false;
       let totalNumCleared = 0;
       let totalGroupBonus = 0;
@@ -373,7 +375,7 @@ export class SimplePuyoScreen {
           totalGroupBonus += groupBonus;
           applyXor(this.grid[i], sparks);
           merge(totalCleared, sparks);
-          numColors++;
+          colors.push(i);
           didClear = true;
         }
       }
@@ -383,13 +385,21 @@ export class SimplePuyoScreen {
         sparkGarbage(this.grid[GARBAGE], totalCleared)
       );
 
-      const colorBonus = COLOR_BONUS[numColors];
+      const colorBonus = COLOR_BONUS[colors.length];
       const chainPower = CHAIN_POWERS[result.chainNumber];
       const clearBonus = Math.max(
         1,
         Math.min(MAX_CLEAR_BONUS, chainPower + colorBonus + totalGroupBonus)
       );
       result.score += 10 * totalNumCleared * clearBonus;
+      // This is a waste of cycles, but here if you need it...
+      /*
+      for (const color of colors) {
+        if (!result.colors.includes(color)) {
+          result.colors.push(color);
+        }
+      }
+      */
 
       if (didClear) {
         result.didClear = true;
@@ -641,6 +651,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       clear(this.sparks);
       return {
         score: 0,
+        colors: [],
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
@@ -676,6 +687,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       applyMask(landed, this.grid[GARBAGE]);
       return {
         score: 0,
+        colors: [],
         chainNumber: this.chainNumber,
         didJiggle: false,
         didClear: false,
@@ -696,6 +708,7 @@ export class PuyoScreen extends SimplePuyoScreen {
       this.doJiggles = false;
       return {
         score: 0,
+        colors: [],
         chainNumber: this.chainNumber,
         didJiggle: true,
         didClear: false,
@@ -711,7 +724,7 @@ export class PuyoScreen extends SimplePuyoScreen {
     }
 
     // Clear groups and give score accordingly.
-    let numColors = 0;
+    const colors: number[] = [];
     let didClear = false;
     let totalNumCleared = 0;
     let totalGroupBonus = 0;
@@ -723,14 +736,14 @@ export class PuyoScreen extends SimplePuyoScreen {
         totalNumCleared += numCleared;
         totalGroupBonus += groupBonus;
         merge(this.sparks, sparks);
-        numColors++;
+        colors.push(i);
         didClear = true;
       }
     }
 
     merge(this.sparks, sparkGarbage(this.grid[GARBAGE], this.sparks));
 
-    const colorBonus = COLOR_BONUS[numColors];
+    const colorBonus = COLOR_BONUS[colors.length];
     const chainPower = CHAIN_POWERS[this.chainNumber];
     const clearBonus = Math.max(
       1,
@@ -748,6 +761,7 @@ export class PuyoScreen extends SimplePuyoScreen {
 
     return {
       score,
+      colors,
       chainNumber: this.chainNumber,
       didJiggle: false,
       didClear,

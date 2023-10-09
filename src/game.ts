@@ -278,6 +278,7 @@ export class OnePlayerGame {
     this.sparkTime--;
     return {
       score: 0,
+      colors: [],
       chainNumber: this.screen.chainNumber,
       didJiggle: false,
       didClear: false,
@@ -731,6 +732,7 @@ export class SimpleGame {
       this.lateTimeRemaining = 0;
       return {
         score: 0,
+        colors: [],
         chainNumber: 0,
         didClear: false,
         didJiggle: false,

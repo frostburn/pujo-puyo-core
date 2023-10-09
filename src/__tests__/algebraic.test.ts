@@ -11,6 +11,7 @@ import {
   splitIntoTokens,
   utterAlgebraic,
 } from '../algebraic';
+import {LUMI_VS_FLEX2} from './archive';
 
 test('Documentation example', () => {
   const apn = [
@@ -138,80 +139,8 @@ test('Known game', () => {
 });
 
 test('Human vs. bot', () => {
-  const replay: Replay = {
-    gameSeed: 3864657304,
-    screenSeed: 2580717322,
-    colorSelection: [3, 1, 0, 2],
-    moves: [
-      {player: 0, time: 0, x1: 0, y1: 15, x2: 1, y2: 15, orientation: 3},
-      {player: 1, time: 0, x1: 5, y1: 15, x2: 4, y2: 15, orientation: 1},
-      {player: 0, time: 18, x1: 5, y1: 14, x2: 5, y2: 15, orientation: 2},
-      {player: 1, time: 18, x1: 0, y1: 14, x2: 0, y2: 15, orientation: 2},
-      {player: 0, time: 36, x1: 0, y1: 14, x2: 1, y2: 14, orientation: 3},
-      {player: 1, time: 36, x1: 3, y1: 15, x2: 2, y2: 15, orientation: 1},
-      {player: 0, time: 54, x1: 4, y1: 15, x2: 4, y2: 14, orientation: 0},
-      {player: 1, time: 54, x1: 1, y1: 15, x2: 1, y2: 14, orientation: 0},
-      {player: 0, time: 72, x1: 0, y1: 12, x2: 0, y2: 13, orientation: 2},
-      {player: 1, time: 72, x1: 2, y1: 14, x2: 2, y2: 13, orientation: 0},
-      {player: 0, time: 90, x1: 0, y1: 10, x2: 0, y2: 11, orientation: 2},
-      {player: 1, time: 90, x1: 1, y1: 13, x2: 0, y2: 13, orientation: 1},
-      {player: 0, time: 108, x1: 2, y1: 14, x2: 2, y2: 15, orientation: 2},
-      {player: 0, time: 126, x1: 2, y1: 13, x2: 1, y2: 13, orientation: 1},
-      {player: 0, time: 144, x1: 3, y1: 14, x2: 3, y2: 15, orientation: 2},
-      {player: 0, time: 162, x1: 4, y1: 13, x2: 3, y2: 13, orientation: 1},
-      {player: 1, time: 169, x1: 3, y1: 15, x2: 2, y2: 15, orientation: 1},
-      {player: 1, time: 187, x1: 3, y1: 14, x2: 4, y2: 14, orientation: 3},
-      {player: 0, time: 209, x1: 1, y1: 11, x2: 1, y2: 10, orientation: 0},
-      {player: 0, time: 227, x1: 1, y1: 8, x2: 0, y2: 8, orientation: 1},
-      {player: 0, time: 246, x1: 2, y1: 12, x2: 2, y2: 11, orientation: 0},
-      {player: 0, time: 264, x1: 3, y1: 11, x2: 4, y2: 11, orientation: 3},
-      {player: 1, time: 266, x1: 2, y1: 14, x2: 2, y2: 15, orientation: 2},
-      {player: 1, time: 284, x1: 3, y1: 14, x2: 3, y2: 15, orientation: 2},
-      {player: 1, time: 302, x1: 4, y1: 15, x2: 4, y2: 14, orientation: 0},
-      {player: 0, time: 310, x1: 2, y1: 7, x2: 1, y2: 7, orientation: 1},
-      {player: 1, time: 320, x1: 2, y1: 13, x2: 2, y2: 12, orientation: 0},
-      {player: 0, time: 330, x1: 2, y1: 8, x2: 3, y2: 8, orientation: 3},
-      {player: 1, time: 338, x1: 1, y1: 15, x2: 1, y2: 14, orientation: 0},
-      {player: 0, time: 350, x1: 0, y1: 6, x2: 1, y2: 6, orientation: 3},
-      {player: 1, time: 356, x1: 2, y1: 10, x2: 2, y2: 11, orientation: 2},
-      {player: 0, time: 368, x1: 3, y1: 9, x2: 3, y2: 8, orientation: 0},
-      {player: 1, time: 374, x1: 1, y1: 9, x2: 2, y2: 9, orientation: 3},
-      {player: 0, time: 386, x1: 4, y1: 9, x2: 4, y2: 8, orientation: 0},
-      {player: 1, time: 396, x1: 1, y1: 12, x2: 1, y2: 11, orientation: 0},
-      {player: 0, time: 404, x1: 3, y1: 7, x2: 3, y2: 6, orientation: 0},
-      {player: 1, time: 414, x1: 0, y1: 10, x2: 1, y2: 10, orientation: 3},
-      {player: 0, time: 422, x1: 5, y1: 11, x2: 5, y2: 10, orientation: 0},
-      {player: 0, time: 440, x1: 5, y1: 9, x2: 5, y2: 8, orientation: 0},
-      {player: 0, time: 458, x1: 5, y1: 6, x2: 5, y2: 7, orientation: 2},
-      {player: 0, time: 476, x1: 2, y1: 5, x2: 3, y2: 5, orientation: 3},
-      {player: 0, time: 496, x1: 3, y1: 4, x2: 3, y2: 3, orientation: 0},
-      {player: 0, time: 514, x1: 3, y1: 2, x2: 3, y2: 1, orientation: 0},
-      {player: 0, time: 532, x1: 4, y1: 6, x2: 4, y2: 7, orientation: 2},
-      {player: 1, time: 579, x1: 2, y1: 15, x2: 2, y2: 14, orientation: 0},
-      {player: 1, time: 597, x1: 4, y1: 15, x2: 3, y2: 15, orientation: 1},
-      {player: 1, time: 615, x1: 4, y1: 14, x2: 3, y2: 14, orientation: 1},
-      {player: 1, time: 633, x1: 3, y1: 13, x2: 3, y2: 12, orientation: 0},
-      {player: 1, time: 651, x1: 3, y1: 11, x2: 2, y2: 11, orientation: 1},
-      {player: 1, time: 671, x1: 5, y1: 15, x2: 5, y2: 14, orientation: 0},
-      {player: 1, time: 791, x1: 4, y1: 14, x2: 4, y2: 15, orientation: 2},
-      {player: 1, time: 809, x1: 2, y1: 15, x2: 3, y2: 15, orientation: 3},
-      {player: 1, time: 827, x1: 2, y1: 13, x2: 2, y2: 14, orientation: 2},
-      {player: 1, time: 845, x1: 4, y1: 13, x2: 5, y2: 13, orientation: 3},
-      {player: 1, time: 865, x1: 3, y1: 12, x2: 4, y2: 12, orientation: 3},
-      {player: 0, time: 875, x1: 3, y1: 13, x2: 3, y2: 12, orientation: 0},
-      {player: 0, time: 893, x1: 3, y1: 11, x2: 3, y2: 10, orientation: 0},
-      {player: 0, time: 911, x1: 4, y1: 9, x2: 4, y2: 10, orientation: 2},
-      {player: 0, time: 929, x1: 3, y1: 8, x2: 4, y2: 8, orientation: 3},
-      {player: 0, time: 948, x1: 5, y1: 8, x2: 5, y2: 9, orientation: 2},
-      {player: 1, time: 955, x1: 0, y1: 10, x2: 0, y2: 9, orientation: 0},
-      {player: 0, time: 966, x1: 2, y1: 13, x2: 2, y2: 12, orientation: 0},
-      {player: 1, time: 999, x1: 3, y1: 2, x2: 4, y2: 2, orientation: 3},
-      {player: 0, time: 1027, x1: 3, y1: 11, x2: 3, y2: 10, orientation: 0},
-    ],
-  };
-
   // TODO: Fix how it takes time too literally and breaks up a rock here.
-  const notation = replayToAlgebraic(replay);
+  const notation = replayToAlgebraic(LUMI_VS_FLEX2);
 
   const expected =
     'Y1Y2 YfYe G6B6 GaBa R1R2 RdRc G5B5 GbBb R1B1 BcRc B1R1 RbBa*,G3Y3 G3Y2 R4G4,Y5B4 (2xr) YdGc N12456 GdYe*,Y2Y2 Y2Y1,G3G3 B4R5 (2x!r) RcGc N12356 BdYd YeYe R3B2 YcYc R3G4 GbGb G1B2 RcBc B4B4 RbBc G5B5 RbGb R4R4 GaBb* R6B6,G6G6 R6G6,Y3R4 G4R4 G4R4,B5Y5*.,(4xr) BcBc.GeBd ReRd.RdBd GdGc GfRf*.,.,.,(3x!r) ReYe.GcRd RcGc.YeBf RdBe* (8xl) R4B4,B4B4 Y5B5 4Lr (1xr) Y4B5 Lr G6R6 BaBa R3R3*.5Lr BdYe Nb Nbdf Lr (1xl) Y4G4* #r 1-0.(1xl) (RY GY GG l) (YB RG RR r)';

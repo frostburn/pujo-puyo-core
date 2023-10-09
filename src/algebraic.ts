@@ -15,6 +15,7 @@
  * Additional timing information may be provided using dots (.), pronounced 'tick', on each link of the chain reaction.
  * For the right player the dots should be replaced with commas (,) and pronounced 'tock'.
  * Link indicators may be grouped and space around them may be omitted.
+ * TODO: These should be score events instead of links.
  *
  * Received garbage is notated by N (pronounced 'nuisance') followed by horizontal coordinates where the garbage lands.
  * A line of garbage is notated by L (pronounced 'line') followed by the player receiving it: l for 'left' or r for 'right'.
@@ -161,6 +162,7 @@ function inferNuisance(
   return '';
 }
 
+// TODO: Convert from ReplayTrack instead
 export function replayToAlgebraic(replay: Replay): string[] {
   const result: string[] = [];
 
