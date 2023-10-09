@@ -84,6 +84,14 @@ export class JKISS32 {
     return new JKISS32(this.state);
   }
 
+  toJSON() {
+    return [...this.state];
+  }
+
+  static fromJSON(obj: any) {
+    return new JKISS32(new Uint32Array(obj));
+  }
+
   shuffle(array: any[]) {
     let entropy = 0;
     let juice = TWO_POW_32;

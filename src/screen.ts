@@ -159,6 +159,7 @@ export class SimplePuyoScreen {
     return {
       grid: this.grid.map(puyos => [...puyos]),
       bufferedGarbage: this.bufferedGarbage,
+      jkiss: this.jkiss,
     };
   }
 
@@ -171,6 +172,7 @@ export class SimplePuyoScreen {
       }
     }
     result.bufferedGarbage = obj.bufferedGarbage;
+    result.jkiss = JKISS32.fromJSON(obj.jkiss);
     return result;
   }
 

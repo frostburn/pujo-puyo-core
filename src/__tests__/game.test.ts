@@ -255,3 +255,15 @@ test('Permanent lockout', () => {
     }
   }
 });
+
+test('To simple game JSON', () => {
+  const game = new MultiplayerGame(0);
+  game.play(0, 1, 2, 3, true);
+  game.play(1, 2, 3, 0, true);
+  while (game.tick()[0].busy);
+  const simple = game.toSimpleGame(0);
+  const serialized = JSON.stringify(simple);
+  const revived = SimpleGame.fromJSON(JSON.parse(serialized));
+  expect(revived.screen.grid).toEqual(game.games[0].screen.grid);
+  expect(revived.screen.jkiss.state).toEqual(game.games[0].screen.jkiss.state);
+});
