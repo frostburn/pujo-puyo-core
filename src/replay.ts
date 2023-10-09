@@ -11,6 +11,13 @@ export type Replay = {
   moves: PlayedMove[];
 };
 
+export type ReplayIterator = {
+  gameSeed: number;
+  screenSeed: number;
+  colorSelection: number[];
+  moves: Iterable<PlayedMove>;
+};
+
 /** Explicit data for visualization. */
 export interface TrackMove extends PlayedMove {
   type: 'move';
@@ -63,7 +70,7 @@ export type TrackItem =
   | TrackLockout
   | TrackBag;
 
-export type ReplayTrack = TrackItem[];
+export type ReplayTrack = Iterable<TrackItem>;
 
 export function cmpMoves(a: PlayedMove, b: PlayedMove) {
   if (a.time < b.time) {
@@ -96,21 +103,25 @@ export function logReplay(replay: Replay) {
   game.log();
 }
 
-export function replayToTrack(replay: Replay): ReplayTrack {
+export function* replayToTrack(
+  replay: Replay | ReplayIterator,
+  snapshotsOut?: MultiplayerGame[],
+  snapshotInterval = 30
+): ReplayTrack {
   const game = new MultiplayerGame(
     replay.gameSeed,
     replay.colorSelection,
     replay.screenSeed
   );
-  replay.moves.sort(cmpMoves);
-
-  const result: ReplayTrack = [];
+  if (Array.isArray(replay.moves)) {
+    replay.moves.sort(cmpMoves);
+  }
 
   const allClears = [false, false];
   const lockouts = [false, false];
   const chainNumbers = [0, 0];
 
-  function tickAndCollect(time?: number) {
+  function* tickAndCollect(time?: number): ReplayTrack {
     let garbageCounts = game.games.map(g =>
       columnCounts(semiVisible(g.screen.grid[GARBAGE]))
     );
@@ -118,6 +129,9 @@ export function replayToTrack(replay: Replay): ReplayTrack {
       (time === undefined && game.games.some(g => g.busy)) ||
       game.age < time!
     ) {
+      if (snapshotsOut !== undefined && !(game.age % snapshotInterval)) {
+        snapshotsOut.push(game.clone(true));
+      }
       const tickResults = game.tick();
       const time = game.age;
       const newCounts = game.games.map(g =>
@@ -132,40 +146,40 @@ export function replayToTrack(replay: Replay): ReplayTrack {
             }
           }
           if (columns.length) {
-            result.push({
+            yield {
               type: 'garbage',
               player: j,
               time,
               columns,
-            });
+            };
           }
         }
         allClears[j] = allClears[j] || tickResults[j].allClear;
         if (tickResults[j].score) {
-          result.push({
+          yield {
             type: 'score',
             player: j,
             time,
             score: tickResults[j].score,
             colors: tickResults[j].colors,
-          });
+          };
         }
         if (chainNumbers[j] && !tickResults[j].chainNumber) {
-          result.push({
+          yield {
             type: 'chain',
             player: j,
             time,
             number: chainNumbers[j],
             allClear: allClears[j],
-          });
+          };
           allClears[j] = false;
         }
         if (!lockouts[j] && tickResults[j].lockedOut) {
-          result.push({
+          yield {
             type: 'lockout',
             player: j,
             time,
-          });
+          };
           lockouts[j] = true;
         }
         chainNumbers[j] = tickResults[j].chainNumber;
@@ -174,8 +188,8 @@ export function replayToTrack(replay: Replay): ReplayTrack {
     }
   }
 
-  replay.moves.forEach(move => {
-    tickAndCollect(move.time);
+  for (const move of replay.moves) {
+    yield* tickAndCollect(move.time);
     if (!game.games[move.player].hand.length) {
       throw new Error('Replay desync (out of hand)');
     }
@@ -193,24 +207,22 @@ export function replayToTrack(replay: Replay): ReplayTrack {
     trackMove.triggers = game.games[move.player].screen
       .toSimpleScreen()
       .tick().didClear;
-    result.push(trackMove);
-  });
-  tickAndCollect();
+    yield trackMove;
+  }
+  yield* tickAndCollect();
 
   for (let i = 0; i < game.games.length; ++i) {
-    result.push({
+    yield {
       type: 'bag',
       player: i,
       time: game.age,
       bag: game.games[i].bag.slice(0, 6),
-    });
+    };
   }
-
-  return result;
 }
 
 export function logReplayTrack(track: ReplayTrack) {
-  track = [...track];
+  const unrolled = [...track];
 
   const topLine = Array(4 * WIDTH + 2).fill(' ');
   const bottomLine = Array(4 * WIDTH + 2).fill(' ');
@@ -219,8 +231,8 @@ export function logReplayTrack(track: ReplayTrack) {
   let time = -1;
 
   // Iterate from last to first so that time goes up and "gravity" goes down.
-  while (track.length) {
-    const item = track.pop()!;
+  while (unrolled.length) {
+    const item = unrolled.pop()!;
     if (item.time !== time) {
       if (topLine.some(c => c !== ' ')) {
         topLine[2 * WIDTH] = '║';

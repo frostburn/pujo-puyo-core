@@ -1,7 +1,37 @@
 import {WIDTH} from '../bitboard';
-import {MultiplayerGame} from '../game';
-import {JKISS32} from '../jkiss';
-import {Replay} from '../replay';
+import {MOVES, MultiplayerGame, randomColorSelection} from '../game';
+import {JKISS32, randomSeed} from '../jkiss';
+import {Replay, ReplayIterator} from '../replay';
+
+/** Technically infinite but will end up in a double lockout eventually. */
+export function infiniteRandomMirror(): ReplayIterator {
+  const gameSeed = randomSeed();
+  const colorSelection = randomColorSelection();
+  const screenSeed = randomSeed();
+  const game = new MultiplayerGame(gameSeed, colorSelection, screenSeed);
+
+  function* playForever() {
+    while (true) {
+      if (Math.random() < 0.01) {
+        if (!game.games[0].busy) {
+          const {x1, y1, orientation} =
+            MOVES[Math.floor(Math.random() * MOVES.length)];
+          const hardDrop = Math.random() < 0.5;
+          yield game.play(0, x1, y1, orientation, hardDrop);
+          yield game.play(1, x1, y1, orientation, hardDrop);
+        }
+      }
+      game.tick();
+    }
+  }
+
+  return {
+    gameSeed,
+    colorSelection,
+    screenSeed,
+    moves: playForever(),
+  };
+}
 
 export function fixedRandomGame() {
   const gameSeed = 7;

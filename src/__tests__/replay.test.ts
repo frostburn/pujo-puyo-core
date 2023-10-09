@@ -1,12 +1,12 @@
 import {expect, test} from 'bun:test';
 import {replayToTrack} from '../replay';
-import {LUMI_VS_FLEX2, fixedRandomGame} from './archive';
+import {LUMI_VS_FLEX2, fixedRandomGame, infiniteRandomMirror} from './archive';
 import {MultiplayerGame} from '../game';
 
 test('Fixed random game', () => {
   const replay = fixedRandomGame();
 
-  const track = replayToTrack(replay);
+  const track = [...replayToTrack(replay)];
 
   expect(track).toHaveLength(86);
 
@@ -14,11 +14,24 @@ test('Fixed random game', () => {
 });
 
 test('Lumi vs. Flex2', () => {
-  const track = replayToTrack(LUMI_VS_FLEX2);
+  const track = [...replayToTrack(LUMI_VS_FLEX2)];
 
   expect(track).toHaveLength(112);
 
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
+});
+
+test('Infinite mirror game', () => {
+  const replay = infiniteRandomMirror();
+  const snapShots: MultiplayerGame[] = [];
+  const track = replayToTrack(replay, snapShots);
+  for (const item of track) {
+    if (item.time > 300) {
+      break;
+    }
+  }
+  expect(snapShots.length).toBeGreaterThan(10);
+  expect(snapShots.pop()!.age).not.toBeLessThan(300);
 });
 
 test('Re-entrance', () => {
