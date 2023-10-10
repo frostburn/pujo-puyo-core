@@ -122,6 +122,10 @@ export function* replayToTrack(
   const lockouts = [false, false];
   const chainNumbers = [0, 0];
 
+  if (snapshotsOut !== undefined) {
+    snapshotsOut.push(game.clone(true));
+  }
+
   function* tickAndCollect(time?: number): ReplayTrack {
     let garbageCounts = game.games.map(g =>
       columnCounts(semiVisible(g.screen.grid[GARBAGE]))
@@ -130,10 +134,10 @@ export function* replayToTrack(
       (time === undefined && game.games.some(g => g.busy)) ||
       game.age < time!
     ) {
+      const tickResults = game.tick();
       if (snapshotsOut !== undefined && !(game.age % snapshotInterval)) {
         snapshotsOut.push(game.clone(true));
       }
-      const tickResults = game.tick();
       const time = game.age;
       const newCounts = game.games.map(g =>
         columnCounts(semiVisible(g.screen.grid[GARBAGE]))
