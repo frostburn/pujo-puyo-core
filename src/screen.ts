@@ -461,6 +461,7 @@ export class SimplePuyoScreen {
    */
   toSimpleScreen() {
     const result = new SimplePuyoScreen(this.jkiss.state);
+    result.bufferedGarbage = this.bufferedGarbage;
     result.grid = this.grid.map(clone);
     return result;
   }
@@ -791,6 +792,7 @@ export class PuyoScreen extends SimplePuyoScreen {
   clone(preserveSeed = false) {
     const result = new PuyoScreen(preserveSeed ? this.jkiss.state : undefined);
     result.grid = this.grid.map(clone);
+    result.bufferedGarbage = this.bufferedGarbage;
     result.chainNumber = this.chainNumber;
     result.doJiggles = this.doJiggles;
     result.jiggles = clone(this.jiggles);
