@@ -23,7 +23,8 @@ export interface TrackMove extends PlayedMove {
   type: 'move';
   color1: number;
   color2: number;
-  triggers: boolean;
+  triggers1: boolean;
+  triggers2: boolean;
 }
 
 export type TrackGarbageLine = {
@@ -195,6 +196,22 @@ export function* replayToTrack(
     }
     const color1 = game.games[move.player].hand[0];
     const color2 = game.games[move.player].hand[1];
+
+    const simple = game.games[move.player].screen.toSimpleScreen();
+    const simple1 = simple.toSimpleScreen();
+    simple1.insertPuyo(move.x1, move.y1, color1);
+    simple1.insertPuyo(move.x2, move.y2, GARBAGE);
+    let triggers1 = simple1.tick().didClear;
+    const simple2 = simple.toSimpleScreen();
+    simple2.insertPuyo(move.x1, move.y1, GARBAGE);
+    simple2.insertPuyo(move.x2, move.y2, color2);
+    let triggers2 = simple2.tick().didClear;
+    if (!triggers1 && !triggers2) {
+      simple.insertPuyo(move.x1, move.y1, color1);
+      simple.insertPuyo(move.x2, move.y2, color2);
+      triggers1 = triggers2 = simple.tick().didClear;
+    }
+
     const trackMove: TrackMove = game.play(
       move.player,
       move.x1,
@@ -204,9 +221,8 @@ export function* replayToTrack(
     trackMove.type = 'move';
     trackMove.color1 = color1;
     trackMove.color2 = color2;
-    trackMove.triggers = game.games[move.player].screen
-      .toSimpleScreen()
-      .tick().didClear;
+    trackMove.triggers1 = triggers1;
+    trackMove.triggers2 = triggers2;
     yield trackMove;
   }
   yield* tickAndCollect();
@@ -247,8 +263,10 @@ export function logReplayTrack(track: ReplayTrack) {
     const offset = item.player ? 2 * WIDTH + 2 : 0;
     switch (item.type) {
       case 'move':
-        const ball1 = `${colorOf(item.color1)}●${colorOf(AIR)}`;
-        const ball2 = `${colorOf(item.color2)}●${colorOf(AIR)}`;
+        // eslint-disable-next-line prettier/prettier
+        const ball1 = `${item.triggers1 ? '\x1b[47m' : ''}${colorOf(item.color1)}●${colorOf(AIR)}`;
+        // eslint-disable-next-line prettier/prettier
+        const ball2 = `${item.triggers2 ? '\x1b[47m' : ''}${colorOf(item.color2)}●${colorOf(AIR)}`;
         if (item.y2 > item.y1) {
           topLine[offset + 2 * item.x1] = ball1;
           bottomLine[offset + 2 * item.x2] = ball2;
@@ -258,13 +276,6 @@ export function logReplayTrack(track: ReplayTrack) {
         } else {
           bottomLine[offset + 2 * item.x1] = ball1;
           bottomLine[offset + 2 * item.x2] = ball2;
-        }
-        if (item.triggers) {
-          let x = Math.max(item.x1, item.x2) + 1;
-          if (x >= WIDTH) {
-            x = Math.min(item.x1, item.x2) - 1;
-          }
-          bottomLine[offset + 2 * x] = '*';
         }
         break;
       case 'garbage':
