@@ -2,6 +2,7 @@ import {expect, test} from 'bun:test';
 import {replayToTrack} from '../replay';
 import {LUMI_VS_FLEX2, fixedRandomGame, infiniteRandomMirror} from './archive';
 import {MultiplayerGame} from '../game';
+import {TickResult} from '../screen';
 
 test('Fixed random game', () => {
   const replay = fixedRandomGame();
@@ -24,7 +25,16 @@ test('Lumi vs. Flex2', () => {
 test('Infinite mirror game', () => {
   const replay = infiniteRandomMirror();
   const snapShots: MultiplayerGame[] = [];
-  const track = replayToTrack(replay, snapShots);
+  function takeSnapShot(game: MultiplayerGame, tickResults: TickResult[]) {
+    if (!tickResults.length) {
+      expect(game.age).toBe(0);
+    }
+    if (!(game.age % 30)) {
+      snapShots.push(game.clone(true));
+    }
+  }
+
+  const track = replayToTrack(replay, takeSnapShot);
   for (const item of track) {
     if (item.time > 300) {
       break;

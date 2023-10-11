@@ -1,7 +1,7 @@
 /* eslint-disable no-case-declarations */
 import {WIDTH, columnCounts, semiVisible} from './bitboard';
 import {MultiplayerGame, PlayedMove} from './game';
-import {AIR, GARBAGE, colorOf} from './screen';
+import {AIR, GARBAGE, TickResult, colorOf} from './screen';
 
 /** Seed data for re-creating a game. */
 export type Replay = {
@@ -17,6 +17,11 @@ export type ReplayIterator = {
   colorSelection: number[];
   moves: Iterable<PlayedMove>;
 };
+
+export type TickCallback = (
+  game: MultiplayerGame,
+  tickResults: TickResult[]
+) => void;
 
 /** Explicit data for visualization. */
 export interface TrackMove extends PlayedMove {
@@ -106,8 +111,7 @@ export function logReplay(replay: Replay) {
 
 export function* replayToTrack(
   replay: Replay | ReplayIterator,
-  snapshotsOut?: MultiplayerGame[],
-  snapshotInterval = 30
+  callback?: TickCallback
 ): ReplayTrack {
   const game = new MultiplayerGame(
     replay.gameSeed,
@@ -122,8 +126,8 @@ export function* replayToTrack(
   const lockouts = [false, false];
   const chainNumbers = [0, 0];
 
-  if (snapshotsOut !== undefined) {
-    snapshotsOut.push(game.clone(true));
+  if (callback !== undefined) {
+    callback(game, []);
   }
 
   function* tickAndCollect(time?: number): ReplayTrack {
@@ -135,8 +139,8 @@ export function* replayToTrack(
       game.age < time!
     ) {
       const tickResults = game.tick();
-      if (snapshotsOut !== undefined && !(game.age % snapshotInterval)) {
-        snapshotsOut.push(game.clone(true));
+      if (callback !== undefined) {
+        callback(game, tickResults);
       }
       const time = game.age;
       const newCounts = game.games.map(g =>
