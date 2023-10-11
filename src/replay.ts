@@ -3,12 +3,41 @@ import {WIDTH, columnCounts, semiVisible} from './bitboard';
 import {MultiplayerGame, PlayedMove} from './game';
 import {AIR, GARBAGE, TickResult, colorOf} from './screen';
 
+export type ReplayMetadata = {
+  names: string[];
+  priorWins: number[];
+  event: string;
+  site: string;
+  round: number;
+  msSince1970: number;
+  annotator?: string;
+  timeControl?: string;
+  termination?: string;
+  initialPosition?: string;
+};
+
+export type ReplayResultReason =
+  | 'ongoing'
+  | 'timeout'
+  | 'disconnect'
+  | 'lockout'
+  | 'double lockout'
+  | 'max time exceeded'
+  | 'server maintenance';
+
+export type ReplayResult = {
+  winner?: number;
+  reason: ReplayResultReason;
+};
+
 /** Seed data for re-creating a game. */
 export type Replay = {
   gameSeed: number;
   screenSeed: number;
   colorSelection: number[];
   moves: PlayedMove[];
+  metadata: ReplayMetadata;
+  result: ReplayResult;
 };
 
 export type ReplayIterator = {
@@ -16,6 +45,8 @@ export type ReplayIterator = {
   screenSeed: number;
   colorSelection: number[];
   moves: Iterable<PlayedMove>;
+  metadata: ReplayMetadata;
+  result: ReplayResult;
 };
 
 export type TickCallback = (
@@ -68,13 +99,22 @@ export type TrackBag = {
   bag: number[];
 };
 
+export type TrackResult = {
+  type: 'result';
+  player: number;
+  time: number;
+  result: 'win' | 'draw' | 'loss';
+  reason: ReplayResultReason;
+};
+
 export type TrackItem =
   | TrackMove
   | TrackGarbageLine
   | TrackScore
   | TrackChain
   | TrackLockout
-  | TrackBag;
+  | TrackBag
+  | TrackResult;
 
 export type ReplayTrack = Iterable<TrackItem>;
 
@@ -241,6 +281,21 @@ export function* replayToTrack(
       player: i,
       time: game.age,
       bag: game.games[i].bag.slice(0, 6),
+    };
+    let result: 'win' | 'draw' | 'loss';
+    if (replay.result === undefined) {
+      result = 'draw';
+    } else if (replay.result.winner === i) {
+      result = 'win';
+    } else {
+      result = 'loss';
+    }
+    yield {
+      type: 'result',
+      player: i,
+      time: game.age,
+      result,
+      reason: replay.result.reason,
     };
   }
 }

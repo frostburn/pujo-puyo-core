@@ -9,7 +9,7 @@ test('Fixed random game', () => {
 
   const track = [...replayToTrack(replay)];
 
-  expect(track).toHaveLength(86);
+  expect(track).toHaveLength(88);
 
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
 });
@@ -17,7 +17,7 @@ test('Fixed random game', () => {
 test('Lumi vs. Flex2', () => {
   const track = [...replayToTrack(LUMI_VS_FLEX2)];
 
-  expect(track).toHaveLength(112);
+  expect(track).toHaveLength(114);
 
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
 });

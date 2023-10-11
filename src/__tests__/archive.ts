@@ -30,6 +30,18 @@ export function infiniteRandomMirror(): ReplayIterator {
     colorSelection,
     screenSeed,
     moves: playForever(),
+    metadata: {
+      event: 'Infinite Mirror Match',
+      site: 'archive.ts',
+      names: ['Random A', 'Random B'],
+      round: 0,
+      priorWins: [0, 0],
+      msSince1970: new Date().valueOf(),
+    },
+    result: {
+      winner: undefined,
+      reason: 'ongoing',
+    },
   };
 }
 
@@ -45,6 +57,18 @@ export function fixedRandomGame() {
     screenSeed,
     colorSelection,
     moves: [],
+    metadata: {
+      event: 'Fixed Random Match',
+      site: 'archive.ts',
+      names: ['Random A', 'Random B'],
+      round: 0,
+      priorWins: [0, 0],
+      msSince1970: new Date('2023-10-06').valueOf(),
+    },
+    result: {
+      winner: 0,
+      reason: 'lockout',
+    },
   };
 
   for (let i = 0; i < 1600; ++i) {
@@ -70,6 +94,19 @@ export const LUMI_VS_FLEX2: Replay = {
   gameSeed: 3864657304,
   screenSeed: 2580717322,
   colorSelection: [3, 1, 0, 2],
+  metadata: {
+    event:
+      'First human vs. machine game to be captured in algebraic notation for Puyo',
+    site: 'http://localhost:5173/',
+    names: ['Lumi Pakkanen', 'FlexDroplet 2'],
+    round: 1,
+    priorWins: [1, 0],
+    msSince1970: new Date('2023-10-07').valueOf(),
+  },
+  result: {
+    winner: 0,
+    reason: 'lockout',
+  },
   moves: [
     {player: 0, time: 0, x1: 0, y1: 15, x2: 1, y2: 15, orientation: 3},
     {player: 1, time: 0, x1: 5, y1: 15, x2: 4, y2: 15, orientation: 1},

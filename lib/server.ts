@@ -2,6 +2,7 @@ import {ServerWebSocket} from 'bun';
 import {
   HEIGHT,
   MultiplayerGame,
+  ReplayResultReason,
   WIDTH,
   randomColorSelection,
   randomSeed,
@@ -111,16 +112,19 @@ class WebSocketGameSession {
   }
 
   disqualifyPlayer(player: number) {
+    const reason: ReplayResultReason = 'timeout';
     this.players[player].send({
       type: 'game result',
       result: 'loss',
-      reason: 'maximum move time exceeded',
+      reason,
+      verboseReason: 'maximum move time exceeded',
       gameSeed: this.gameSeed,
     });
     this.players[1 - player].send({
       type: 'game result',
       result: 'win',
-      reason: 'opponent timeout',
+      reason,
+      verboseReason: 'opponent timeout',
       gameSeed: this.gameSeed,
     });
     this.complete();
@@ -178,10 +182,12 @@ class WebSocketGameSession {
     }
     this.players.forEach(opponent => {
       if (opponent !== player) {
+        const reason: ReplayResultReason = 'disconnect';
         opponent.send({
           type: 'game result',
           result: 'win',
-          reason: 'opponent disconnected',
+          reason,
+          verboseReason: 'opponent disconnected',
           gameSeed: this.gameSeed,
         });
       }
@@ -249,11 +255,13 @@ class WebSocketGameSession {
         }
 
         if (tickResults[0].lockedOut && tickResults[1].lockedOut) {
+          const reason: ReplayResultReason = 'double lockout';
           this.players.forEach(p =>
             p.send({
               type: 'game result',
               result: 'draw',
-              reason: 'double lockout',
+              reason,
+              verboseReason: 'double lockout',
               gameSeed: this.gameSeed,
             })
           );
@@ -261,25 +269,30 @@ class WebSocketGameSession {
         } else if (tickResults[0].lockedOut || tickResults[1].lockedOut) {
           const winner = tickResults[0].lockedOut ? 1 : 0;
           const loser = 1 - winner;
+          const reason: ReplayResultReason = 'lockout';
           this.players[winner].send({
             type: 'game result',
             result: 'win',
-            reason: 'opponent lockout',
+            reason,
+            verboseReason: 'opponent lockout',
             gameSeed: this.gameSeed,
           });
           this.players[loser].send({
             type: 'game result',
             result: 'loss',
-            reason: 'lockout',
+            reason,
+            verboseReason: 'lockout',
             gameSeed: this.gameSeed,
           });
           this.complete();
         } else if (this.game.age > MAX_GAME_AGE) {
+          const reason: ReplayResultReason = 'max time exceeded';
           this.players.forEach(p =>
             p.send({
               type: 'game result',
               result: 'draw',
-              reason: 'time limit exceeded',
+              reason,
+              verboseReason: 'time limit exceeded',
               gameSeed: this.gameSeed,
             })
           );
@@ -366,6 +379,11 @@ const server = Bun.serve<{socketId: number}>({
       const player = playerBySocketId.get(ws.data.socketId)!;
 
       if (content.type === 'game request') {
+        // Disregard request if already in game
+        if (sessionBySocketId.has(ws.data.socketId)) {
+          console.log(`Duplicate game request from ${ws.data.socketId}`);
+          return;
+        }
         // TODO: Keep an array of open games.
         for (const session of sessionBySocketId.values()) {
           if (session.players.length < 2) {
