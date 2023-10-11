@@ -14,6 +14,22 @@ export type ReplayMetadata = {
   timeControl?: string;
   termination?: string;
   initialPosition?: string;
+  server?: {
+    version: string;
+    resolved?: string;
+    core?: {
+      version: string;
+      resolved?: string;
+    };
+  };
+  client?: {
+    version: string;
+    resolved?: string;
+    core?: {
+      version: string;
+      resolved?: string;
+    };
+  };
 };
 
 export type ReplayResultReason =

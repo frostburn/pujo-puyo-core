@@ -2,11 +2,13 @@ import {ServerWebSocket} from 'bun';
 import {
   HEIGHT,
   MultiplayerGame,
+  ReplayMetadata,
   ReplayResultReason,
   WIDTH,
   randomColorSelection,
   randomSeed,
 } from '../src';
+import {version} from '../package.json';
 
 let LOG = false;
 
@@ -38,6 +40,15 @@ type PassingMove = {
 };
 
 type Move = NormalMove | PassingMove;
+
+const commitHash = require('child_process')
+  .execSync('git rev-parse --short HEAD')
+  .toString()
+  .trim();
+
+function clampString(str: string, maxLength = 64) {
+  return [...str].slice(0, maxLength).join('');
+}
 
 function sanitizeMove(player: number, content: any): Move {
   if (content.pass) {
@@ -73,9 +84,11 @@ function sanitizeMove(player: number, content: any): Move {
 
 class Player {
   socket: ServerWebSocket<{socketId: number}>;
+  name: string;
 
-  constructor(socket: ServerWebSocket<{socketId: number}>) {
+  constructor(socket: ServerWebSocket<{socketId: number}>, name: string) {
     this.socket = socket;
+    this.name = name;
   }
 
   send(message: any) {
@@ -131,6 +144,22 @@ class WebSocketGameSession {
   }
 
   start() {
+    const metadata: ReplayMetadata = {
+      names: this.players.map(p => p.name),
+      priorWins: [0, 0],
+      event: 'Free Play (alpha)',
+      site: 'https://pujo.lumipakkanen.com',
+      round: 0,
+      msSince1970: new Date().valueOf(),
+      server: {
+        version,
+        resolved: commitHash,
+        core: {
+          version,
+          resolved: commitHash,
+        },
+      },
+    };
     this.players.forEach((player, i) => {
       player.send({
         type: 'identity',
@@ -140,6 +169,7 @@ class WebSocketGameSession {
         type: 'game params',
         colorSelection: this.colorSelection,
         screenSeed: this.screenSeed,
+        metadata,
       });
       for (let j = 0; j < this.game.games.length; ++j) {
         player.send({
@@ -353,7 +383,8 @@ const server = Bun.serve<{socketId: number}>({
   websocket: {
     async open(ws) {
       console.log(`New connection opened by ${ws.data.socketId}.`);
-      playerBySocketId.set(ws.data.socketId, new Player(ws));
+      const name = `Anonymous${ws.data.socketId.toString().slice(0, 5)}`;
+      playerBySocketId.set(ws.data.socketId, new Player(ws, name));
     },
     async close(ws, code, reason) {
       console.log('Connection closed.', code, reason);
@@ -379,6 +410,9 @@ const server = Bun.serve<{socketId: number}>({
       const player = playerBySocketId.get(ws.data.socketId)!;
 
       if (content.type === 'game request') {
+        if (content.name !== undefined) {
+          player.name = clampString(content.name);
+        }
         // Disregard request if already in game
         if (sessionBySocketId.has(ws.data.socketId)) {
           console.log(`Duplicate game request from ${ws.data.socketId}`);

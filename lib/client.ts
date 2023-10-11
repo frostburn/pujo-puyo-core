@@ -11,12 +11,15 @@ import {
 const LOG = false;
 
 let bot = flexDropletStrategy2;
+let name = 'FlexDroplet2';
 if (process.argv.length === 3) {
   console.log('Using random strategy');
   bot = randomStrategy;
+  name = 'Random';
 } else if (process.argv.length === 4) {
   console.log('Using null strategy with confirmation');
   bot = nullStrategy;
+  name = 'Null';
 }
 
 const socket = new WebSocket('ws://localhost:3003');
@@ -130,13 +133,13 @@ socket.addEventListener('message', event => {
       losses++;
     }
     console.log(`Game Over: ${data.result}, ${data.reason}`);
-    socket.send(JSON.stringify({type: 'game request'}));
+    socket.send(JSON.stringify({type: 'game request', name}));
   }
 });
 
 socket.addEventListener('open', () => {
   console.log('Connection established.');
-  socket.send(JSON.stringify({type: 'game request'}));
+  socket.send(JSON.stringify({type: 'game request', name}));
 });
 
 socket.addEventListener('close', event => {
