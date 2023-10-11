@@ -3,6 +3,16 @@ import {WIDTH, columnCounts, semiVisible} from './bitboard';
 import {MultiplayerGame, PlayedMove} from './game';
 import {AIR, GARBAGE, TickResult, colorOf} from './screen';
 
+export type ApplicationInfo = {
+  name: string;
+  version: string;
+  resolved?: string;
+  core?: {
+    version: string;
+    resolved?: string;
+  };
+};
+
 export type ReplayMetadata = {
   names: string[];
   priorWins: number[];
@@ -10,26 +20,13 @@ export type ReplayMetadata = {
   site: string;
   round: number;
   msSince1970: number;
+  endTime?: number;
   annotator?: string;
   timeControl?: string;
   termination?: string;
   initialPosition?: string;
-  server?: {
-    version: string;
-    resolved?: string;
-    core?: {
-      version: string;
-      resolved?: string;
-    };
-  };
-  client?: {
-    version: string;
-    resolved?: string;
-    core?: {
-      version: string;
-      resolved?: string;
-    };
-  };
+  server?: ApplicationInfo;
+  clients?: (ApplicationInfo | null)[];
 };
 
 export type ReplayResultReason =

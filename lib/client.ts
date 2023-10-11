@@ -1,4 +1,5 @@
 import {
+  ApplicationInfo,
   MOVES,
   MultiplayerGame,
   PASS,
@@ -7,8 +8,24 @@ import {
   nullStrategy,
   randomStrategy,
 } from '../src';
+import {name as appName, version} from '../package.json';
 
 const LOG = false;
+
+const commitHash = require('child_process')
+  .execSync('git rev-parse --short HEAD')
+  .toString()
+  .trim();
+
+const clientInfo: ApplicationInfo = {
+  version,
+  resolved: commitHash,
+  name: appName,
+  core: {
+    version,
+    resolved: commitHash,
+  },
+};
 
 let bot = flexDropletStrategy2;
 let name = 'FlexDroplet2';
@@ -133,13 +150,13 @@ socket.addEventListener('message', event => {
       losses++;
     }
     console.log(`Game Over: ${data.result}, ${data.reason}`);
-    socket.send(JSON.stringify({type: 'game request', name}));
+    socket.send(JSON.stringify({type: 'game request', name, clientInfo}));
   }
 });
 
 socket.addEventListener('open', () => {
   console.log('Connection established.');
-  socket.send(JSON.stringify({type: 'game request', name}));
+  socket.send(JSON.stringify({type: 'game request', name, clientInfo}));
 });
 
 socket.addEventListener('close', event => {

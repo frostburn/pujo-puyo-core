@@ -1,5 +1,6 @@
 import {ServerWebSocket} from 'bun';
 import {
+  ApplicationInfo,
   HEIGHT,
   MultiplayerGame,
   ReplayMetadata,
@@ -8,7 +9,7 @@ import {
   randomColorSelection,
   randomSeed,
 } from '../src';
-import {version} from '../package.json';
+import {name, version} from '../package.json';
 
 let LOG = false;
 
@@ -50,6 +51,25 @@ function clampString(str: string, maxLength = 64) {
   return [...str].slice(0, maxLength).join('');
 }
 
+function sanitizeClientInfo(content: any): ApplicationInfo {
+  const result: ApplicationInfo = {
+    name: clampString(content.name),
+    version: clampString(content.version),
+  };
+  if (content.resolved !== undefined) {
+    result.resolved = clampString(content.resolved);
+  }
+  if (content.core !== undefined) {
+    result.core = {
+      version: clampString(content.core.version),
+    };
+    if (content.core.resolved !== undefined) {
+      result.core.resolved = clampString(content.core.resolved);
+    }
+  }
+  return result;
+}
+
 function sanitizeMove(player: number, content: any): Move {
   if (content.pass) {
     return {
@@ -85,10 +105,16 @@ function sanitizeMove(player: number, content: any): Move {
 class Player {
   socket: ServerWebSocket<{socketId: number}>;
   name: string;
+  clientInfo?: ApplicationInfo;
 
-  constructor(socket: ServerWebSocket<{socketId: number}>, name: string) {
+  constructor(
+    socket: ServerWebSocket<{socketId: number}>,
+    name: string,
+    clientInfo?: ApplicationInfo
+  ) {
     this.socket = socket;
     this.name = name;
+    this.clientInfo = clientInfo;
   }
 
   send(message: any) {
@@ -126,10 +152,12 @@ class WebSocketGameSession {
 
   disqualifyPlayer(player: number) {
     const reason: ReplayResultReason = 'timeout';
+    const msSince1970 = new Date().valueOf();
     this.players[player].send({
       type: 'game result',
       result: 'loss',
       reason,
+      msSince1970,
       verboseReason: 'maximum move time exceeded',
       gameSeed: this.gameSeed,
     });
@@ -137,6 +165,7 @@ class WebSocketGameSession {
       type: 'game result',
       result: 'win',
       reason,
+      msSince1970,
       verboseReason: 'opponent timeout',
       gameSeed: this.gameSeed,
     });
@@ -152,6 +181,7 @@ class WebSocketGameSession {
       round: 0,
       msSince1970: new Date().valueOf(),
       server: {
+        name,
         version,
         resolved: commitHash,
         core: {
@@ -159,6 +189,7 @@ class WebSocketGameSession {
           resolved: commitHash,
         },
       },
+      clients: this.players.map(p => p.clientInfo || null),
     };
     this.players.forEach((player, i) => {
       player.send({
@@ -213,10 +244,12 @@ class WebSocketGameSession {
     this.players.forEach(opponent => {
       if (opponent !== player) {
         const reason: ReplayResultReason = 'disconnect';
+        const msSince1970 = new Date().valueOf();
         opponent.send({
           type: 'game result',
           result: 'win',
           reason,
+          msSince1970,
           verboseReason: 'opponent disconnected',
           gameSeed: this.gameSeed,
         });
@@ -286,11 +319,13 @@ class WebSocketGameSession {
 
         if (tickResults[0].lockedOut && tickResults[1].lockedOut) {
           const reason: ReplayResultReason = 'double lockout';
+          const msSince1970 = new Date().valueOf();
           this.players.forEach(p =>
             p.send({
               type: 'game result',
               result: 'draw',
               reason,
+              msSince1970,
               verboseReason: 'double lockout',
               gameSeed: this.gameSeed,
             })
@@ -300,10 +335,12 @@ class WebSocketGameSession {
           const winner = tickResults[0].lockedOut ? 1 : 0;
           const loser = 1 - winner;
           const reason: ReplayResultReason = 'lockout';
+          const msSince1970 = new Date().valueOf();
           this.players[winner].send({
             type: 'game result',
             result: 'win',
             reason,
+            msSince1970,
             verboseReason: 'opponent lockout',
             gameSeed: this.gameSeed,
           });
@@ -311,17 +348,20 @@ class WebSocketGameSession {
             type: 'game result',
             result: 'loss',
             reason,
+            msSince1970,
             verboseReason: 'lockout',
             gameSeed: this.gameSeed,
           });
           this.complete();
         } else if (this.game.age > MAX_GAME_AGE) {
           const reason: ReplayResultReason = 'max time exceeded';
+          const msSince1970 = new Date().valueOf();
           this.players.forEach(p =>
             p.send({
               type: 'game result',
               result: 'draw',
               reason,
+              msSince1970,
               verboseReason: 'time limit exceeded',
               gameSeed: this.gameSeed,
             })
@@ -412,6 +452,9 @@ const server = Bun.serve<{socketId: number}>({
       if (content.type === 'game request') {
         if (content.name !== undefined) {
           player.name = clampString(content.name);
+        }
+        if (content.clientInfo !== undefined) {
+          player.clientInfo = sanitizeClientInfo(content.clientInfo);
         }
         // Disregard request if already in game
         if (sessionBySocketId.has(ws.data.socketId)) {
