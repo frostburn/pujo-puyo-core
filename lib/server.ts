@@ -193,13 +193,10 @@ class WebSocketGameSession {
     };
     this.players.forEach((player, i) => {
       player.send({
-        type: 'identity',
-        player: i,
-      });
-      player.send({
         type: 'game params',
         colorSelection: this.colorSelection,
         screenSeed: this.screenSeed,
+        identity: i,
         metadata,
       });
       for (let j = 0; j < this.game.games.length; ++j) {

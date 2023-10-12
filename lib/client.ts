@@ -71,15 +71,13 @@ socket.addEventListener('message', event => {
     socket.send(JSON.stringify(response));
   }
 
-  if (data.type === 'identity') {
-    identity = data.player;
-  }
   if (data.type === 'game params') {
     mirrorGame = new MultiplayerGame(
       null,
       data.colorSelection,
       data.screenSeed
     );
+    identity = data.identity;
   }
   if (data.type === 'bag') {
     mirrorGame!.games[data.player].bag = data.bag;
