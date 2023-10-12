@@ -47,7 +47,7 @@ const commitHash = require('child_process')
   .toString()
   .trim();
 
-function clampString(str: string, maxLength = 64) {
+function clampString(str: string, maxLength = 256) {
   return [...str].slice(0, maxLength).join('');
 }
 
@@ -451,7 +451,7 @@ const server = Bun.serve<{socketId: number}>({
 
       if (content.type === 'game request') {
         if (content.name !== undefined) {
-          player.name = clampString(content.name);
+          player.name = clampString(content.name, 64);
         }
         if (content.clientInfo !== undefined) {
           player.clientInfo = sanitizeClientInfo(content.clientInfo);
