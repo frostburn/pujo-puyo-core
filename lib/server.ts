@@ -318,6 +318,10 @@ class WebSocketGameSession {
         if (LOG) {
           console.log('Hiding move by', move.player);
         }
+        this.players[1 - move.player].send({
+          type: 'timer',
+          msRemaining: move.msRemaining,
+        });
         this.players[move.player].send(move);
         this.hiddenMove = move;
       } else if (this.hiddenMove !== null) {

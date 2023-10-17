@@ -15,11 +15,11 @@ test('String conversion (no maximum)', () => {
 test('String conversion (defaul)', () => {
   const timer = new FischerTimer();
   const str = timer.toString();
-  expect(str).toBe('60+7(max:120)');
+  expect(str).toBe('60+10(max:120)');
   const parsed = FischerTimer.fromString(str);
   expect(parsed.remaining).toBe(60000);
   expect(parsed.maximum).toBe(120000);
-  expect(parsed.increment).toBe(7000);
+  expect(parsed.increment).toBe(10000);
   expect(parsed.display()).toBe('1:00');
   for (let i = 0; i < 10; ++i) {
     parsed.begin();
@@ -27,4 +27,10 @@ test('String conversion (defaul)', () => {
   }
   expect(parsed.remaining).toBe(parsed.maximum);
   expect(parsed.display()).toBe('2:00');
+});
+
+test('Negative time zeroed', () => {
+  const timer = new FischerTimer();
+  timer.remaining = -10000;
+  expect(timer.display()).toBe('0:00');
 });

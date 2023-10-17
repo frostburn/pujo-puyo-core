@@ -4,7 +4,7 @@ export class FischerTimer {
   increment: number;
   reference: DOMHighResTimeStamp | null;
 
-  constructor(initial = 60000, maximum = 120000, increment = 7000) {
+  constructor(initial = 60000, maximum = 120000, increment = 10000) {
     this.remaining = initial;
     this.maximum = maximum;
     this.increment = increment;
@@ -60,7 +60,7 @@ export class FischerTimer {
   display(): string {
     const delta =
       this.reference === null ? 0 : performance.now() - this.reference;
-    const remaining = this.remaining - delta;
+    const remaining = Math.max(0, this.remaining - delta);
     let seconds = Math.round(remaining / 1000);
     const minutes = Math.floor(seconds / 60);
     seconds -= minutes * 60;
