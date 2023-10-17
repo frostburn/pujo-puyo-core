@@ -2,14 +2,16 @@ import {expect, test} from 'bun:test';
 import {FischerTimer} from '../timer';
 
 test('String conversion (no maximum)', () => {
-  const timer = new FischerTimer(77000, Infinity, 11000);
+  const timer = new FischerTimer(77450, Infinity, 11000);
   const str = timer.toString();
-  expect(str).toBe('77+11');
+  expect(str).toBe('77.45+11');
   const parsed = FischerTimer.fromString(str);
-  expect(parsed.remaining).toBe(77000);
+  expect(parsed.remaining).toBe(77450);
   expect(parsed.maximum).toBe(Infinity);
   expect(parsed.increment).toBe(11000);
   expect(parsed.display()).toBe('1:17');
+  expect(parsed.display(1)).toBe('1:17.5');
+  expect(parsed.display(2)).toBe('1:17.45');
 });
 
 test('String conversion (defaul)', () => {

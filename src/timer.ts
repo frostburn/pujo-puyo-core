@@ -47,31 +47,33 @@ export class FischerTimer {
     }
     const delta = performance.now() - this.reference;
     this.reference = null;
-    if (delta > this.remaining) {
-      return true;
-    }
+    const flagged = delta > this.remaining;
     this.remaining = Math.min(
       this.maximum,
       this.remaining - delta + this.increment
     );
-    return false;
+    return flagged;
   }
 
-  display(): string {
-    const delta =
-      this.reference === null ? 0 : performance.now() - this.reference;
-    const remaining = Math.max(0, this.remaining - delta);
-    let seconds = Math.round(remaining / 1000);
+  timeRemaining() {
+    if (this.reference === null) {
+      return this.remaining;
+    }
+    const delta = performance.now() - this.reference;
+    return this.remaining - delta;
+  }
+
+  display(digits = 0): string {
+    const remaining = Math.max(0, this.timeRemaining());
+    let seconds =
+      Math.round(remaining * Math.pow(10, digits - 3)) * Math.pow(10, -digits);
     const minutes = Math.floor(seconds / 60);
     seconds -= minutes * 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const secondsPlaces = digits ? digits + 3 : 2;
+    return `${minutes}:${seconds.toFixed(digits).padStart(secondsPlaces, '0')}`;
   }
 
   flagged(): boolean {
-    if (this.reference === null) {
-      return this.remaining < 0;
-    }
-    const delta = performance.now() - this.reference;
-    return delta > this.remaining;
+    return this.timeRemaining() < 0;
   }
 }
