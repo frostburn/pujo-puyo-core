@@ -29,15 +29,15 @@ const clientInfo: ApplicationInfo = {
 };
 
 let bot = flexDropletStrategy2;
-let name = 'FlexDroplet2';
+let name = 'FlexDroplet2 (bot)';
 if (process.argv.length === 3) {
   console.log('Using random strategy');
   bot = randomStrategy;
-  name = 'Random';
+  name = 'Random (bot)';
 } else if (process.argv.length === 4) {
   console.log('Using null strategy with confirmation');
   bot = nullStrategy;
-  name = 'Null';
+  name = 'Null (centaur)';
 }
 
 const socket = new WebSocket('ws://localhost:3003');
