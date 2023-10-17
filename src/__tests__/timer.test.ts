@@ -33,4 +33,5 @@ test('Negative time zeroed', () => {
   const timer = new FischerTimer();
   timer.remaining = -10000;
   expect(timer.display()).toBe('0:00');
+  expect(timer.flagged()).toBeTrue();
 });

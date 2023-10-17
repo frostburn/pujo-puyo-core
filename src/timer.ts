@@ -66,4 +66,12 @@ export class FischerTimer {
     seconds -= minutes * 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
+
+  flagged(): boolean {
+    if (this.reference === null) {
+      return this.remaining < 0;
+    }
+    const delta = performance.now() - this.reference;
+    return delta > this.remaining;
+  }
 }
