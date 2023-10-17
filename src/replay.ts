@@ -31,6 +31,7 @@ export type ReplayMetadata = {
 
 export type ReplayResultReason =
   | 'ongoing'
+  | 'resignation'
   | 'timeout'
   | 'disconnect'
   | 'lockout'

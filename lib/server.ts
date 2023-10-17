@@ -1,6 +1,7 @@
 import {ServerWebSocket} from 'bun';
 import {
   ApplicationInfo,
+  FischerTimer,
   HEIGHT,
   MultiplayerGame,
   ReplayMetadata,
@@ -33,11 +34,13 @@ type NormalMove = {
   orientation?: number;
   hardDrop: boolean;
   pass: false;
+  msRemaining: number;
 };
 type PassingMove = {
   type: 'move';
   player: number;
   pass: true;
+  msRemaining: number;
 };
 
 type Move = NormalMove | PassingMove;
@@ -76,6 +79,7 @@ function sanitizeMove(player: number, content: any): Move {
       type: 'move',
       player,
       pass: true,
+      msRemaining: parseFloat(content.msRemaining),
     };
   }
   if (content.x2 !== undefined) {
@@ -99,6 +103,7 @@ function sanitizeMove(player: number, content: any): Move {
     orientation: parseInt(content.orientation, 10) & 3,
     hardDrop: !!content.hardDrop,
     pass: false,
+    msRemaining: parseFloat(content.msRemaining),
   };
 }
 
@@ -179,6 +184,7 @@ class WebSocketGameSession {
       event: 'Free Play (alpha)',
       site: 'https://pujo.lumipakkanen.com',
       round: 0,
+      timeControl: new FischerTimer().toString(),
       msSince1970: new Date().valueOf(),
       server: {
         name,
@@ -266,6 +272,28 @@ class WebSocketGameSession {
         type: 'simple state',
         state: this.game.toSimpleGame(index),
       });
+    } else if (content.type === 'result') {
+      const loser = index;
+      const winner = 1 - loser;
+      const reason: ReplayResultReason = clampString(
+        content.reason
+      ) as ReplayResultReason;
+      const msSince1970 = new Date().valueOf();
+      this.players[winner].send({
+        type: 'game result',
+        result: 'win',
+        reason,
+        msSince1970,
+        gameSeed: this.gameSeed,
+      });
+      this.players[loser].send({
+        type: 'game result',
+        result: 'loss',
+        reason,
+        msSince1970,
+        gameSeed: this.gameSeed,
+      });
+      this.complete();
     } else if (content.type === 'move') {
       if (!this.waitingForMove[index]) {
         return;

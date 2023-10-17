@@ -7,6 +7,7 @@ export * from './jkiss';
 export * from './screen';
 export * from './replay';
 export * from './algebraic';
+export * from './timer';
 
 type GarbageSymbols = {
   pending: string[];

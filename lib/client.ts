@@ -1,5 +1,6 @@
 import {
   ApplicationInfo,
+  FischerTimer,
   MOVES,
   MultiplayerGame,
   PASS,
@@ -49,6 +50,8 @@ let wins = 0;
 let draws = 0;
 let losses = 0;
 
+let timer: FischerTimer | null = null;
+
 socket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
   if (LOG) {
@@ -78,11 +81,16 @@ socket.addEventListener('message', event => {
       data.screenSeed
     );
     identity = data.identity;
+    timer = FischerTimer.fromString(data.metadata.timeControl);
   }
   if (data.type === 'bag') {
     mirrorGame!.games[data.player].bag = data.bag;
 
     if (data.player === identity) {
+      if (!timer) {
+        throw new Error('Move requested, but timer not initialized');
+      }
+      timer.begin();
       const game = mirrorGame!.toSimpleGame(identity!);
       if (bot === nullStrategy) {
         prompt('Press enter to play the next move...');
@@ -101,7 +109,19 @@ socket.addEventListener('message', event => {
       }
       response.type = 'move';
       response.hardDrop = true;
-      socket.send(JSON.stringify(response));
+      if (timer.end()) {
+        console.log('Timeout');
+        socket.send(
+          JSON.stringify({
+            type: 'result',
+            reason: 'timeout',
+          })
+        );
+      } else {
+        console.log('Time:', timer.display());
+        response.msRemaining = timer.remaining;
+        socket.send(JSON.stringify(response));
+      }
     }
   }
   if (data.type === 'move') {
