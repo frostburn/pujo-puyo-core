@@ -5,13 +5,20 @@ import {
   MultiplayerGame,
   PASS,
   SimpleGame,
+  flexDropletStrategy1,
   flexDropletStrategy2,
+  flexDropletStrategy3,
   nullStrategy,
   randomStrategy,
 } from '../src';
 import {name as appName, version} from '../package.json';
 
-const LOG = false;
+import argParse from 'minimist';
+
+const args = argParse(process.argv.slice(2));
+
+args.server = args.server || 'ws://localhost:3003';
+args.bot = args.bot || 'flex2';
 
 const commitHash = require('child_process')
   .execSync('git rev-parse --short HEAD')
@@ -28,19 +35,35 @@ const clientInfo: ApplicationInfo = {
   },
 };
 
-let bot = flexDropletStrategy2;
-let name = 'FlexDroplet2 (bot)';
-if (process.argv.length === 3) {
-  console.log('Using random strategy');
-  bot = randomStrategy;
-  name = 'Random (bot)';
-} else if (process.argv.length === 4) {
-  console.log('Using null strategy with confirmation');
-  bot = nullStrategy;
-  name = 'Null (centaur)';
-}
+const BOTS = {
+  null: {
+    name: 'Null (bot)',
+    strategy: nullStrategy,
+  },
+  random: {
+    name: 'Random (bot)',
+    strategy: randomStrategy,
+  },
+  flex1: {
+    name: 'FlexDroplet1 (bot)',
+    strategy: flexDropletStrategy1,
+  },
+  flex2: {
+    name: 'FlexDroplet2 (bot)',
+    strategy: flexDropletStrategy2,
+  },
+  flex3: {
+    name: 'FlexDroplet3 (bot)',
+    strategy: flexDropletStrategy3,
+  },
+};
 
-const socket = new WebSocket('ws://localhost:3003');
+const bot = BOTS[args.bot].strategy;
+const name = BOTS[args.bot].name;
+
+console.log(`Runnig ${name}. Connecting to ${args.server}`);
+
+const socket = new WebSocket(args.server);
 
 let identity: number | null = null;
 
@@ -54,7 +77,7 @@ let timer: FischerTimer | null = null;
 
 socket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
-  if (LOG) {
+  if (args.verbose) {
     console.log('Message received', data);
   }
   if (data.type === 'simple state') {
@@ -139,7 +162,7 @@ socket.addEventListener('message', event => {
       (data.pass && mirrorGame!.games.some(game => game.busy))
     ) {
       const tickResults = mirrorGame!.tick();
-      if (LOG) {
+      if (args.verbose) {
         const fx: string[] = [];
         if (tickResults[identity!].didClear) {
           fx.push('clear');

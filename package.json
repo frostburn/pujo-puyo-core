@@ -25,11 +25,13 @@
   ],
   "types": "dist/index.d.ts",
   "devDependencies": {
+    "@types/jsdom": "^16.2.15",
+    "@types/minimist": "^1.2.3",
+    "@types/node": "20.4.6",
     "bun-types": "latest",
     "gts": "^5.0.1",
-    "typescript": "~5.1.6",
-    "@types/node": "20.4.6",
-    "@types/jsdom": "^16.2.15"
+    "minimist": "^1.2.8",
+    "typescript": "~5.1.6"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
