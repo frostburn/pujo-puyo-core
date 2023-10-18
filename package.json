@@ -1,7 +1,7 @@
 {
   "name": "pujo-puyo-core",
   "author": "Lumi Pakkanen",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Core engine for a Puyo Puyo clone",
   "license": "MIT",
   "main": "dist/index",
