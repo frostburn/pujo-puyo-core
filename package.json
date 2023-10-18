@@ -39,12 +39,10 @@
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
-    "build": "bun build src/index.ts --outdir=build --target=browser && bun build lib/svgdefs.ts --outdir=build --target=browser && bun build lib/sound.ts --outdir=build --target=browser && bun build lib/worker.ts --outdir=build --target=browser",
     "compile": "tsc",
     "fix": "gts fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
-    "posttest": "npm run lint",
-    "start": "npx serve ."
+    "posttest": "npm run lint"
   }
 }
