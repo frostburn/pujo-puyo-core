@@ -99,6 +99,19 @@ test('Known game', () => {
     screenSeed,
     colorSelection,
     moves: [],
+    metadata: {
+      event: 'Random Match',
+      site: 'algebraic.test.ts',
+      names: ['Random A', 'Random B'],
+      elos: [1000, 1000],
+      round: 0,
+      priorWins: [0, 0],
+      msSince1970: new Date().valueOf(),
+    },
+    result: {
+      winner: 0,
+      reason: 'lockout',
+    },
   };
 
   for (let i = 0; i < 1600; ++i) {

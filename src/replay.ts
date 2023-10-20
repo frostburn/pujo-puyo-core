@@ -15,6 +15,7 @@ export type ApplicationInfo = {
 
 export type ReplayMetadata = {
   names: string[];
+  elos: number[];
   priorWins: number[];
   event: string;
   site: string;

@@ -170,6 +170,3 @@ dist
 
 # IntelliJ based IDEs
 .idea
-
-# Compilation results
-build/
