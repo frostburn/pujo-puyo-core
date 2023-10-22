@@ -181,6 +181,18 @@ export class OnePlayerGame {
     return this.bag[1];
   }
 
+  isReroll(x1: number, orientation: number) {
+    orientation &= 3;
+    let x2 = x1;
+    if (orientation === 1) {
+      x2--;
+    } else if (orientation === 3) {
+      x2++;
+    }
+    const mask = this.screen.mask;
+    return puyoAt(mask, x1, GHOST_Y) && puyoAt(mask, x2, GHOST_Y);
+  }
+
   play(
     x1: number,
     y1: number,
@@ -381,6 +393,8 @@ export class MultiplayerGame {
   canSend: boolean[];
   // Incoming garbage lock is needed so that chains have time time to resolve and make room for the nuisance puyos.
   canReceive: boolean[];
+  // Counter that keeps track of consecutive rerolls to judicate a draw.
+  consecutiveRerolls: number;
 
   constructor(
     seed?: number | null,
@@ -408,6 +422,7 @@ export class MultiplayerGame {
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
     this.canReceive = [false, false];
+    this.consecutiveRerolls = 0;
   }
 
   get age(): number {
@@ -531,6 +546,11 @@ export class MultiplayerGame {
     orientation: number,
     hardDrop = false
   ): PlayedMove {
+    if (this.games[player].isReroll(x1, orientation)) {
+      this.consecutiveRerolls++;
+    } else {
+      this.consecutiveRerolls = 0;
+    }
     const result = this.games[player].play(x1, y1, orientation, hardDrop);
     this.canReceive[player] = true;
     result.player = player;

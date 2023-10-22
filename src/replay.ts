@@ -38,6 +38,7 @@ export type ReplayResultReason =
   | 'disconnect'
   | 'lockout'
   | 'double lockout'
+  | 'impasse'
   | 'max time exceeded'
   | 'server maintenance';
 
