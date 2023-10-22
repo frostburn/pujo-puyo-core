@@ -39,6 +39,7 @@ export function infiniteRandomMirror(): ReplayIterator {
       round: 0,
       priorWins: [0, 0],
       msSince1970: new Date().valueOf(),
+      type: 'realtime',
     },
     result: {
       winner: undefined,
@@ -68,6 +69,7 @@ export function fixedRandomGame() {
       round: 0,
       priorWins: [0, 0],
       msSince1970: new Date('2023-10-06').valueOf(),
+      type: 'realtime',
     },
     result: {
       winner: 0,
@@ -108,6 +110,7 @@ export const LUMI_VS_FLEX2: Replay = {
     round: 1,
     priorWins: [1, 0],
     msSince1970: new Date('2023-10-07').valueOf(),
+    type: 'pausing',
   },
   result: {
     winner: 0,

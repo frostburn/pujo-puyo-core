@@ -21,6 +21,7 @@ export type ReplayMetadata = {
   site: string;
   round: number;
   msSince1970: number;
+  type: 'realtime' | 'pausing';
   endTime?: number;
   annotator?: string;
   timeControl?: string;
