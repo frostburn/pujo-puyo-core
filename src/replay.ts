@@ -50,6 +50,7 @@ export type Replay = {
   gameSeed: number;
   screenSeed: number;
   colorSelection: number[];
+  targetPoints: number[];
   moves: PlayedMove[];
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -59,6 +60,7 @@ export type ReplayIterator = {
   gameSeed: number;
   screenSeed: number;
   colorSelection: number[];
+  targetPoints: number[];
   moves: Iterable<PlayedMove>;
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -147,7 +149,8 @@ export function logReplay(replay: Replay) {
   const game = new MultiplayerGame(
     replay.gameSeed,
     replay.colorSelection,
-    replay.screenSeed
+    replay.screenSeed,
+    replay.targetPoints
   );
   replay.moves.sort(cmpMoves);
   game.log();
@@ -171,7 +174,8 @@ export function* replayToTrack(
   const game = new MultiplayerGame(
     replay.gameSeed,
     replay.colorSelection,
-    replay.screenSeed
+    replay.screenSeed,
+    replay.targetPoints
   );
   if (Array.isArray(replay.moves)) {
     replay.moves.sort(cmpMoves);

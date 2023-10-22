@@ -29,6 +29,7 @@ export function infiniteRandomMirror(): ReplayIterator {
     gameSeed,
     colorSelection,
     screenSeed,
+    targetPoints: [70, 70],
     moves: playForever(),
     metadata: {
       event: 'Infinite Mirror Match',
@@ -57,6 +58,7 @@ export function fixedRandomGame() {
     gameSeed,
     screenSeed,
     colorSelection,
+    targetPoints: [70, 70],
     moves: [],
     metadata: {
       event: 'Fixed Random Match',
@@ -96,12 +98,13 @@ export const LUMI_VS_FLEX2: Replay = {
   gameSeed: 3864657304,
   screenSeed: 2580717322,
   colorSelection: [3, 1, 0, 2],
+  targetPoints: [70, 70],
   metadata: {
     event:
       'First human vs. machine game to be captured in algebraic notation for Puyo',
     site: 'http://localhost:5173/',
     names: ['Lumi Pakkanen', 'FlexDroplet 2'],
-    elos: [2000, 1500],
+    elos: [3000, 2675],
     round: 1,
     priorWins: [1, 0],
     msSince1970: new Date('2023-10-07').valueOf(),

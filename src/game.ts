@@ -36,6 +36,7 @@ export type PlayedMove = {
 };
 
 // Timings (gravity acts in units of one)
+export const NOMINAL_FRAME_RATE = 30;
 export const JIGGLE_TIME = 15;
 export const SPARK_TIME = 20;
 
@@ -50,7 +51,10 @@ const EXTRA_BAG_SPICE = 7;
 const ALL_CLEAR_BONUS = 8500;
 
 // Multiplayer
-const TARGET_POINTS = 70;
+const MARGIN_FRAMES = 96 * NOMINAL_FRAME_RATE;
+const MARGIN_MULTIPLIER = 0.75;
+const MARGIN_INTERVAL = 16 * NOMINAL_FRAME_RATE;
+export const DEFAULT_TARGET_POINTS = 70;
 const ONE_ROCK = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
 
@@ -115,7 +119,7 @@ export class OnePlayerGame {
         COLOR_SELECTION_SIZE
       );
     } else {
-      this.colorSelection = colorSelection;
+      this.colorSelection = [...colorSelection];
     }
 
     this.bag = [];
@@ -359,6 +363,8 @@ const PADDING = [1, 1, 1, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
 
 export class MultiplayerGame {
   games: OnePlayerGame[];
+  // Conversion factor from scored points to nuisance puyos generated.
+  targetPoints: number[];
   // Buffered gargabe is sent on the next tick.
   // Stored on games[i].screen.bufferedGarbage.
   // Pending garbage is received after the next move. At most one rock at a time.
@@ -379,7 +385,8 @@ export class MultiplayerGame {
   constructor(
     seed?: number | null,
     colorSelection?: number[],
-    screenSeed?: number
+    screenSeed?: number,
+    targetPoints?: number[]
   ) {
     if (seed === undefined) {
       seed = randomSeed();
@@ -388,6 +395,11 @@ export class MultiplayerGame {
       new OnePlayerGame(seed, colorSelection, screenSeed),
       new OnePlayerGame(seed, colorSelection, screenSeed),
     ];
+
+    if (targetPoints === undefined) {
+      targetPoints = [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS];
+    }
+    this.targetPoints = [...targetPoints];
 
     this.pendingGarbage = [0, 0];
     this.accumulatedGarbage = [0, 0];
@@ -526,12 +538,29 @@ export class MultiplayerGame {
   }
 
   tick(): TickResult[] {
+    const age = this.age;
+    if (age >= MARGIN_FRAMES) {
+      if (!((age - MARGIN_FRAMES) % MARGIN_INTERVAL)) {
+        for (let i = 0; i < this.targetPoints.length; ++i) {
+          this.targetPoints[i] = Math.floor(
+            this.targetPoints[i] * MARGIN_MULTIPLIER
+          );
+          if (this.targetPoints[i] <= 0) {
+            this.targetPoints[i] = 1;
+            // Sudden Death
+            this.games[1 - i].screen.bufferedGarbage += ONE_ROCK;
+          }
+        }
+      }
+    }
     const tickResults = [];
     for (let i = 0; i < this.games.length; ++i) {
       const tickResult = this.games[i].tick();
       this.pointResidues[i] += tickResult.score;
-      let generatedGarbage = Math.floor(this.pointResidues[i] / TARGET_POINTS);
-      this.pointResidues[i] -= generatedGarbage * TARGET_POINTS;
+      let generatedGarbage = Math.floor(
+        this.pointResidues[i] / this.targetPoints[i]
+      );
+      this.pointResidues[i] -= generatedGarbage * this.targetPoints[i];
       // Offset incoming garbage.
       if (this.pendingGarbage[i] >= generatedGarbage) {
         this.pendingGarbage[i] -= generatedGarbage;
@@ -605,12 +634,14 @@ export class MultiplayerGame {
           break;
         }
       }
+      // XXX: Ignores margin time and sudden death, but it's a simplification anyway...
       lateGarbage += Math.floor(
-        (score + this.pointResidues[opponent]) / TARGET_POINTS
+        (score + this.pointResidues[opponent]) / this.targetPoints[opponent]
       );
     }
     return new SimpleGame(
       this.games[player].screen.toSimpleScreen(),
+      this.targetPoints[player],
       this.pointResidues[player],
       this.allClearBonus[player],
       this.pendingGarbage[player],
@@ -681,6 +712,7 @@ export const SIMPLE_GAME_OVER = -1000000;
  */
 export class SimpleGame {
   screen: SimplePuyoScreen;
+  targetPoints: number;
   pointResidue: number;
   allClearBonus: boolean;
   // Garbage to be received as soon as possible, one rock at a time.
@@ -696,6 +728,7 @@ export class SimpleGame {
 
   constructor(
     screen: SimplePuyoScreen,
+    targetPoints: number,
     pointResidue: number,
     allClearBonus: boolean,
     pendingGarbage: number,
@@ -706,13 +739,14 @@ export class SimpleGame {
     moveTime = DEFAULT_MOVE_TIME
   ) {
     this.screen = screen;
+    this.targetPoints = targetPoints;
     this.pointResidue = pointResidue;
     this.allClearBonus = allClearBonus;
     this.pendingGarbage = pendingGarbage;
     this.lateGarbage = lateGarbage;
     this.lateTimeRemaining = lateTimeRemaining;
-    this.colorSelection = colorSelection;
-    this.bag = bag;
+    this.colorSelection = [...colorSelection];
+    this.bag = [...bag];
     this.moveTime = moveTime;
 
     // Normalize
@@ -793,8 +827,8 @@ export class SimpleGame {
     }
     this.pointResidue += tickResult.score;
 
-    let generatedGarbage = Math.floor(this.pointResidue / TARGET_POINTS);
-    this.pointResidue -= TARGET_POINTS * generatedGarbage;
+    let generatedGarbage = Math.floor(this.pointResidue / this.targetPoints);
+    this.pointResidue -= this.targetPoints * generatedGarbage;
 
     if (this.pendingGarbage > generatedGarbage) {
       this.pendingGarbage -= generatedGarbage;
@@ -824,13 +858,14 @@ export class SimpleGame {
   clone() {
     return new SimpleGame(
       this.screen.toSimpleScreen(),
+      this.targetPoints,
       this.pointResidue,
       this.allClearBonus,
       this.pendingGarbage,
       this.lateGarbage,
       this.lateTimeRemaining,
       this.colorSelection,
-      [...this.bag]
+      this.bag
     );
   }
 
@@ -898,6 +933,7 @@ export class SimpleGame {
     const screen = SimplePuyoScreen.fromJSON(obj.screen);
     return new SimpleGame(
       screen,
+      obj.targetPoints,
       obj.pointResidue,
       obj.allClearBonus,
       obj.pendingGarbage,

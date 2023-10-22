@@ -1,5 +1,6 @@
 import {expect, test} from 'bun:test';
 import {
+  DEFAULT_TARGET_POINTS,
   MOVES,
   MultiplayerGame,
   OnePlayerGame,
@@ -148,6 +149,7 @@ test('Simple game late garbage offsetting', () => {
 
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -168,6 +170,7 @@ test('Simple game pending garbage offsetting', () => {
 
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     1000,
@@ -272,6 +275,7 @@ test('Default move count', () => {
   const screen = new SimplePuyoScreen();
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -287,6 +291,7 @@ test('Move count with pass', () => {
   const screen = new SimplePuyoScreen();
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -302,6 +307,7 @@ test('Move count reduction (symmetry)', () => {
   const screen = new SimplePuyoScreen();
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -332,6 +338,7 @@ test('Move count reduction (rerolls)', () => {
   screen.tick();
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -341,4 +348,38 @@ test('Move count reduction (rerolls)', () => {
     [RED, GREEN]
   );
   expect(game.availableMoves.length).toBe(22 - 4 - 2 + 1);
+});
+
+test('Null end', () => {
+  const game = new MultiplayerGame(0);
+
+  while (true) {
+    if (!game.games[0].busy) {
+      game.play(0, 0, 0, 0);
+      game.play(1, 0, 0, 0);
+    }
+    if (game.tick()[0].lockedOut) {
+      break;
+    }
+  }
+  expect(game.age).toBe(9630);
+});
+
+test('AFK end', () => {
+  const game = new MultiplayerGame(1);
+
+  while (!game.tick()[0].lockedOut);
+  expect(game.age).toBe(9622);
+});
+
+test('Handicap', () => {
+  const game = new MultiplayerGame(11, [RED, GREEN, YELLOW, BLUE], 17, [1, 70]);
+  game.play(0, 0, 0, 0, true);
+  while (game.tick()[0].busy);
+  game.play(0, 1, 0, 0, true);
+  while (game.tick()[0].busy);
+  game.play(0, 1, 0, 0, true);
+  while (game.tick()[0].busy);
+
+  expect(game.pendingGarbage[1]).toBe(100);
 });

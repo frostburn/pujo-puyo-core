@@ -14,7 +14,7 @@ test('String conversion (no maximum)', () => {
   expect(parsed.display(2)).toBe('1:17.45');
 });
 
-test('String conversion (defaul)', () => {
+test('String conversion (default)', () => {
   const timer = new FischerTimer();
   const str = timer.toString();
   expect(str).toBe('60+10(max:120)');

@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test';
 import {RED, SimplePuyoScreen} from '../screen';
-import {SimpleGame} from '../game';
+import {DEFAULT_TARGET_POINTS, SimpleGame} from '../game';
 import {effectiveLockout} from '../ai';
 
 test('Effective lockout', () => {
@@ -24,6 +24,7 @@ test('Effective lockout', () => {
   ]);
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -57,6 +58,7 @@ test('Ineffective lockout', () => {
   ]);
   const game = new SimpleGame(
     screen,
+    DEFAULT_TARGET_POINTS,
     0,
     false,
     0,
@@ -88,7 +90,17 @@ test('Ineffective lockout (no bag)', () => {
     'NNNNNN',
     'NNNNNN',
   ]);
-  const game = new SimpleGame(screen, 0, false, 0, 0, 0, [0, 1, 2, 3], []);
+  const game = new SimpleGame(
+    screen,
+    DEFAULT_TARGET_POINTS,
+    0,
+    false,
+    0,
+    0,
+    0,
+    [0, 1, 2, 3],
+    []
+  );
   const heuristic = effectiveLockout(game);
   expect(heuristic).toBe(0);
 });

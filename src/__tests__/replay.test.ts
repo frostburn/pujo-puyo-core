@@ -50,7 +50,8 @@ test('Re-entrance', () => {
   const game = new MultiplayerGame(
     LUMI_VS_FLEX2.gameSeed,
     LUMI_VS_FLEX2.colorSelection,
-    LUMI_VS_FLEX2.screenSeed
+    LUMI_VS_FLEX2.screenSeed,
+    LUMI_VS_FLEX2.targetPoints
   );
   let index = 0;
   for (let j = 0; j < 11; ++j) {
