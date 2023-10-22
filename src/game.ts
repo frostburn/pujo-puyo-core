@@ -724,12 +724,18 @@ export class SimpleGame {
     const mask = this.screen.mask;
     const result: number[] = [];
     const symmetric = this.bag.length >= 2 && this.bag[0] === this.bag[1];
+    let rerollPushed = false;
     MOVES.forEach((move, index) => {
       if (symmetric && index >= 11) {
         return;
       }
       const {x1, x2} = move;
-      if (!puyoAt(mask, x1, GHOST_Y) || !puyoAt(mask, x2, GHOST_Y)) {
+      if (puyoAt(mask, x1, GHOST_Y) && puyoAt(mask, x2, GHOST_Y)) {
+        if (!rerollPushed) {
+          result.push(index);
+          rerollPushed = true;
+        }
+      } else {
         result.push(index);
       }
     });

@@ -267,3 +267,78 @@ test('To simple game JSON', () => {
   expect(revived.screen.grid).toEqual(game.games[0].screen.grid);
   expect(revived.screen.jkiss.state).toEqual(game.games[0].screen.jkiss.state);
 });
+
+test('Default move count', () => {
+  const screen = new SimplePuyoScreen();
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    0,
+    0,
+    0,
+    [RED, GREEN, YELLOW, BLUE],
+    [RED, GREEN]
+  );
+  expect(game.availableMoves.length).toBe(22);
+});
+
+test('Move count with pass', () => {
+  const screen = new SimplePuyoScreen();
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    0,
+    1,
+    1,
+    [RED, GREEN, YELLOW, BLUE],
+    [RED, GREEN]
+  );
+  expect(game.availableMoves.length).toBe(23);
+});
+
+test('Move count reduction (symmetry)', () => {
+  const screen = new SimplePuyoScreen();
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    0,
+    0,
+    0,
+    [RED, GREEN, YELLOW, BLUE],
+    [RED, RED]
+  );
+  expect(game.availableMoves.length).toBe(11);
+});
+
+test('Move count reduction (rerolls)', () => {
+  const screen = SimplePuyoScreen.fromLines([
+    'RR',
+    'GG',
+    'RR',
+    'GG',
+    'RR',
+    'GG',
+    'RR',
+    'GG',
+    'RR',
+    'GG',
+    'RR',
+    'GG',
+    'RR',
+  ]);
+  screen.tick();
+  const game = new SimpleGame(
+    screen,
+    0,
+    false,
+    0,
+    0,
+    0,
+    [RED, GREEN, YELLOW, BLUE],
+    [RED, GREEN]
+  );
+  expect(game.availableMoves.length).toBe(22 - 4 - 2 + 1);
+});
