@@ -1,23 +1,20 @@
 import {JKISS32} from '.';
 import {
   CLEAR_THRESHOLD,
-  GHOST_Y,
   VISIBLE_HEIGHT,
   WIDTH,
   clone,
   flood,
-  inMask,
   invert,
   merge,
   puyoCount,
   shatter,
-  verticalLine,
   visible,
 } from './bitboard';
 import {PASS, SIMPLE_GAME_OVER, SimpleGame} from './game';
 
 const HEURISTIC_FAIL = -2000000;
-const PREFER_LONGER = 1.1;
+const PREFER_LONGER = 1.06;
 
 export type StrategyResult = {
   move: number;
@@ -31,20 +28,6 @@ export type StrategyResult = {
  */
 function materialCount(game: SimpleGame) {
   return puyoCount(game.screen.coloredMask);
-}
-
-/**
- * Heuristic score to discourage top-outs.
- * @param game Game state to evaluate.
- * @returns Negatively weighted sum of material in the top three rows.
- */
-function topPenalty(game: SimpleGame) {
-  const mask = game.screen.mask;
-  return (
-    -3 * puyoCount(inMask(mask, verticalLine(GHOST_Y))) -
-    2 * puyoCount(inMask(mask, verticalLine(GHOST_Y + 1))) -
-    puyoCount(inMask(mask, verticalLine(GHOST_Y + 2)))
-  );
 }
 
 /**
@@ -121,26 +104,9 @@ export function effectiveLockout(game: SimpleGame) {
 
 function passPenalty(move: number, game: SimpleGame): number {
   if (move === PASS) {
-    return Math.min(0, -10 * game.lateTimeRemaining);
+    return Math.min(0, -30 * game.lateTimeRemaining);
   }
   return 0;
-}
-
-/**
- * Heuristic score from dropping a single puyo onto the playing field.
- * @param game Game state to evaluate.
- * @returns The highest score achievable by dropping a single puyo.
- */
-function maxDroplet(game: SimpleGame): number {
-  let max = HEURISTIC_FAIL;
-  for (let i = 0; i < game.colorSelection.length; ++i) {
-    for (let x = 0; x < WIDTH; ++x) {
-      const clone = game.clone();
-      clone.screen.insertPuyo(x, 1, game.colorSelection[i]);
-      max = Math.max(max, clone.resolve().score);
-    }
-  }
-  return max;
 }
 
 /**
@@ -149,7 +115,7 @@ function maxDroplet(game: SimpleGame): number {
  * @returns Average of the highest scores achievable by dropping a single puyo and a true max bonus.
  */
 function flexDroplet(game: SimpleGame): number {
-  let result = 0;
+  let flexMax = 0;
   let trueMax = HEURISTIC_FAIL;
   for (let i = 0; i < game.colorSelection.length; ++i) {
     let max = HEURISTIC_FAIL;
@@ -158,62 +124,11 @@ function flexDroplet(game: SimpleGame): number {
       clone.screen.insertPuyo(x, 1, game.colorSelection[i]);
       max = Math.max(max, clone.resolve().score);
     }
-    result += max;
+    flexMax += max;
     trueMax = Math.max(trueMax, max);
   }
-  return (0.8 * result) / game.colorSelection.length + 0.2 * trueMax;
-}
-
-export function maxDropletStrategy1(game: SimpleGame): StrategyResult {
-  const moves = game.availableMoves;
-  // Shuffle to break ties.
-  moves.sort(() => Math.random() - 0.5);
-
-  let max = HEURISTIC_FAIL;
-  let move = moves[0] || 0;
-  for (let i = 0; i < moves.length; ++i) {
-    const clone = game.clone();
-    const tickResult = clone.playAndTick(moves[i]);
-    const score =
-      passPenalty(moves[i], game) +
-      tickResult.score +
-      PREFER_LONGER * maxDroplet(clone) +
-      materialCount(clone) +
-      topPenalty(clone);
-    if (score > max) {
-      max = score;
-      move = moves[i];
-    }
-  }
-  return {
-    move,
-    score: max,
-  };
-}
-
-export function maxDropletStrategy2(game: SimpleGame): StrategyResult {
-  const moves = game.availableMoves;
-  // Shuffle to break ties.
-  moves.sort(() => Math.random() - 0.5);
-
-  let max = HEURISTIC_FAIL;
-  let move = moves[0] || 0;
-  for (let i = 0; i < moves.length; ++i) {
-    const clone = game.clone();
-    const tickResult = clone.playAndTick(moves[i]);
-    const score =
-      passPenalty(moves[i], game) +
-      tickResult.score +
-      PREFER_LONGER * maxDropletStrategy1(clone).score;
-    if (score > max) {
-      max = score;
-      move = moves[i];
-    }
-  }
-  return {
-    move,
-    score: max,
-  };
+  flexMax /= game.colorSelection.length;
+  return 0.85 * trueMax + 0.15 * flexMax;
 }
 
 export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
@@ -231,8 +146,7 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
       passPenalty(moves[i], game) +
       tickResult.score +
       PREFER_LONGER * flexDroplet(clone) +
-      materialCount(clone) +
-      topPenalty(clone) +
+      1.5 * materialCount(clone) +
       effectiveLockout(clone);
     if (score > max) {
       max = score;
@@ -243,7 +157,7 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
   flexBonus /= moves.length || 1;
   return {
     move,
-    score: 0.9 * max + 0.1 * flexBonus,
+    score: 0.85 * max + 0.15 * flexBonus,
   };
 }
 
@@ -271,7 +185,7 @@ export function flexDropletStrategy2(game: SimpleGame): StrategyResult {
   flexBonus /= moves.length || 1;
   return {
     move,
-    score: 0.9 * max + 0.1 * flexBonus,
+    score: 0.85 * max + 0.15 * flexBonus,
   };
 }
 
@@ -299,7 +213,7 @@ export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
   flexBonus /= moves.length || 1;
   return {
     move,
-    score: 0.9 * max + 0.1 * flexBonus,
+    score: 0.85 * max + 0.15 * flexBonus,
   };
 }
 
