@@ -304,7 +304,7 @@ export function* replayToTrack(
       bag: game.games[i].bag.slice(0, 6),
     };
     let result: 'win' | 'draw' | 'loss';
-    if (replay.result === undefined) {
+    if (replay.result.winner === undefined) {
       result = 'draw';
     } else if (replay.result.winner === i) {
       result = 'win';
