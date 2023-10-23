@@ -136,16 +136,22 @@ export function flexDropletStrategy1(game: SimpleGame): StrategyResult {
   // Shuffle to break ties.
   moves.sort(() => Math.random() - 0.5);
 
+  const mask = game.screen.mask;
+
   let flexBonus = 0;
   let max = HEURISTIC_FAIL;
   let move = moves[0] || 0;
   for (let i = 0; i < moves.length; ++i) {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
+    let preference = PREFER_LONGER;
+    if (game.isReroll(moves[i], mask)) {
+      preference = 1 / preference;
+    }
     const score =
       passPenalty(moves[i], game) +
       tickResult.score +
-      PREFER_LONGER * flexDroplet(clone) +
+      preference * flexDroplet(clone) +
       1.5 * materialCount(clone) +
       effectiveLockout(clone);
     if (score > max) {
@@ -166,16 +172,22 @@ export function flexDropletStrategy2(game: SimpleGame): StrategyResult {
   // Shuffle to break ties.
   moves.sort(() => Math.random() - 0.5);
 
+  const mask = game.screen.mask;
+
   let flexBonus = 0;
   let max = HEURISTIC_FAIL;
   let move = moves[0] || 0;
   for (let i = 0; i < moves.length; ++i) {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
+    let preference = PREFER_LONGER;
+    if (game.isReroll(moves[i], mask)) {
+      preference = 1 / preference;
+    }
     const score =
       passPenalty(moves[i], game) +
       tickResult.score +
-      PREFER_LONGER * flexDropletStrategy1(clone).score;
+      preference * flexDropletStrategy1(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];
@@ -194,16 +206,22 @@ export function flexDropletStrategy3(game: SimpleGame): StrategyResult {
   // Shuffle to break ties.
   moves.sort(() => Math.random() - 0.5);
 
+  const mask = game.screen.mask;
+
   let flexBonus = 0;
   let max = HEURISTIC_FAIL;
   let move = moves[0] || 0;
   for (let i = 0; i < moves.length; ++i) {
     const clone = game.clone();
     const tickResult = clone.playAndTick(moves[i]);
+    let preference = PREFER_LONGER;
+    if (game.isReroll(moves[i], mask)) {
+      preference = 1 / preference;
+    }
     const score =
       passPenalty(moves[i], game) +
       tickResult.score +
-      PREFER_LONGER * flexDropletStrategy2(clone).score;
+      preference * flexDropletStrategy2(clone).score;
     if (score > max) {
       max = score;
       move = moves[i];

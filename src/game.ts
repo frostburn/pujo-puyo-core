@@ -1,4 +1,4 @@
-import {GHOST_Y, HEIGHT, WIDTH, isNonEmpty, puyoAt} from './bitboard';
+import {GHOST_Y, HEIGHT, Puyos, WIDTH, isNonEmpty, puyoAt} from './bitboard';
 import {JKISS32, randomSeed} from './jkiss';
 import {
   AIR,
@@ -774,17 +774,25 @@ export class SimpleGame {
     this.resolve();
   }
 
+  isReroll(index: number, mask?: Puyos) {
+    if (index === PASS) {
+      return false;
+    }
+    const {x1, x2} = MOVES[index];
+    if (mask === undefined) {
+      mask = this.screen.mask;
+    }
+    return puyoAt(mask, x1, GHOST_Y) && puyoAt(mask, x2, GHOST_Y);
+  }
+
   get availableMoves() {
     const mask = this.screen.mask;
     const result: number[] = [];
     const symmetric = this.bag.length >= 2 && this.bag[0] === this.bag[1];
     let rerollPushed = false;
-    MOVES.forEach((move, index) => {
-      if (symmetric && index >= 11) {
-        return;
-      }
-      const {x1, x2} = move;
-      if (puyoAt(mask, x1, GHOST_Y) && puyoAt(mask, x2, GHOST_Y)) {
+    const numMoves = symmetric ? MOVES.length / 2 : MOVES.length;
+    for (let index = 0; index < numMoves; ++index) {
+      if (this.isReroll(index, mask)) {
         if (!rerollPushed) {
           result.push(index);
           rerollPushed = true;
@@ -792,7 +800,7 @@ export class SimpleGame {
       } else {
         result.push(index);
       }
-    });
+    }
     if (this.lateGarbage > 0 && this.lateTimeRemaining > 0) {
       result.push(PASS);
     }
