@@ -1,5 +1,5 @@
 import {expect, test} from 'bun:test';
-import {replayToTrack} from '../replay';
+import {parseReplay, replayToTrack} from '../replay';
 import {LUMI_VS_FLEX2, fixedRandomGame, infiniteRandomMirror} from './archive';
 import {MultiplayerGame} from '../game';
 import {TickResult} from '../screen';
@@ -42,6 +42,11 @@ test('Infinite mirror game', () => {
   }
   expect(snapShots.length).toBeGreaterThan(10);
   expect(snapShots.pop()!.age).not.toBeLessThan(300);
+
+  const serialized = JSON.stringify(replay);
+  const unserialized = parseReplay(serialized);
+  console.log(unserialized);
+  expect(unserialized).toEqual(replay);
 });
 
 test('Re-entrance', () => {

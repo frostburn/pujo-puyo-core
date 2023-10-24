@@ -1,5 +1,10 @@
 import {WIDTH} from '../bitboard';
-import {MOVES, MultiplayerGame, randomColorSelection} from '../game';
+import {
+  DEFAULT_MARGIN_FRAMES,
+  MOVES,
+  MultiplayerGame,
+  randomColorSelection,
+} from '../game';
 import {JKISS32, randomSeed} from '../jkiss';
 import {Replay, ReplayIterator} from '../replay';
 
@@ -8,7 +13,15 @@ export function infiniteRandomMirror(): ReplayIterator {
   const gameSeed = randomSeed();
   const colorSelection = randomColorSelection();
   const screenSeed = randomSeed();
-  const game = new MultiplayerGame(gameSeed, colorSelection, screenSeed);
+  const targetPoints = [70, 70];
+  const marginFrames = Infinity;
+  const game = new MultiplayerGame(
+    gameSeed,
+    colorSelection,
+    screenSeed,
+    targetPoints,
+    marginFrames
+  );
 
   function* playForever() {
     while (true) {
@@ -29,7 +42,8 @@ export function infiniteRandomMirror(): ReplayIterator {
     gameSeed,
     colorSelection,
     screenSeed,
-    targetPoints: [70, 70],
+    targetPoints,
+    marginFrames,
     moves: playForever(),
     metadata: {
       event: 'Infinite Mirror Match',
@@ -52,14 +66,23 @@ export function fixedRandomGame() {
   const gameSeed = 7;
   const colorSelection = [1, 2, 3, 4];
   const screenSeed = 11;
-  const game = new MultiplayerGame(gameSeed, colorSelection, screenSeed);
+  const targetPoints = [70, 70];
+  const marginFrames = DEFAULT_MARGIN_FRAMES;
+  const game = new MultiplayerGame(
+    gameSeed,
+    colorSelection,
+    screenSeed,
+    targetPoints,
+    marginFrames
+  );
   const rng = new JKISS32(8);
 
   const replay: Replay = {
     gameSeed,
     screenSeed,
     colorSelection,
-    targetPoints: [70, 70],
+    targetPoints,
+    marginFrames,
     moves: [],
     metadata: {
       event: 'Fixed Random Match',
@@ -101,6 +124,7 @@ export const LUMI_VS_FLEX2: Replay = {
   screenSeed: 2580717322,
   colorSelection: [3, 1, 0, 2],
   targetPoints: [70, 70],
+  marginFrames: DEFAULT_MARGIN_FRAMES,
   metadata: {
     event:
       'First human vs. machine game to be captured in algebraic notation for Puyo',

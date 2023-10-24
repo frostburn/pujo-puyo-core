@@ -54,8 +54,8 @@ const gamesFlex2 = 10690;
 const eloFlex2 =
   eloFlex1 + Math.log10(scoreFlex2 / (gamesFlex2 - scoreFlex2)) * 400;
 
-let scoreFlex3 = 304.5;
-let gamesFlex3 = 398;
+let scoreFlex3 = 619.5;
+let gamesFlex3 = 791;
 
 function collect(result: number) {
   scoreFlex3 += result;

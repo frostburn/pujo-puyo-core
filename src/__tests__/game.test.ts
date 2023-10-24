@@ -362,16 +362,16 @@ test('Null end', () => {
       break;
     }
   }
-  expect(game.age).toBe(9630);
+  expect(game.age).toBe(12510);
   // It's up to the game server to decide how much is too much.
-  expect(game.consecutiveRerolls).toBe(1042);
+  expect(game.consecutiveRerolls).toBe(1362);
 });
 
 test('AFK end', () => {
   const game = new MultiplayerGame(1);
 
   while (!game.tick()[0].lockedOut);
-  expect(game.age).toBe(9622);
+  expect(game.age).toBe(12502);
 });
 
 test('Handicap', () => {

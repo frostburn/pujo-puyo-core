@@ -53,6 +53,7 @@ export type Replay = {
   screenSeed: number;
   colorSelection: number[];
   targetPoints: number[];
+  marginFrames: number;
   moves: PlayedMove[];
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -63,6 +64,7 @@ export type ReplayIterator = {
   screenSeed: number;
   colorSelection: number[];
   targetPoints: number[];
+  marginFrames: number;
   moves: Iterable<PlayedMove>;
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -427,4 +429,22 @@ export function logReplayTrack(track: ReplayTrack) {
     console.log(topLine.join(''));
   }
   console.log(bottomLine.join(''));
+}
+
+/**
+ * Undo JSON.stringify(replay).
+ * @param serialized JSON serialized Replay instance.
+ * @returns Unserialized Replay instance.
+ */
+export function parseReplay(serialized: string): Replay {
+  const unserialized: Replay = JSON.parse(serialized);
+  // Make explicit
+  if (unserialized.result.winner === undefined) {
+    unserialized.result.winner = undefined;
+  }
+  // Only positive infinity makes sense here if JSON serialization failed.
+  if (unserialized.marginFrames === null) {
+    unserialized.marginFrames = Infinity;
+  }
+  return unserialized;
 }

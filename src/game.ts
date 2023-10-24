@@ -51,7 +51,7 @@ const EXTRA_BAG_SPICE = 7;
 const ALL_CLEAR_BONUS = 8500;
 
 // Multiplayer
-const MARGIN_FRAMES = 96 * NOMINAL_FRAME_RATE;
+export const DEFAULT_MARGIN_FRAMES = 192 * NOMINAL_FRAME_RATE;
 const MARGIN_MULTIPLIER = 0.75;
 const MARGIN_INTERVAL = 16 * NOMINAL_FRAME_RATE;
 export const DEFAULT_TARGET_POINTS = 70;
@@ -395,12 +395,15 @@ export class MultiplayerGame {
   canReceive: boolean[];
   // Counter that keeps track of consecutive rerolls to judicate a draw.
   consecutiveRerolls: number;
+  // Number of frames before nuisance conversion factor starts increasing.
+  marginFrames: number;
 
   constructor(
     seed?: number | null,
     colorSelection?: number[],
     screenSeed?: number,
-    targetPoints?: number[]
+    targetPoints?: number[],
+    marginFrames = DEFAULT_MARGIN_FRAMES
   ) {
     if (seed === undefined) {
       seed = randomSeed();
@@ -414,6 +417,7 @@ export class MultiplayerGame {
       targetPoints = [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS];
     }
     this.targetPoints = [...targetPoints];
+    this.marginFrames = marginFrames;
 
     this.pendingGarbage = [0, 0];
     this.accumulatedGarbage = [0, 0];
@@ -559,8 +563,8 @@ export class MultiplayerGame {
 
   tick(): TickResult[] {
     const age = this.age;
-    if (age >= MARGIN_FRAMES) {
-      if (!((age - MARGIN_FRAMES) % MARGIN_INTERVAL)) {
+    if (age >= this.marginFrames) {
+      if (!((age - this.marginFrames) % MARGIN_INTERVAL)) {
         for (let i = 0; i < this.targetPoints.length; ++i) {
           this.targetPoints[i] = Math.floor(
             this.targetPoints[i] * MARGIN_MULTIPLIER
