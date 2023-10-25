@@ -45,7 +45,6 @@ test('Infinite mirror game', () => {
 
   const serialized = JSON.stringify(replay);
   const unserialized = parseReplay(serialized);
-  console.log(unserialized);
   expect(unserialized).toEqual(replay);
 });
 

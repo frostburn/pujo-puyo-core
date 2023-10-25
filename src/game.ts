@@ -317,6 +317,17 @@ export class OnePlayerGame {
     return this.busy ? this.bag.slice(0, 4) : this.bag.slice(2, 6);
   }
 
+  // Mirror driving utils
+  get initialBag() {
+    return this.bag.slice(0, 4);
+  }
+  get nextPiece() {
+    if (this.busy) {
+      throw new Error('Attempting to peek beyond the visible bag');
+    }
+    return this.bag.slice(4, 6);
+  }
+
   displayLines() {
     const lines = this.screen.displayLines();
     const i = this.busy ? [1, 0, 3, 2] : [3, 2, 5, 4];

@@ -196,27 +196,53 @@ test('Mirror driving', () => {
   const mainSeed = randomSeed();
   const colorSelection = randomColorSelection();
   const screenSeed = randomSeed();
-  const main = new MultiplayerGame(mainSeed, colorSelection, screenSeed);
+  const targetPoints = [70, 70];
+  const marginTime = 5000;
+  const main = new MultiplayerGame(
+    mainSeed,
+    colorSelection,
+    screenSeed,
+    targetPoints,
+    marginTime
+  );
 
-  const mirror = new MultiplayerGame(null, colorSelection, screenSeed);
+  const mirror = new MultiplayerGame(
+    null,
+    colorSelection,
+    screenSeed,
+    targetPoints,
+    marginTime
+  );
 
   // No independent moves.
   expect(() => mirror.play(0, 0, 2, 0)).toThrow();
 
-  for (let j = 0; j < 50; ++j) {
-    // Send data
-    for (let i = 0; i < main.games.length; ++i) {
-      mirror.games[i].bag = main.games[i].visibleBag;
-    }
+  mirror.games[0].bag = main.games[0].initialBag;
+  mirror.games[1].bag = main.games[1].initialBag;
+
+  // Send data to prompt moves
+  for (let i = 0; i < main.games.length; ++i) {
+    main.games[i].nextPiece.forEach(color => mirror.games[i].bag.push(color));
+  }
+
+  for (let i = 0; i < 50; ++i) {
     const player = Math.floor(Math.random() * 2);
     const x = Math.floor(Math.random() * WIDTH);
     main.play(player, x, 2, 0);
     mirror.play(player, x, 2, 0);
     // Run individually
-    while (main.games.some(game => game.active)) {
+    while (main.games.some(game => game.busy)) {
       main.tick();
       mirror.tick();
     }
+    // Send data to prompt the next move
+    main.games[player].nextPiece.forEach(color =>
+      mirror.games[player].bag.push(color)
+    );
+  }
+
+  for (let i = 0; i < mirror.games.length; ++i) {
+    expect(mirror.games[i].bag.length).not.toBeGreaterThan(6);
   }
 
   for (let i = 0; i < main.games.length; ++i) {
