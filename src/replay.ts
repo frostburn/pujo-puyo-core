@@ -31,10 +31,27 @@ export type ReplayMetadata = {
   clients?: (ApplicationInfo | null)[];
 };
 
+/**
+ * Reason for game termination:
+ *
+ * ongoing: Game not terminated yet
+ * resignation: Taking a voluntary loss
+ * timeout: Running out of time (usually client-voluntary)
+ * lagging: Playing a realtime move too late (enforced server-side)
+ * advancing: Playing a realtime move too early (enforced server-side)
+ * disconnect: Disconnecting from the server
+ * lockout: Running out of moves to play
+ * double lockout: Both players ran out of moves on the same frame
+ * impasse: Both players refuse to advance the game
+ * max time exceeded: Failsafe to clear games that refuse to end even with sudden death
+ * server maintenance: Server shutdown in the middle of a match
+ */
 export type ReplayResultReason =
   | 'ongoing'
   | 'resignation'
   | 'timeout'
+  | 'lagging'
+  | 'advancing'
   | 'disconnect'
   | 'lockout'
   | 'double lockout'

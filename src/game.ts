@@ -353,17 +353,18 @@ export class OnePlayerGame {
   clone(preserveSeed = false) {
     const result = new OnePlayerGame(undefined, this.colorSelection);
     if (preserveSeed) {
-      if (!this.jkiss) {
-        throw new Error('Cannot make a true clone of a mirror game');
+      if (this.jkiss === null) {
+        result.jkiss = null;
+      } else {
+        result.jkiss = this.jkiss.clone();
       }
-      result.jkiss = this.jkiss.clone();
     }
     result.age = this.age;
     result.score = this.score;
     result.jiggleTime = this.jiggleTime;
     result.sparkTime = this.sparkTime;
     result.active = this.active;
-    result.screen = this.screen.clone(preserveSeed || !this.jkiss);
+    result.screen = this.screen.clone(preserveSeed);
     if (preserveSeed) {
       result.bag = [...this.bag];
     } else {
@@ -479,6 +480,10 @@ export class MultiplayerGame {
       states[0].lateGarbage = 0;
     }
     return states;
+  }
+
+  get initialBags(): number[][] {
+    return this.games.map(g => g.initialBag);
   }
 
   displayLines() {
@@ -691,6 +696,7 @@ export class MultiplayerGame {
   clone(preserveSeed = false) {
     const result = new MultiplayerGame();
     result.games = this.games.map(game => game.clone(preserveSeed));
+    result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];
     result.accumulatedGarbage = [...this.accumulatedGarbage];
     result.pointResidues = [...this.pointResidues];
@@ -698,6 +704,8 @@ export class MultiplayerGame {
     result.allClearBonus = [...this.allClearBonus];
     result.canSend = [...this.canSend];
     result.canReceive = [...this.canReceive];
+    result.consecutiveRerolls = this.consecutiveRerolls;
+    result.marginFrames = this.marginFrames;
     return result;
   }
 }
