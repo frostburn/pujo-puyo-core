@@ -8,6 +8,7 @@ export * from './screen';
 export * from './replay';
 export * from './algebraic';
 export * from './timer';
+export * from './realtime';
 
 type GarbageSymbols = {
   pending: string[];
