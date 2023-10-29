@@ -712,8 +712,7 @@ export class MultiplayerGame {
 
   // Random seed. Don't leak original unless specified.
   clone(preserveSeed = false): this {
-    // XXX: Not the correct type acrobatics, but enough for inference.
-    const result = new (this.constructor as any)() as this;
+    const result = new (this.constructor as typeof MultiplayerGame)() as this;
     result.games = this.games.map(game => game.clone(preserveSeed));
     result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];

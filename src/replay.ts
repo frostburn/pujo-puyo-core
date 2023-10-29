@@ -1,7 +1,7 @@
 /* eslint-disable no-case-declarations */
 import {WIDTH, columnCounts, semiVisible} from './bitboard';
-import {MultiplayerGame, PlayedMove} from './game';
-import {AIR, GARBAGE, TickResult, colorOf} from './screen';
+import {MultiplayerGame, MultiplayerTickResult, PlayedMove} from './game';
+import {AIR, GARBAGE, colorOf} from './screen';
 
 export type ApplicationInfo = {
   name: string;
@@ -89,7 +89,7 @@ export type ReplayIterator = {
 
 export type TickCallback = (
   game: MultiplayerGame,
-  tickResults: TickResult[]
+  tickResults: MultiplayerTickResult[]
 ) => void;
 
 /** Explicit data for visualization. */
@@ -188,15 +188,17 @@ export function logReplay(replay: Replay) {
   game.log();
 }
 
-export function* replayToTrack(
+export function* replayToTrack<T extends typeof MultiplayerGame>(
   replay: Replay | ReplayIterator,
-  callback?: TickCallback
+  callback?: TickCallback,
+  baseClass: T = MultiplayerGame as T
 ): ReplayTrack {
-  const game = new MultiplayerGame(
+  const game = new baseClass(
     replay.gameSeed,
     replay.colorSelection,
     replay.screenSeed,
-    replay.targetPoints
+    replay.targetPoints,
+    replay.marginFrames
   );
   if (Array.isArray(replay.moves)) {
     replay.moves.sort(cmpMoves);
