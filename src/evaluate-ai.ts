@@ -1,13 +1,22 @@
-import {flexDropletStrategy3, flexDropletStrategy2} from '.';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  randomStrategy,
+  flexDropletStrategy1,
+  flexDropletStrategy3,
+  flexDropletStrategy2,
+} from '.';
 import {MOVES, MultiplayerGame, PASS} from './game';
 
 const MAX_CONSECUTIVE_REROLLS = 20;
 
 function duel(
   strategyA: typeof flexDropletStrategy2,
-  strategyB: typeof flexDropletStrategy2
+  strategyB: typeof flexDropletStrategy2,
+  hardDropA = true,
+  hardDropB = true
 ) {
   const strategies = [strategyA, strategyB];
+  const hardDrops = [hardDropA, hardDropB];
   const passing = [false, false];
   const game = new MultiplayerGame();
   while (true) {
@@ -25,7 +34,7 @@ function duel(
           passing[i] = true;
         } else {
           const {x1, y1, orientation} = MOVES[strategy.move];
-          game.play(i, x1, y1, orientation, true);
+          game.play(i, x1, y1, orientation, hardDrops[i]);
         }
       }
       const tickResults = game.tick();
@@ -43,27 +52,44 @@ function duel(
   }
 }
 
+function elo(baseLine: number, score: number, numGames: number) {
+  return baseLine + Math.log10(score / (numGames - score)) * 400;
+}
+
 const eloRandom = 1000;
-const scoreFlex1 = 100037;
-const gamesFlex1 = 100176;
-const eloFlex1 =
-  eloRandom + Math.log10(scoreFlex1 / (gamesFlex1 - scoreFlex1)) * 400;
 
-const scoreFlex2 = 10027;
-const gamesFlex2 = 10690;
-const eloFlex2 =
-  eloFlex1 + Math.log10(scoreFlex2 / (gamesFlex2 - scoreFlex2)) * 400;
+/*
+let scoreSoftFlex1 = 99075;
+let gamesSoftFlex1 = 100026;
+const eloSoftFlex1 = elo(eloRandom, scoreSoftFlex1, gamesSoftFlex1); // 1807.1134256275252
+*/
 
-let scoreFlex3 = 619.5;
-let gamesFlex3 = 791;
+const scoreFlex1 = 104194;
+const gamesFlex1 = 104330;
+const eloFlex1 = elo(eloRandom, scoreFlex1, gamesFlex1); // 2153.721521005391
+
+/*
+// Some discrepancy here, but that's to be expected from a simple model like Elo.
+let scoreSoftVsHard1 = 1465.5;
+let gamesSoftVsHard1 = 10006;
+const eloSoftVsHard1 = elo(eloFlex1, scoreSoftVsHard1, gamesSoftVsHard1); // 1847.522531306342
+*/
+
+let scoreFlex2 = 9933.5;
+let gamesFlex2 = 10606;
+// const eloFlex2 = elo(eloFlex1, scoreFlex2, gamesFlex2); // 2621.4855239818644
 
 function collect(result: number) {
-  scoreFlex3 += result;
-  gamesFlex3++;
-  const eloFlex3 =
-    eloFlex2 + Math.log10(scoreFlex3 / (gamesFlex3 - scoreFlex3)) * 400;
-  console.log(scoreFlex3, '/', gamesFlex3, '->', eloFlex3);
+  scoreFlex2 += result;
+  gamesFlex2++;
+  const eloFlex2 = elo(eloFlex1, scoreFlex2, gamesFlex2);
+  console.log(scoreFlex2, '/', gamesFlex2, '->', eloFlex2);
 }
+
+const strategyA = flexDropletStrategy2;
+const hardDropA = true;
+const strategyB = flexDropletStrategy1;
+const hardDropB = true;
 
 if (process.argv.length === 3) {
   const numChildren = parseInt(process.argv[2], 10);
@@ -77,7 +103,7 @@ if (process.argv.length === 3) {
   }
 } else {
   while (true) {
-    const result = duel(flexDropletStrategy3, flexDropletStrategy2);
+    const result = duel(strategyA, strategyB, hardDropA, hardDropB);
     if ((process as any).send !== undefined) {
       (process as any).send(result.toString());
     } else {
