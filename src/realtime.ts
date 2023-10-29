@@ -6,10 +6,8 @@ export type RevealedPiece = {
   piece: number[];
 };
 
-export class TimeWarpingGame<T extends MultiplayerGame> {
+class TimeWarpBase<T extends MultiplayerGame> {
   origin: T;
-  moves: PlayedMove[];
-  numPiecesRevealed: number[];
   checkpoints: Map<number, T>;
   checkpointInterval: number;
   maxCheckpoints: number;
@@ -17,13 +15,77 @@ export class TimeWarpingGame<T extends MultiplayerGame> {
   constructor(origin: T, checkpointInterval = 10, maxCheckpoints = Infinity) {
     this.origin = origin;
     this.checkpoints = new Map();
-    this.moves = [];
-    this.numPiecesRevealed = Array(origin.games.length).fill(0);
     this.checkpointInterval = checkpointInterval;
     this.maxCheckpoints = maxCheckpoints;
     if (this.maxCheckpoints < 0) {
       throw new Error('Max number of checkpoints must be non-negative');
     }
+  }
+
+  closestCheckpoint(time: number) {
+    if (time < this.origin.age) {
+      throw new Error('Cannot warp prior to origin');
+    }
+    let game: T;
+    if (this.checkpoints.has(time - 1)) {
+      game = this.checkpoints.get(time - 1)!;
+    } else {
+      game = this.origin;
+      for (const checkpoint of this.checkpoints.values()) {
+        if (checkpoint.age <= time && checkpoint.age > game.age) {
+          game = checkpoint;
+        }
+      }
+    }
+    if (game.age % this.checkpointInterval && game.age > this.origin.age) {
+      // Use up temporary checkpoint.
+      this.checkpoints.delete(game.age);
+    } else {
+      game = game.clone(true);
+    }
+    return game;
+  }
+
+  // Scheduled checkpoint
+  postTick(game: T) {
+    if (!(game.age % this.checkpointInterval)) {
+      this.checkpoints.set(game.age, game.clone(true));
+    }
+  }
+
+  // Temporary checkpoint and clean-up
+  postWarp(game: T) {
+    if (game.age % this.checkpointInterval) {
+      this.checkpoints.set(game.age, game.clone(true));
+    }
+    if (this.checkpoints.size > this.maxCheckpoints) {
+      const times = [...this.checkpoints.keys()];
+      times.sort((a, b) => b - a); // Inverse order for fast pops
+      while (this.checkpoints.size > this.maxCheckpoints) {
+        this.checkpoints.delete(times.pop()!);
+      }
+    }
+  }
+
+  invalidateCache(start: number) {
+    for (const time of [...this.checkpoints.keys()]) {
+      if (time > start) {
+        this.checkpoints.delete(time);
+      }
+    }
+  }
+}
+
+export class TimeWarpingGame<
+  T extends MultiplayerGame,
+> extends TimeWarpBase<T> {
+  moves: PlayedMove[];
+  numPiecesRevealed: number[];
+
+  constructor(origin: T, checkpointInterval = 10, maxCheckpoints = Infinity) {
+    super(origin, checkpointInterval, maxCheckpoints);
+    this.moves = [];
+    this.numPiecesRevealed = Array(origin.games.length).fill(0);
   }
 
   revealPieces(time: number): RevealedPiece[] {
@@ -77,11 +139,7 @@ export class TimeWarpingGame<T extends MultiplayerGame> {
       return [move];
     }
     this.moves.push(move);
-    for (const time of [...this.checkpoints.keys()]) {
-      if (time > move.time) {
-        this.checkpoints.delete(time);
-      }
-    }
+    this.invalidateCache(move.time);
     const rejectedMoves: PlayedMove[] = [];
     let done = false;
     while (!done) {
@@ -112,29 +170,12 @@ export class TimeWarpingGame<T extends MultiplayerGame> {
   }
 
   _warp(time: number) {
-    if (time < this.origin.age) {
-      throw new Error('Cannot warp prior to origin');
-    }
     if (this.checkpoints.has(time)) {
       return this.checkpoints.get(time)!.clone(true);
     }
-    let game: T;
-    if (this.checkpoints.has(time - 1)) {
-      game = this.checkpoints.get(time - 1)!;
-    } else {
-      game = this.origin;
-      for (const checkpoint of this.checkpoints.values()) {
-        if (checkpoint.age <= time && checkpoint.age > game.age) {
-          game = checkpoint;
-        }
-      }
-    }
-    if (game.age % this.checkpointInterval && game.age > this.origin.age) {
-      // Use up temporary checkpoint.
-      this.checkpoints.delete(game.age);
-    } else {
-      game = game.clone(true);
-    }
+
+    const game = this.closestCheckpoint(time);
+
     while (game.age < time) {
       for (const move of this.moves) {
         if (move.time === game.age) {
@@ -146,22 +187,9 @@ export class TimeWarpingGame<T extends MultiplayerGame> {
         }
       }
       game.tick();
-      // Scheduled checkpoint
-      if (!(game.age % this.checkpointInterval)) {
-        this.checkpoints.set(game.age, game.clone(true));
-      }
+      this.postTick(game);
     }
-    // Temporary checkpoint
-    if (game.age % this.checkpointInterval) {
-      this.checkpoints.set(game.age, game.clone(true));
-    }
-    if (this.checkpoints.size > this.maxCheckpoints) {
-      const times = [...this.checkpoints.keys()];
-      times.sort((a, b) => b - a); // Inverse order for fast pops
-      while (this.checkpoints.size > this.maxCheckpoints) {
-        this.checkpoints.delete(times.pop()!);
-      }
-    }
+    this.postWarp(game);
     return game;
   }
 
@@ -174,13 +202,11 @@ export class TimeWarpingGame<T extends MultiplayerGame> {
   }
 }
 
-export class TimeWarpingMirror<T extends MultiplayerGame> {
-  origin: T;
+export class TimeWarpingMirror<
+  T extends MultiplayerGame,
+> extends TimeWarpBase<T> {
   moves: PlayedMove[][];
   bags: number[][];
-  checkpoints: Map<number, T>;
-  checkpointInterval: number;
-  maxCheckpoints: number;
   seenTicks: number[];
 
   constructor(
@@ -189,23 +215,16 @@ export class TimeWarpingMirror<T extends MultiplayerGame> {
     checkpointInterval = 10,
     maxCheckpoints = Infinity
   ) {
-    this.origin = origin;
-    this.checkpoints = new Map();
+    super(origin, checkpointInterval, maxCheckpoints);
     this.moves = [[], []];
     this.bags = initialBags.map(b => [...b]);
-    this.checkpointInterval = checkpointInterval;
-    this.maxCheckpoints = maxCheckpoints;
     this.seenTicks = Array(origin.games.length).fill(origin.age);
   }
 
   // Moves may arrive in random order
   addMove(move: PlayedMove) {
     this.moves[move.player].push(move);
-    for (const time of [...this.checkpoints.keys()]) {
-      if (time > move.time) {
-        this.checkpoints.delete(time);
-      }
-    }
+    this.invalidateCache(move.time);
     this.moves[move.player].sort((a, b) => a.time - b.time);
     this.seenTicks[move.player] = move.time;
   }
@@ -217,11 +236,7 @@ export class TimeWarpingMirror<T extends MultiplayerGame> {
       for (let i = 0; i < this.moves[move.player].length; ++i) {
         if (this.moves[move.player][i].time === move.time) {
           this.moves[move.player].splice(i, 1);
-          for (const time of [...this.checkpoints.keys()]) {
-            if (time > move.time) {
-              this.checkpoints.delete(time);
-            }
-          }
+          this.invalidateCache(move.time);
           break;
         }
       }
@@ -234,29 +249,10 @@ export class TimeWarpingMirror<T extends MultiplayerGame> {
   }
 
   warp(time: number): [T | null, MultiplayerTickResult[]] {
-    if (time < this.origin.age) {
-      throw new Error('Cannot warp prior to origin');
-    }
     if (this.checkpoints.has(time)) {
       return [this.checkpoints.get(time)!.clone(true), []];
     }
-    let game: T;
-    if (this.checkpoints.has(time - 1)) {
-      game = this.checkpoints.get(time - 1)!;
-    } else {
-      game = this.origin;
-      for (const checkpoint of this.checkpoints.values()) {
-        if (checkpoint.age <= time && checkpoint.age > game.age) {
-          game = checkpoint;
-        }
-      }
-    }
-    if (game.age % this.checkpointInterval && game.age > this.origin.age) {
-      // Use up temporary checkpoint.
-      this.checkpoints.delete(game.age);
-    } else {
-      game = game.clone(true);
-    }
+    const game = this.closestCheckpoint(time);
 
     const novelTicks = [];
     while (game.age < time) {
@@ -282,23 +278,9 @@ export class TimeWarpingMirror<T extends MultiplayerGame> {
           this.seenTicks[i] = game.age;
         }
       }
-      // Scheduled checkpoint
-      if (!(game.age % this.checkpointInterval)) {
-        this.checkpoints.set(game.age, game.clone(true));
-      }
+      this.postTick(game);
     }
-
-    // Temporary checkpoint
-    if (game.age % this.checkpointInterval) {
-      this.checkpoints.set(game.age, game.clone(true));
-    }
-    if (this.checkpoints.size > this.maxCheckpoints) {
-      const times = [...this.checkpoints.keys()];
-      times.sort((a, b) => b - a); // Inverse order for fast pops
-      while (this.checkpoints.size > this.maxCheckpoints) {
-        this.checkpoints.delete(times.pop()!);
-      }
-    }
+    this.postWarp(game);
 
     // Reconstruct true bag for planning/visualization purposes
     for (let i = 0; i < this.moves.length; ++i) {
