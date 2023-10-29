@@ -252,9 +252,21 @@ export class TimeWarpingMirror<
     piece.piece.forEach(color => this.bags[piece.player].push(color));
   }
 
+  // Reconstruct true bag for planning/visualization purposes
+  reconstruct(game: T) {
+    for (let i = 0; i < this.moves.length; ++i) {
+      const numMovesPlayed = this.moves[i].filter(
+        m => m.time < game.age
+      ).length;
+      game.games[i].bag = this.bags[i].slice(2 * numMovesPlayed);
+    }
+    return game;
+  }
+
   warp(time: number): [T | null, MultiplayerTickResult[]] {
     if (this.checkpoints.has(time)) {
-      return [this.checkpoints.get(time)!.clone(true), []];
+      const game = this.checkpoints.get(time)!.clone(true);
+      return [this.reconstruct(game), []];
     }
     const game = this.closestCheckpoint(time);
 
@@ -286,11 +298,6 @@ export class TimeWarpingMirror<
     }
     this.postWarp(game);
 
-    // Reconstruct true bag for planning/visualization purposes
-    for (let i = 0; i < this.moves.length; ++i) {
-      const numMovesPlayed = this.moves[i].filter(m => m.time < time).length;
-      game.games[i].bag = this.bags[i].slice(2 * numMovesPlayed);
-    }
-    return [game, novelTicks];
+    return [this.reconstruct(game), novelTicks];
   }
 }

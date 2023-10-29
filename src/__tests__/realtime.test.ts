@@ -119,7 +119,10 @@ test('Fixed random game (mirror time warp)', () => {
 
   for (const move of moves) {
     mirror.addMove(move);
-    mirror.warp(Math.floor(Math.random() * 1000));
+    const game = mirror.warp(Math.floor(Math.random() * 1000))[0];
+    if (game) {
+      expect(game.games.every(g => expect(g.bag.length).not.toBeLessThan(6)));
+    }
   }
 
   const result = mirror.warp(1700)[0];
