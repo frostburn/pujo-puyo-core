@@ -204,3 +204,47 @@ test('Multiplayer subclassability', () => {
   expect(warped.sound).toBe('tick');
   expect(warped.age).toBe(2);
 });
+
+test('Has memory limits', () => {
+  const origin = new MultiplayerGame();
+  const main = new TimeWarpingGame(origin, 5, 5);
+  // Two scheduled checkpoints at 5 and 10
+  main.warp(10);
+  expect(main.checkpoints.size).toBe(2);
+  // Temporary at 11
+  main.warp(11);
+  expect(main.checkpoints.size).toBe(3);
+  // Temporary now at 12
+  main.warp(12);
+  expect(main.checkpoints.size).toBe(3);
+  // Max reached
+  main.warp(25);
+  expect(main.checkpoints.size).toBe(5);
+  main.warp(26);
+  expect(main.checkpoints.size).toBe(5);
+  const times = [...main.checkpoints.keys()];
+  times.sort((a, b) => a - b);
+  expect(times).toEqual([10, 15, 20, 25, 26]);
+});
+
+test('Mirror has memory limits', () => {
+  const origin = new MultiplayerGame(null, 1, [[], []]);
+  const mirror = new TimeWarpingMirror(origin, [[], []], 5, 5);
+  // Two scheduled checkpoints at 5 and 10
+  mirror.warp(10);
+  expect(mirror.checkpoints.size).toBe(2);
+  // Temporary at 11
+  mirror.warp(11);
+  expect(mirror.checkpoints.size).toBe(3);
+  // Temporary now at 12
+  mirror.warp(12);
+  expect(mirror.checkpoints.size).toBe(3);
+  // Max reached
+  mirror.warp(25);
+  expect(mirror.checkpoints.size).toBe(5);
+  mirror.warp(26);
+  expect(mirror.checkpoints.size).toBe(5);
+  const times = [...mirror.checkpoints.keys()];
+  times.sort((a, b) => a - b);
+  expect(times).toEqual([10, 15, 20, 25, 26]);
+});
