@@ -60,6 +60,7 @@ export const DEFAULT_MARGIN_FRAMES = 192 * NOMINAL_FRAME_RATE;
 const MARGIN_MULTIPLIER = 0.75;
 const MARGIN_INTERVAL = 16 * NOMINAL_FRAME_RATE;
 export const DEFAULT_TARGET_POINTS = 70;
+export const DEFAULT_MERCY_FRAMES = 15 * NOMINAL_FRAME_RATE;
 const ONE_ROCK = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
 
@@ -425,19 +426,23 @@ export class MultiplayerGame {
   allClearBonus: boolean[];
   // Outgoing garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
   canSend: boolean[];
-  // Incoming garbage lock is needed so that chains have time time to resolve and make room for the nuisance puyos.
-  canReceive: boolean[];
   // Counter that keeps track of consecutive rerolls to judicate a draw.
   consecutiveRerolls: number;
   // Number of frames before nuisance conversion factor starts increasing.
   marginFrames: number;
+  // Number of frames before pending garbage is forced onto the screen.
+  mercyFrames: number;
+  // Countdown until pending garbage is forced onto the screen.
+  // Doubles as incoming garbage lock which is needed so that chains have time time to resolve and make room for the nuisance puyos.
+  mercyRemaining: number[];
 
   constructor(
     seed?: number | null,
     screenSeed?: number,
     colorSelections?: number[][],
     targetPoints?: number[],
-    marginFrames = DEFAULT_MARGIN_FRAMES
+    marginFrames = DEFAULT_MARGIN_FRAMES,
+    mercyFrames = DEFAULT_MERCY_FRAMES
   ) {
     if (seed === undefined) {
       seed = randomSeed();
@@ -458,6 +463,7 @@ export class MultiplayerGame {
     }
     this.targetPoints = [...targetPoints];
     this.marginFrames = marginFrames;
+    this.mercyFrames = mercyFrames;
 
     this.pendingGarbage = [0, 0];
     this.accumulatedGarbage = [0, 0];
@@ -465,8 +471,8 @@ export class MultiplayerGame {
     this.allClearQueued = [false, false];
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
-    this.canReceive = [false, false];
     this.consecutiveRerolls = 0;
+    this.mercyRemaining = [mercyFrames, mercyFrames];
   }
 
   get age(): number {
@@ -600,7 +606,7 @@ export class MultiplayerGame {
       this.consecutiveRerolls = 0;
     }
     const result = this.games[player].play(x1, y1, orientation, hardDrop);
-    this.canReceive[player] = true;
+    this.mercyRemaining[player] = 0;
     result.player = player;
     return result;
   }
@@ -671,14 +677,18 @@ export class MultiplayerGame {
     }
 
     for (let i = 0; i < tickResults.length; ++i) {
-      if (this.canReceive[i] && !tickResults[i].busy) {
-        const releasedGarbage = Math.min(ONE_ROCK, this.pendingGarbage[i]);
-        this.games[i].screen.bufferedGarbage += releasedGarbage;
-        this.pendingGarbage[i] -= releasedGarbage;
-        this.canReceive[i] = false;
+      if (!tickResults[i].busy) {
+        if (this.mercyRemaining[i] <= 0) {
+          const releasedGarbage = Math.min(ONE_ROCK, this.pendingGarbage[i]);
+          this.games[i].screen.bufferedGarbage += releasedGarbage;
+          this.pendingGarbage[i] -= releasedGarbage;
+          this.mercyRemaining[i] = this.mercyFrames;
 
-        this.games[i].active = true;
-        tickResults[i].busy = true;
+          this.games[i].active = true;
+          tickResults[i].busy = true;
+        } else {
+          this.mercyRemaining[i]--;
+        }
       }
     }
     return tickResults;
@@ -731,9 +741,9 @@ export class MultiplayerGame {
     result.allClearQueued = [...this.allClearQueued];
     result.allClearBonus = [...this.allClearBonus];
     result.canSend = [...this.canSend];
-    result.canReceive = [...this.canReceive];
     result.consecutiveRerolls = this.consecutiveRerolls;
     result.marginFrames = this.marginFrames;
+    result.mercyRemaining = [...this.mercyRemaining];
     return result;
   }
 }

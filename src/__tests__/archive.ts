@@ -1,5 +1,9 @@
 import {WIDTH} from '../bitboard';
-import {DEFAULT_MARGIN_FRAMES, MultiplayerGame} from '../game';
+import {
+  DEFAULT_MARGIN_FRAMES,
+  DEFAULT_MERCY_FRAMES,
+  MultiplayerGame,
+} from '../game';
 import {JKISS32} from '../jkiss';
 import {Replay} from '../replay';
 
@@ -10,12 +14,14 @@ export function fixedRandomGame() {
   const screenSeed = 11;
   const targetPoints = [70, 70];
   const marginFrames = DEFAULT_MARGIN_FRAMES;
+  const mercyFrames = DEFAULT_MERCY_FRAMES;
   const game = new MultiplayerGame(
     gameSeed,
     screenSeed,
     colorSelections,
     targetPoints,
-    marginFrames
+    marginFrames,
+    mercyFrames
   );
   const rng = new JKISS32(8);
 
@@ -25,6 +31,7 @@ export function fixedRandomGame() {
     colorSelections,
     targetPoints,
     marginFrames,
+    mercyFrames,
     moves: [],
     metadata: {
       event: 'Fixed Random Match',
@@ -70,6 +77,7 @@ export const LUMI_VS_FLEX2: Replay = {
   ],
   targetPoints: [70, 70],
   marginFrames: DEFAULT_MARGIN_FRAMES,
+  mercyFrames: Infinity,
   metadata: {
     event:
       'First human vs. machine game to be captured in algebraic notation for Puyo',

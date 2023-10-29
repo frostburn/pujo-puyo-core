@@ -439,3 +439,12 @@ test('Hard drops make sound', () => {
   }
   expect(numLandings).toBe(1);
 });
+
+test('Garbage forced on a passive opponent', () => {
+  const game = new MultiplayerGame();
+  game.pendingGarbage[0] = 9001;
+  for (let i = 0; i < 2000; ++i) {
+    game.tick();
+  }
+  expect(game.games[0].lockedOut).toBeTrue();
+});

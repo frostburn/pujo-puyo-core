@@ -71,6 +71,7 @@ export type Replay = {
   colorSelections: number[][];
   targetPoints: number[];
   marginFrames: number;
+  mercyFrames: number;
   moves: PlayedMove[];
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -160,7 +161,8 @@ export function logReplay(replay: Replay) {
     replay.gameSeed,
     replay.screenSeed,
     replay.colorSelections,
-    replay.targetPoints
+    replay.targetPoints,
+    replay.mercyFrames
   );
   replay.moves.sort(cmpMoves);
   game.log();
@@ -453,6 +455,9 @@ export function parseReplay(serialized: string): Replay {
   // Only positive infinity makes sense here if JSON serialization failed.
   if (unserialized.marginFrames === null) {
     unserialized.marginFrames = Infinity;
+  }
+  if (unserialized.mercyFrames === null) {
+    unserialized.mercyFrames = Infinity;
   }
   return unserialized;
 }

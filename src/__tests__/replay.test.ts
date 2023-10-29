@@ -28,7 +28,9 @@ test('Re-entrance', () => {
     LUMI_VS_FLEX2.gameSeed,
     LUMI_VS_FLEX2.screenSeed,
     LUMI_VS_FLEX2.colorSelections,
-    LUMI_VS_FLEX2.targetPoints
+    LUMI_VS_FLEX2.targetPoints,
+    LUMI_VS_FLEX2.marginFrames,
+    LUMI_VS_FLEX2.mercyFrames
   );
   let index = 0;
   for (let j = 0; j < 11; ++j) {
