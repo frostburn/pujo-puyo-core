@@ -250,7 +250,7 @@ test.skip('Server/client realtime game simulation', () => {
   simulation: while (true) {
     // Player 0 simulates a bot that plays with perfect reaction time, abusing lag compensation to the fullest.
     if (botTime !== null && clientTimes[0] >= botTime && !didPlay[0]) {
-      const game = mirrors[0].warp(botTime);
+      const game = mirrors[0].warp(botTime)[0];
       if (game) {
         const strategy = flexDropletStrategy1(game.toSimpleGame(0));
         if (strategy.move === PASS) {
@@ -273,7 +273,7 @@ test.skip('Server/client realtime game simulation', () => {
     clientTimes[0]++;
     // Player 1 simulates a human with finite reaction time, while still being lag compensated.
     if (clientTimes[1] >= humanTime + reactionTime && !didPlay[1]) {
-      const game = mirrors[1].warp(clientTimes[1]);
+      const game = mirrors[1].warp(clientTimes[1])[0];
       if (game) {
         const strategy = flexDropletStrategy1(game.toSimpleGame(1));
         if (strategy.move === PASS) {
@@ -332,7 +332,7 @@ test.skip('Server/client realtime game simulation', () => {
 
   const game = main.warp(serverTime);
   game.log();
-  const mirrorGames = mirrors.map(m => m.warp(serverTime));
+  const mirrorGames = mirrors.map(m => m.warp(serverTime)[0]);
 
   for (const mirrorGame of mirrorGames) {
     expect(mirrorGame).not.toBeNull();

@@ -1,4 +1,4 @@
-import {MultiplayerGame, PlayedMove} from './game';
+import {MultiplayerGame, MultiplayerTickResult, PlayedMove} from './game';
 
 export type RevealedPiece = {
   player: number;
@@ -6,14 +6,14 @@ export type RevealedPiece = {
   piece: number[];
 };
 
-export class TimeWarpingGame {
-  origin: MultiplayerGame;
+export class TimeWarpingGame<T extends MultiplayerGame> {
+  origin: T;
   moves: PlayedMove[];
   numPiecesRevealed: number[];
-  checkpoints: Map<number, MultiplayerGame>;
+  checkpoints: Map<number, T>;
   checkpointInterval: number;
 
-  constructor(origin: MultiplayerGame, checkpointInterval = 10) {
+  constructor(origin: T, checkpointInterval = 10) {
     this.origin = origin;
     this.checkpoints = new Map();
     this.moves = [];
@@ -135,7 +135,7 @@ export class TimeWarpingGame {
     return game;
   }
 
-  warp(time: number): MultiplayerGame {
+  warp(time: number): T {
     const result = this._warp(time);
     if (result === null) {
       throw new Error('Time warping game in an inconsistent state');
@@ -144,23 +144,21 @@ export class TimeWarpingGame {
   }
 }
 
-export class TimeWarpingMirror {
-  origin: MultiplayerGame;
+export class TimeWarpingMirror<T extends MultiplayerGame> {
+  origin: T;
   moves: PlayedMove[][];
   bags: number[][];
-  checkpoints: Map<number, MultiplayerGame>;
+  checkpoints: Map<number, T>;
   checkpointInterval: number;
+  seenTicks: number[];
 
-  constructor(
-    origin: MultiplayerGame,
-    initialBags: number[][],
-    checkpointInterval = 10
-  ) {
+  constructor(origin: T, initialBags: number[][], checkpointInterval = 10) {
     this.origin = origin;
     this.checkpoints = new Map();
     this.moves = [[], []];
     this.bags = initialBags.map(b => [...b]);
     this.checkpointInterval = checkpointInterval;
+    this.seenTicks = Array(origin.games.length).fill(origin.age);
   }
 
   // Moves may arrive in random order
@@ -172,6 +170,7 @@ export class TimeWarpingMirror {
       }
     }
     this.moves[move.player].sort((a, b) => a.time - b.time);
+    this.seenTicks[move.player] = move.time;
   }
 
   // Moves may be removed in random order
@@ -197,7 +196,7 @@ export class TimeWarpingMirror {
     piece.piece.forEach(color => this.bags[piece.player].push(color));
   }
 
-  warp(time: number) {
+  warp(time: number): [T | null, MultiplayerTickResult[]] {
     if (time < this.origin.age) {
       throw new Error('Cannot warp prior to origin');
     }
@@ -207,24 +206,31 @@ export class TimeWarpingMirror {
         game = checkpoint;
       }
     }
+    const novelTicks = [];
     game = game.clone(true);
     while (game.age < time) {
       for (let j = 0; j < this.moves.length; ++j) {
         for (let i = 0; i < this.moves[j].length; ++i) {
           const move = this.moves[j][i];
           if (move.time === game.age) {
+            if (game.games[move.player].busy) {
+              // Oh well, I hope the server retcons this soon...
+              return [null, []];
+            }
             // Perform quick surgery
             const piece = this.bags[j].slice(2 * i, 2 * i + 2);
             game.games[j].bag = piece;
-            if (game.games[move.player].busy) {
-              // Oh well, I hope the server retcons this soon...
-              return null;
-            }
             game.play(move.player, move.x1, move.y1, move.orientation);
           }
         }
       }
-      game.tick();
+      const tickResults = game.tick();
+      for (let i = 0; i < tickResults.length; ++i) {
+        if (this.seenTicks[i] < game.age) {
+          novelTicks.push(tickResults[i]);
+          this.seenTicks[i] = game.age;
+        }
+      }
       if (!(game.age % this.checkpointInterval)) {
         this.checkpoints.set(game.age, game.clone(true));
       }
@@ -235,6 +241,6 @@ export class TimeWarpingMirror {
       const numMovesPlayed = this.moves[i].filter(m => m.time < time).length;
       game.games[i].bag = this.bags[i].slice(2 * numMovesPlayed);
     }
-    return game;
+    return [game, novelTicks];
   }
 }

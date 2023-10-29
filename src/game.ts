@@ -35,6 +35,11 @@ export type PlayedMove = {
   orientation: number;
 };
 
+export interface MultiplayerTickResult extends TickResult {
+  player: number;
+  time: number;
+}
+
 // Timings (gravity acts in units of one)
 export const NOMINAL_FRAME_RATE = 30;
 export const JIGGLE_TIME = 15;
@@ -82,6 +87,7 @@ export class OnePlayerGame {
   colorSelection: number[];
   bag: number[];
   lockedOut: boolean;
+  hardDropLanded: boolean;
 
   constructor(
     seed?: number | null,
@@ -125,6 +131,7 @@ export class OnePlayerGame {
     this.bag = [];
     this.advanceColors();
     this.lockedOut = false;
+    this.hardDropLanded = false;
   }
 
   get busy(): boolean {
@@ -251,6 +258,12 @@ export class OnePlayerGame {
       }
     }
 
+    this.hardDropLanded =
+      y1 === HEIGHT - 1 ||
+      puyoAt(mask, x1, y1 + 1) ||
+      y2 === HEIGHT - 1 ||
+      puyoAt(mask, x2, y2 + 1);
+
     // Play the move if possible, while making sure buffered garbage can still be generated.
     if (y1 > 0) {
       this.screen.insertPuyo(x1, y1, this.color1);
@@ -286,6 +299,10 @@ export class OnePlayerGame {
       }
       if (this.lockedOut) {
         tickResult.lockedOut = true;
+      }
+      if (this.hardDropLanded) {
+        tickResult.coloredLanded = true;
+        this.hardDropLanded = false;
       }
       return tickResult;
     }
@@ -371,6 +388,7 @@ export class OnePlayerGame {
       result.bag = this.visibleBag;
     }
     result.lockedOut = this.lockedOut;
+    result.hardDropLanded = this.hardDropLanded;
     return result;
   }
 }
@@ -577,7 +595,7 @@ export class MultiplayerGame {
     return result;
   }
 
-  tick(): TickResult[] {
+  tick(): MultiplayerTickResult[] {
     const age = this.age;
     if (age >= this.marginFrames) {
       if (!((age - this.marginFrames) % MARGIN_INTERVAL)) {
@@ -593,7 +611,7 @@ export class MultiplayerGame {
         }
       }
     }
-    const tickResults = [];
+    const tickResults: MultiplayerTickResult[] = [];
     for (let i = 0; i < this.games.length; ++i) {
       const tickResult = this.games[i].tick();
       this.pointResidues[i] += tickResult.score;
@@ -615,7 +633,7 @@ export class MultiplayerGame {
 
       this.canSend[i] = this.canSend[i] || tickResult.didClear;
 
-      tickResults.push(tickResult);
+      tickResults.push({time: age, player: i, ...tickResult});
     }
     for (let i = 0; i < tickResults.length; ++i) {
       const opponent = 1 - i;
@@ -693,8 +711,9 @@ export class MultiplayerGame {
   }
 
   // Random seed. Don't leak original unless specified.
-  clone(preserveSeed = false) {
-    const result = new MultiplayerGame();
+  clone(preserveSeed = false): this {
+    // XXX: Not the correct type acrobatics, but enough for inference.
+    const result = new (this.constructor as any)() as this;
     result.games = this.games.map(game => game.clone(preserveSeed));
     result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];
