@@ -1,77 +1,19 @@
 import {WIDTH} from '../bitboard';
-import {
-  DEFAULT_MARGIN_FRAMES,
-  MOVES,
-  MultiplayerGame,
-  randomColorSelection,
-} from '../game';
-import {JKISS32, randomSeed} from '../jkiss';
-import {Replay, ReplayIterator} from '../replay';
-
-/** Technically infinite but will end up in a double lockout eventually. */
-export function infiniteRandomMirror(): ReplayIterator {
-  const gameSeed = randomSeed();
-  const colorSelection = randomColorSelection();
-  const screenSeed = randomSeed();
-  const targetPoints = [70, 70];
-  const marginFrames = Infinity;
-  const game = new MultiplayerGame(
-    gameSeed,
-    colorSelection,
-    screenSeed,
-    targetPoints,
-    marginFrames
-  );
-
-  function* playForever() {
-    while (true) {
-      if (Math.random() < 0.01) {
-        if (!game.games[0].busy) {
-          const {x1, y1, orientation} =
-            MOVES[Math.floor(Math.random() * MOVES.length)];
-          const hardDrop = Math.random() < 0.5;
-          yield game.play(0, x1, y1, orientation, hardDrop);
-          yield game.play(1, x1, y1, orientation, hardDrop);
-        }
-      }
-      game.tick();
-    }
-  }
-
-  return {
-    gameSeed,
-    colorSelection,
-    screenSeed,
-    targetPoints,
-    marginFrames,
-    moves: playForever(),
-    metadata: {
-      event: 'Infinite Mirror Match',
-      site: 'archive.ts',
-      names: ['Random A', 'Random B'],
-      elos: [1000, 1000],
-      round: 0,
-      priorWins: [0, 0],
-      msSince1970: new Date().valueOf(),
-      type: 'realtime',
-    },
-    result: {
-      winner: undefined,
-      reason: 'ongoing',
-    },
-  };
-}
+import {DEFAULT_MARGIN_FRAMES, MultiplayerGame} from '../game';
+import {JKISS32} from '../jkiss';
+import {Replay} from '../replay';
 
 export function fixedRandomGame() {
   const gameSeed = 7;
   const colorSelection = [1, 2, 3, 4];
+  const colorSelections = [colorSelection, colorSelection];
   const screenSeed = 11;
   const targetPoints = [70, 70];
   const marginFrames = DEFAULT_MARGIN_FRAMES;
   const game = new MultiplayerGame(
     gameSeed,
-    colorSelection,
     screenSeed,
+    colorSelections,
     targetPoints,
     marginFrames
   );
@@ -80,7 +22,7 @@ export function fixedRandomGame() {
   const replay: Replay = {
     gameSeed,
     screenSeed,
-    colorSelection,
+    colorSelections,
     targetPoints,
     marginFrames,
     moves: [],
@@ -122,7 +64,10 @@ export function fixedRandomGame() {
 export const LUMI_VS_FLEX2: Replay = {
   gameSeed: 3864657304,
   screenSeed: 2580717322,
-  colorSelection: [3, 1, 0, 2],
+  colorSelections: [
+    [3, 1, 0, 2],
+    [3, 1, 0, 2],
+  ],
   targetPoints: [70, 70],
   marginFrames: DEFAULT_MARGIN_FRAMES,
   metadata: {

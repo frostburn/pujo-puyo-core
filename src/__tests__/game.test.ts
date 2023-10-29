@@ -195,21 +195,22 @@ test('Roof play', () => {
 test('Mirror driving', () => {
   const mainSeed = randomSeed();
   const colorSelection = randomColorSelection();
+  const colorSelections = [colorSelection, colorSelection];
   const screenSeed = randomSeed();
   const targetPoints = [70, 70];
   const marginTime = 5000;
   const main = new MultiplayerGame(
     mainSeed,
-    colorSelection,
     screenSeed,
+    colorSelections,
     targetPoints,
     marginTime
   );
 
   const mirror = new MultiplayerGame(
     null,
-    colorSelection,
     screenSeed,
+    colorSelections,
     targetPoints,
     marginTime
   );
@@ -401,7 +402,9 @@ test('AFK end', () => {
 });
 
 test('Handicap', () => {
-  const game = new MultiplayerGame(11, [RED, GREEN, YELLOW, BLUE], 17, [1, 70]);
+  const colorSelection = [RED, GREEN, YELLOW, BLUE];
+  const colorSelections = [colorSelection, colorSelection];
+  const game = new MultiplayerGame(11, 17, colorSelections, [1, 70]);
   game.play(0, 0, 0, 0, true);
   while (game.tick()[0].busy);
   game.play(0, 1, 0, 0, true);

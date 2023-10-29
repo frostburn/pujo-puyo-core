@@ -91,8 +91,8 @@ export class OnePlayerGame {
 
   constructor(
     seed?: number | null,
-    colorSelection?: number[],
-    screenSeed?: number
+    screenSeed?: number,
+    colorSelection?: number[]
   ) {
     this.age = 0;
     this.score = 0;
@@ -370,6 +370,7 @@ export class OnePlayerGame {
   clone(preserveSeed = false) {
     const result = new (this.constructor as new (...args: any[]) => this)(
       undefined,
+      undefined,
       this.colorSelection
     );
     if (preserveSeed) {
@@ -433,18 +434,24 @@ export class MultiplayerGame {
 
   constructor(
     seed?: number | null,
-    colorSelection?: number[],
     screenSeed?: number,
+    colorSelections?: number[][],
     targetPoints?: number[],
     marginFrames = DEFAULT_MARGIN_FRAMES
   ) {
     if (seed === undefined) {
       seed = randomSeed();
     }
-    this.games = [
-      new OnePlayerGame(seed, colorSelection, screenSeed),
-      new OnePlayerGame(seed, colorSelection, screenSeed),
-    ];
+    if (colorSelections === undefined) {
+      this.games = [
+        new OnePlayerGame(seed, screenSeed, undefined),
+        new OnePlayerGame(seed, screenSeed, undefined),
+      ];
+    } else {
+      this.games = colorSelections.map(
+        selection => new OnePlayerGame(seed, screenSeed, selection)
+      );
+    }
 
     if (targetPoints === undefined) {
       targetPoints = [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS];

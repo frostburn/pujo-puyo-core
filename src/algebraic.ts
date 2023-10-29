@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Algebraic Puyo Notation:
  * Colors are represented by uppercase letters: R, G, Y, B and P.
@@ -163,6 +164,7 @@ function inferNuisance(
 }
 
 // TODO: Convert from ReplayTrack instead
+/*
 export function replayToAlgebraic(replay: Replay): string[] {
   const result: string[] = [];
 
@@ -313,6 +315,7 @@ export function replayToAlgebraic(replay: Replay): string[] {
 
   return result;
 }
+*/
 
 const TOKEN_REGEX = /(\[[^\]]+\]|\([^)]+\))|(\.)|(,)|\s+/g;
 

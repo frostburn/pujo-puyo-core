@@ -121,10 +121,11 @@ test.skip('Server/client pausing game simulation', () => {
   const gameSeed = randomSeed();
   const screenSeed = randomSeed();
   const colorSelection = randomColorSelection();
-  const main = new MultiplayerGame(gameSeed, colorSelection, screenSeed);
+  const colorSelections = [colorSelection, colorSelection];
+  const main = new MultiplayerGame(gameSeed, screenSeed, colorSelections);
 
   // In practice this would be two mirrors for each client
-  const mirror = new MultiplayerGame(null, colorSelection, screenSeed);
+  const mirror = new MultiplayerGame(null, screenSeed, colorSelections);
   for (let i = 0; i < mirror.games.length; ++i) {
     // Send initial bag and prompt moves with next pieces
     mirror.games[i].bag = main.games[i].initialBag.concat(
@@ -212,12 +213,13 @@ test.skip('Server/client realtime game simulation', () => {
   const gameSeed = randomSeed();
   const screenSeed = randomSeed();
   const colorSelection = randomColorSelection();
-  const origin = new MultiplayerGame(gameSeed, colorSelection, screenSeed);
+  const colorSelections = [colorSelection, colorSelection];
+  const origin = new MultiplayerGame(gameSeed, screenSeed, colorSelections);
 
   // Server
   const main = new TimeWarpingGame(origin);
 
-  const mirrorOrigin = new MultiplayerGame(null, colorSelection, screenSeed);
+  const mirrorOrigin = new MultiplayerGame(null, screenSeed, colorSelections);
   const initialBags = origin.initialBags;
   // Two dueling clients
   const mirrors = [

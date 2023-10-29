@@ -1,8 +1,7 @@
 import {expect, test} from 'bun:test';
-import {parseReplay, replayToTrack} from '../replay';
-import {LUMI_VS_FLEX2, fixedRandomGame, infiniteRandomMirror} from './archive';
+import {replayToTrack} from '../replay';
+import {LUMI_VS_FLEX2, fixedRandomGame} from './archive';
 import {MultiplayerGame} from '../game';
-import {TickResult} from '../screen';
 
 test('Fixed random game', () => {
   const replay = fixedRandomGame();
@@ -22,39 +21,13 @@ test('Lumi vs. Flex2', () => {
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
 });
 
-test('Infinite mirror game', () => {
-  const replay = infiniteRandomMirror();
-  const snapShots: MultiplayerGame[] = [];
-  function takeSnapShot(game: MultiplayerGame, tickResults: TickResult[]) {
-    if (!tickResults.length) {
-      expect(game.age).toBe(0);
-    }
-    if (!(game.age % 30)) {
-      snapShots.push(game.clone(true));
-    }
-  }
-
-  const track = replayToTrack(replay, takeSnapShot);
-  for (const item of track) {
-    if (item.time > 300) {
-      break;
-    }
-  }
-  expect(snapShots.length).toBeGreaterThan(10);
-  expect(snapShots.pop()!.age).not.toBeLessThan(300);
-
-  const serialized = JSON.stringify(replay);
-  const unserialized = parseReplay(serialized);
-  expect(unserialized).toEqual(replay);
-});
-
 test('Re-entrance', () => {
   const snapShots: MultiplayerGame[] = [];
 
   const game = new MultiplayerGame(
     LUMI_VS_FLEX2.gameSeed,
-    LUMI_VS_FLEX2.colorSelection,
     LUMI_VS_FLEX2.screenSeed,
+    LUMI_VS_FLEX2.colorSelections,
     LUMI_VS_FLEX2.targetPoints
   );
   let index = 0;

@@ -68,21 +68,10 @@ export type ReplayResult = {
 export type Replay = {
   gameSeed: number;
   screenSeed: number;
-  colorSelection: number[];
+  colorSelections: number[][];
   targetPoints: number[];
   marginFrames: number;
   moves: PlayedMove[];
-  metadata: ReplayMetadata;
-  result: ReplayResult;
-};
-
-export type ReplayIterator = {
-  gameSeed: number;
-  screenSeed: number;
-  colorSelection: number[];
-  targetPoints: number[];
-  marginFrames: number;
-  moves: Iterable<PlayedMove>;
   metadata: ReplayMetadata;
   result: ReplayResult;
 };
@@ -169,8 +158,8 @@ export function cmpMoves(a: PlayedMove, b: PlayedMove) {
 export function logReplay(replay: Replay) {
   const game = new MultiplayerGame(
     replay.gameSeed,
-    replay.colorSelection,
     replay.screenSeed,
+    replay.colorSelections,
     replay.targetPoints
   );
   replay.moves.sort(cmpMoves);
@@ -189,14 +178,14 @@ export function logReplay(replay: Replay) {
 }
 
 export function* replayToTrack<T extends typeof MultiplayerGame>(
-  replay: Replay | ReplayIterator,
+  replay: Replay,
   callback?: TickCallback,
   baseClass: T = MultiplayerGame as T
 ): ReplayTrack {
   const game = new baseClass(
     replay.gameSeed,
-    replay.colorSelection,
     replay.screenSeed,
+    replay.colorSelections,
     replay.targetPoints,
     replay.marginFrames
   );

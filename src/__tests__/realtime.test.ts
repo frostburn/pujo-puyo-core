@@ -37,8 +37,8 @@ test('Fixed random game (time warp)', () => {
 
   const origin = new MultiplayerGame(
     replay.gameSeed,
-    replay.colorSelection,
     replay.screenSeed,
+    replay.colorSelections,
     replay.targetPoints,
     replay.marginFrames
   );
@@ -77,16 +77,16 @@ test('Fixed random game (mirror time warp)', () => {
 
   const origin = new MultiplayerGame(
     replay.gameSeed,
-    replay.colorSelection,
     replay.screenSeed,
+    replay.colorSelections,
     replay.targetPoints,
     replay.marginFrames
   );
 
   const mirrorOrigin = new MultiplayerGame(
     null,
-    replay.colorSelection,
     replay.screenSeed,
+    replay.colorSelections,
     replay.targetPoints,
     replay.marginFrames
   );
@@ -159,12 +159,12 @@ test('Multiplayer subclassability', () => {
 
     constructor(
       seed?: number | null,
-      colorSelection?: number[],
       screenSeed?: number,
+      colorSelections?: number[][],
       targetPoints?: number[],
       marginFrames = DEFAULT_MARGIN_FRAMES
     ) {
-      super(seed, colorSelection, screenSeed, targetPoints, marginFrames);
+      super(seed, screenSeed, colorSelections, targetPoints, marginFrames);
       this.sound = 'tick';
     }
 
