@@ -144,7 +144,8 @@ export class TimeWarpingGame<
     let done = false;
     while (!done) {
       done = true;
-      for (const futureMove of [...this.moves]) {
+      const rejected: PlayedMove[] = [];
+      for (const futureMove of this.moves) {
         // Sanity check. Shouldn't trigger.
         if (futureMove.time === move.time) {
           const game = this._warp(move.time);
@@ -159,11 +160,14 @@ export class TimeWarpingGame<
         if (futureMove.time > move.time) {
           const game = this._warp(futureMove.time);
           if (!game || game.games[futureMove.player].busy) {
-            this.moves.splice(this.moves.indexOf(futureMove), 1);
+            rejected.push(futureMove);
             rejectedMoves.push(futureMove);
             done = false;
           }
         }
+      }
+      for (const futureMove of rejected) {
+        this.moves.splice(this.moves.indexOf(futureMove), 1);
       }
     }
     return rejectedMoves;
