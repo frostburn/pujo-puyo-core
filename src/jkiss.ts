@@ -80,8 +80,8 @@ export class JKISS32 {
     return result;
   }
 
-  clone(): JKISS32 {
-    return new JKISS32(this.state);
+  clone() {
+    return new (this.constructor as new (...args: any[]) => this)(this.state);
   }
 
   toJSON() {

@@ -368,7 +368,10 @@ export class OnePlayerGame {
 
   // Random seed, don't leak original unless specified.
   clone(preserveSeed = false) {
-    const result = new OnePlayerGame(undefined, this.colorSelection);
+    const result = new (this.constructor as new (...args: any[]) => this)(
+      undefined,
+      this.colorSelection
+    );
     if (preserveSeed) {
       if (this.jkiss === null) {
         result.jkiss = null;
@@ -711,8 +714,8 @@ export class MultiplayerGame {
   }
 
   // Random seed. Don't leak original unless specified.
-  clone(preserveSeed = false): this {
-    const result = new (this.constructor as typeof MultiplayerGame)() as this;
+  clone(preserveSeed = false) {
+    const result = new (this.constructor as new () => this)();
     result.games = this.games.map(game => game.clone(preserveSeed));
     result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];
@@ -925,7 +928,7 @@ export class SimpleGame {
   }
 
   clone() {
-    return new SimpleGame(
+    return new (this.constructor as new (...args: any[]) => this)(
       this.screen.toSimpleScreen(),
       this.targetPoints,
       this.pointResidue,

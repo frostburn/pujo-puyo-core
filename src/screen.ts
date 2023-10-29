@@ -790,7 +790,9 @@ export class PuyoScreen extends SimplePuyoScreen {
   }
 
   clone(preserveSeed = false) {
-    const result = new PuyoScreen(preserveSeed ? this.jkiss.state : undefined);
+    const result = new (this.constructor as new (...args: any[]) => this)(
+      preserveSeed ? this.jkiss.state : undefined
+    );
     result.grid = this.grid.map(clone);
     result.bufferedGarbage = this.bufferedGarbage;
     result.chainNumber = this.chainNumber;
