@@ -89,6 +89,7 @@ export class OnePlayerGame {
   bag: number[];
   lockedOut: boolean;
   hardDropLanded: boolean;
+  consecutiveRerolls: number;
 
   constructor(
     seed?: number | null,
@@ -133,6 +134,7 @@ export class OnePlayerGame {
     this.advanceColors();
     this.lockedOut = false;
     this.hardDropLanded = false;
+    this.consecutiveRerolls = 0;
   }
 
   get busy(): boolean {
@@ -189,7 +191,7 @@ export class OnePlayerGame {
     return this.bag[1];
   }
 
-  isReroll(x1: number, orientation: number) {
+  isReroll(x1: number, orientation: number, mask?: Puyos) {
     orientation &= 3;
     let x2 = x1;
     if (orientation === 1) {
@@ -197,7 +199,9 @@ export class OnePlayerGame {
     } else if (orientation === 3) {
       x2++;
     }
-    const mask = this.screen.mask;
+    if (mask === undefined) {
+      mask = this.screen.mask;
+    }
     return puyoAt(mask, x1, GHOST_Y) && puyoAt(mask, x2, GHOST_Y);
   }
 
@@ -264,6 +268,12 @@ export class OnePlayerGame {
       puyoAt(mask, x1, y1 + 1) ||
       y2 === HEIGHT - 1 ||
       puyoAt(mask, x2, y2 + 1);
+
+    if (this.isReroll(x1, orientation, mask)) {
+      this.consecutiveRerolls++;
+    } else {
+      this.consecutiveRerolls = 0;
+    }
 
     // Play the move if possible, while making sure buffered garbage can still be generated.
     if (y1 > 0) {
@@ -394,6 +404,7 @@ export class OnePlayerGame {
     }
     result.lockedOut = this.lockedOut;
     result.hardDropLanded = this.hardDropLanded;
+    result.consecutiveRerolls = this.consecutiveRerolls;
     return result;
   }
 }
@@ -426,8 +437,6 @@ export class MultiplayerGame {
   allClearBonus: boolean[];
   // Outgoing garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
   canSend: boolean[];
-  // Counter that keeps track of consecutive rerolls to judicate a draw.
-  consecutiveRerolls: number;
   // Number of frames before nuisance conversion factor starts increasing.
   marginFrames: number;
   // Number of frames before pending garbage is forced onto the screen.
@@ -471,7 +480,6 @@ export class MultiplayerGame {
     this.allClearQueued = [false, false];
     this.allClearBonus = [false, false];
     this.canSend = [false, false];
-    this.consecutiveRerolls = 0;
     this.mercyRemaining = [mercyFrames, mercyFrames];
   }
 
@@ -600,11 +608,6 @@ export class MultiplayerGame {
     orientation: number,
     hardDrop = false
   ): PlayedMove {
-    if (this.games[player].isReroll(x1, orientation)) {
-      this.consecutiveRerolls++;
-    } else {
-      this.consecutiveRerolls = 0;
-    }
     const result = this.games[player].play(x1, y1, orientation, hardDrop);
     this.mercyRemaining[player] = 0;
     result.player = player;
@@ -741,7 +744,6 @@ export class MultiplayerGame {
     result.allClearQueued = [...this.allClearQueued];
     result.allClearBonus = [...this.allClearBonus];
     result.canSend = [...this.canSend];
-    result.consecutiveRerolls = this.consecutiveRerolls;
     result.marginFrames = this.marginFrames;
     result.mercyRemaining = [...this.mercyRemaining];
     return result;

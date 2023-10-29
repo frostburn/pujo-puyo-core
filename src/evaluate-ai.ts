@@ -7,7 +7,7 @@ import {
 } from '.';
 import {MOVES, MultiplayerGame, PASS} from './game';
 
-const MAX_CONSECUTIVE_REROLLS = 20;
+const MAX_CONSECUTIVE_REROLLS = 10;
 
 function duel(
   strategyA: typeof flexDropletStrategy2,
@@ -45,7 +45,10 @@ function duel(
         return 0;
       } else if (tickResults[1].lockedOut) {
         return 1;
-      } else if (game.consecutiveRerolls >= MAX_CONSECUTIVE_REROLLS) {
+      } else if (
+        game.games[0].consecutiveRerolls >= MAX_CONSECUTIVE_REROLLS &&
+        game.games[1].consecutiveRerolls >= MAX_CONSECUTIVE_REROLLS
+      ) {
         return 0.5;
       }
     }

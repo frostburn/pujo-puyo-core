@@ -391,7 +391,9 @@ test('Null end', () => {
   }
   expect(game.age).toBe(12510);
   // It's up to the game server to decide how much is too much.
-  expect(game.consecutiveRerolls).toBe(1362);
+  expect(
+    game.games[0].consecutiveRerolls + game.games[1].consecutiveRerolls
+  ).toBe(1362);
 });
 
 test('AFK end', () => {
@@ -413,7 +415,7 @@ test('Handicap', () => {
   while (game.tick()[0].busy);
 
   expect(game.pendingGarbage[1]).toBe(100);
-  expect(game.consecutiveRerolls).toBe(0);
+  game.games.forEach(g => expect(g.consecutiveRerolls).toBe(0));
 });
 
 test('Soft drops make sound', () => {

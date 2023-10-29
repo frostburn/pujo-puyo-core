@@ -117,7 +117,7 @@ test('Ineffective lockout (no bag)', () => {
 
 // Skipped due to simulating a whole game with non-trivial AI being a bit heavy
 test.skip('Server/client pausing game simulation', () => {
-  const maxConsecutiveRerolls = 20;
+  const maxConsecutiveRerolls = 10;
   const gameSeed = randomSeed();
   const screenSeed = randomSeed();
   const colorSelection = randomColorSelection();
@@ -177,7 +177,10 @@ test.skip('Server/client pausing game simulation', () => {
           break simulation;
         }
         // Impasse: End simulation
-        if (main.consecutiveRerolls >= maxConsecutiveRerolls) {
+        if (
+          main.games[0].consecutiveRerolls >= maxConsecutiveRerolls &&
+          main.games[1].consecutiveRerolls >= maxConsecutiveRerolls
+        ) {
           break simulation;
         }
         // Request more moves
@@ -209,7 +212,7 @@ test.skip('Server/client pausing game simulation', () => {
 // Skipped due to simulating a whole game with non-trivial AI being a bit heavy
 // At least it's not running in wall clock time...
 test.skip('Server/client realtime game simulation', () => {
-  const maxConsecutiveRerolls = 20;
+  const maxConsecutiveRerolls = 10;
   const gameSeed = randomSeed();
   const screenSeed = randomSeed();
   const colorSelection = randomColorSelection();
@@ -327,7 +330,10 @@ test.skip('Server/client realtime game simulation', () => {
       break simulation;
     }
     // Impasse: End simulation
-    if (game.consecutiveRerolls >= maxConsecutiveRerolls) {
+    if (
+      game.games[0].consecutiveRerolls >= maxConsecutiveRerolls &&
+      game.games[1].consecutiveRerolls >= maxConsecutiveRerolls
+    ) {
       break simulation;
     }
   }
