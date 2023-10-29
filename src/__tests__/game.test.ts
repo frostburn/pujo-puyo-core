@@ -412,3 +412,27 @@ test('Handicap', () => {
   expect(game.pendingGarbage[1]).toBe(100);
   expect(game.consecutiveRerolls).toBe(0);
 });
+
+test('Soft drops make sound', () => {
+  const game = new SinglePlayerGame();
+  game.play(0, 1, 0, false);
+  let numLandings = 0;
+  for (let i = 0; i < 100; ++i) {
+    if (game.tick().coloredLanded) {
+      numLandings++;
+    }
+  }
+  expect(numLandings).toBe(1);
+});
+
+test('Hard drops make sound', () => {
+  const game = new SinglePlayerGame();
+  game.play(0, 1, 0, true);
+  let numLandings = 0;
+  for (let i = 0; i < 100; ++i) {
+    if (game.tick().coloredLanded) {
+      numLandings++;
+    }
+  }
+  expect(numLandings).toBe(1);
+});
