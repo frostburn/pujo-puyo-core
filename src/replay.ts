@@ -442,12 +442,11 @@ export function logReplayTrack(track: ReplayTrack) {
 }
 
 /**
- * Undo JSON.stringify(replay).
- * @param serialized JSON serialized Replay instance.
- * @returns Unserialized Replay instance.
+ * Undo damage done by JSON.stringify(replay).
+ * @param unserialized Replay instance unserialized from a JSON string.
+ * @returns Repaired Replay instance.
  */
-export function parseReplay(serialized: string): Replay {
-  const unserialized: Replay = JSON.parse(serialized);
+export function repairReplay(unserialized: Replay): Replay {
   // Make explicit
   if (unserialized.result.winner === undefined) {
     unserialized.result.winner = undefined;
@@ -460,4 +459,14 @@ export function parseReplay(serialized: string): Replay {
     unserialized.mercyFrames = Infinity;
   }
   return unserialized;
+}
+
+/**
+ * Undo JSON.stringify(replay).
+ * @param serialized JSON serialized Replay instance.
+ * @returns Unserialized Replay instance.
+ */
+export function parseReplay(serialized: string): Replay {
+  const unserialized: Replay = JSON.parse(serialized);
+  return repairReplay(unserialized);
 }

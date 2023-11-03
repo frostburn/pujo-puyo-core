@@ -78,20 +78,25 @@ let gamesSoftVsHard1 = 10006;
 const eloSoftVsHard1 = elo(eloFlex1, scoreSoftVsHard1, gamesSoftVsHard1); // 1847.522531306342
 */
 
+/*
 let scoreFlex2 = 9933.5;
 let gamesFlex2 = 10606;
 // const eloFlex2 = elo(eloFlex1, scoreFlex2, gamesFlex2); // 2621.4855239818644
+*/
+
+let scoreSoftRandom = 100569.5;
+let gamesSoftRandom = 194877;
 
 function collect(result: number) {
-  scoreFlex2 += result;
-  gamesFlex2++;
-  const eloFlex2 = elo(eloFlex1, scoreFlex2, gamesFlex2);
-  console.log(scoreFlex2, '/', gamesFlex2, '->', eloFlex2);
+  scoreSoftRandom += result;
+  gamesSoftRandom++;
+  const eloSoftRandom = elo(eloRandom, scoreSoftRandom, gamesSoftRandom);
+  console.log(scoreSoftRandom, '/', gamesSoftRandom, '->', eloSoftRandom);
 }
 
-const strategyA = flexDropletStrategy2;
-const hardDropA = true;
-const strategyB = flexDropletStrategy1;
+const strategyA = randomStrategy;
+const hardDropA = false;
+const strategyB = randomStrategy;
 const hardDropB = true;
 
 if (process.argv.length === 3) {
