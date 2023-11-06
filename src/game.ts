@@ -61,6 +61,7 @@ const MARGIN_MULTIPLIER = 0.75;
 const MARGIN_INTERVAL = 16 * NOMINAL_FRAME_RATE;
 export const DEFAULT_TARGET_POINTS = 70;
 export const DEFAULT_MERCY_FRAMES = 15 * NOMINAL_FRAME_RATE;
+const FORCE_RELEASE = -100;
 const ONE_ROCK = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
 
@@ -609,7 +610,7 @@ export class MultiplayerGame {
     hardDrop = false
   ): PlayedMove {
     const result = this.games[player].play(x1, y1, orientation, hardDrop);
-    this.mercyRemaining[player] = 0;
+    this.mercyRemaining[player] = FORCE_RELEASE;
     result.player = player;
     return result;
   }
@@ -685,10 +686,11 @@ export class MultiplayerGame {
           const releasedGarbage = Math.min(ONE_ROCK, this.pendingGarbage[i]);
           this.games[i].screen.bufferedGarbage += releasedGarbage;
           this.pendingGarbage[i] -= releasedGarbage;
+          if (releasedGarbage || this.mercyRemaining[i] === FORCE_RELEASE) {
+            tickResults[i].busy = true;
+            this.games[i].active = true;
+          }
           this.mercyRemaining[i] = this.mercyFrames;
-
-          this.games[i].active = true;
-          tickResults[i].busy = true;
         } else {
           this.mercyRemaining[i]--;
         }

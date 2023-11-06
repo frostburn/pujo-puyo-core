@@ -450,3 +450,12 @@ test('Garbage forced on a passive opponent', () => {
   }
   expect(game.games[0].lockedOut).toBeTrue();
 });
+
+test('No mercy flashes', () => {
+  const game = new MultiplayerGame();
+  for (let i = 0; i < 1000; ++i) {
+    expect(game.games[0].busy).toBeFalse();
+    expect(game.games[1].busy).toBeFalse();
+    game.tick();
+  }
+});
