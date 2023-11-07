@@ -3,9 +3,9 @@ import {
   DEFAULT_TARGET_POINTS,
   MOVES,
   MultiplayerGame,
-  OnePlayerGame,
   SimpleGame,
   SinglePlayerGame,
+  randomBag,
   randomColorSelection,
 } from '../game';
 import {JKISS32, randomSeed} from '../jkiss';
@@ -72,13 +72,13 @@ test('No pending flash', () => {
 
 test('Garbage schedule', () => {
   // Create a deterministic game.
-  const game = new MultiplayerGame(0);
+  const game = new MultiplayerGame([0, 0]);
   // Create a deterministic player that is somewhat successful.
-  const jkiss = new JKISS32(7);
+  const jkiss = new JKISS32(1);
   // Create a dummy opponent.
   const dummy = new JKISS32(420);
 
-  for (let i = 0; i < 1950; ++i) {
+  for (let i = 0; i < 1500; ++i) {
     if (!game.games[0].busy) {
       const {x1, y1, orientation} = MOVES[jkiss.step() % MOVES.length];
       game.play(0, x1, y1, orientation);
@@ -102,12 +102,12 @@ test('Garbage schedule', () => {
     game.tick();
   }
 
-  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(3);
+  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(11);
 });
 
 test('Garbage offset in a fixed symmetric game', () => {
   // Create a random game.
-  const game = new MultiplayerGame(592624221);
+  const game = new MultiplayerGame([592624221, 592624221]);
   // Create players with identical strategies.
   const players = [new JKISS32(3848740175), new JKISS32(3848740175)];
 
@@ -126,7 +126,7 @@ test('Garbage offset in a fixed symmetric game', () => {
 test('Garbage offset in a random symmetric game', () => {
   // Create a random game.
   const gameSeed = randomSeed();
-  const game = new MultiplayerGame(gameSeed);
+  const game = new MultiplayerGame([gameSeed, gameSeed]);
   // Create players with identical strategies.
   const playerSeed = randomSeed();
   const players = [new JKISS32(playerSeed), new JKISS32(playerSeed)];
@@ -186,31 +186,35 @@ test('Simple game pending garbage offsetting', () => {
 });
 
 test('Roof play', () => {
-  const game = new OnePlayerGame();
+  const game = new SinglePlayerGame();
   // Not recommended to play on the garbage insert line but kicks should still apply.
   game.play(0, 1, 0);
   expect(puyoCount(game.screen.mask)).toBe(2);
 });
 
 test('Mirror driving', () => {
-  const mainSeed = randomSeed();
+  const mainSeeds = [randomSeed(), randomSeed()];
   const colorSelection = randomColorSelection();
   const colorSelections = [colorSelection, colorSelection];
-  const screenSeed = randomSeed();
+  const screenSeeds = [randomSeed(), randomSeed()];
+  const initialBag = randomBag(colorSelection);
+  const initialBags = [initialBag, initialBag];
   const targetPoints = [70, 70];
   const marginTime = 5000;
   const main = new MultiplayerGame(
-    mainSeed,
-    screenSeed,
+    mainSeeds,
+    screenSeeds,
     colorSelections,
+    initialBags,
     targetPoints,
     marginTime
   );
 
   const mirror = new MultiplayerGame(
     null,
-    screenSeed,
+    screenSeeds,
     colorSelections,
+    [[], []],
     targetPoints,
     marginTime
   );
@@ -287,7 +291,7 @@ test('Permanent lockout', () => {
 });
 
 test('To simple game JSON', () => {
-  const game = new MultiplayerGame(0);
+  const game = new MultiplayerGame([0, 0]);
   game.play(0, 1, 2, 3, true);
   game.play(1, 2, 3, 0, true);
   while (game.tick()[0].busy);
@@ -378,7 +382,7 @@ test('Move count reduction (rerolls)', () => {
 });
 
 test('Null end', () => {
-  const game = new MultiplayerGame(0);
+  const game = new MultiplayerGame([0, 0]);
 
   while (true) {
     if (!game.games[0].busy) {
@@ -397,7 +401,7 @@ test('Null end', () => {
 });
 
 test('AFK end', () => {
-  const game = new MultiplayerGame(1);
+  const game = new MultiplayerGame([1, 1]);
 
   while (!game.tick()[0].lockedOut);
   expect(game.age).toBe(12502);
@@ -406,7 +410,13 @@ test('AFK end', () => {
 test('Handicap', () => {
   const colorSelection = [RED, GREEN, YELLOW, BLUE];
   const colorSelections = [colorSelection, colorSelection];
-  const game = new MultiplayerGame(11, 17, colorSelections, [1, 70]);
+  const game = new MultiplayerGame(
+    [11, 11],
+    [17, 17],
+    colorSelections,
+    [[], []],
+    [1, 70]
+  );
   game.play(0, 0, 0, 0, true);
   while (game.tick()[0].busy);
   game.play(0, 1, 0, 0, true);
@@ -458,4 +468,40 @@ test('No mercy flashes', () => {
     expect(game.games[1].busy).toBeFalse();
     game.tick();
   }
+});
+
+test('No mirror cheese', () => {
+  // Create a deterministic game with anti-cheese seeds.
+  const game = new MultiplayerGame([0, 1]);
+  // Create a deterministic player that is somewhat successful.
+  const jkiss = new JKISS32(7);
+
+  let move: (typeof MOVES)[number] | null = null;
+
+  for (let i = 0; i < 1950; ++i) {
+    // Play using cheesy mirror strategy.
+    if (move !== null) {
+      expect(!game.games[1].busy);
+      game.play(1, move.x1, move.y1, move.orientation);
+      move = null;
+    }
+    if (!game.games[0].busy) {
+      // The cheese works but only up to a limit.
+      if (game.age < 426) {
+        for (let i = 0; i < game.games[0].screen.grid.length; ++i) {
+          expect(
+            puyosEqual(
+              game.games[0].screen.grid[i],
+              game.games[1].screen.grid[i]
+            )
+          ).toBeTrue();
+        }
+      }
+      move = MOVES[jkiss.step() % MOVES.length];
+      game.play(0, move.x1, move.y1, move.orientation);
+    }
+    game.tick();
+  }
+
+  expect(game.games[0].score).not.toBe(game.games[1].score);
 });
