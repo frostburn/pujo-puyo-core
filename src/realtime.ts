@@ -213,15 +213,10 @@ export class TimeWarpingMirror<
   bags: number[][];
   seenTicks: number[];
 
-  constructor(
-    origin: T,
-    initialBags: number[][],
-    checkpointInterval = 10,
-    maxCheckpoints = Infinity
-  ) {
+  constructor(origin: T, checkpointInterval = 10, maxCheckpoints = Infinity) {
     super(origin, checkpointInterval, maxCheckpoints);
     this.moves = [[], []];
-    this.bags = initialBags.map(b => [...b]);
+    this.bags = origin.games.map(g => [...g.bag]);
     this.seenTicks = Array(origin.games.length).fill(origin.age);
   }
 

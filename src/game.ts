@@ -78,6 +78,42 @@ export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
   return [...result];
 }
 
+export function randomBag(colorSelection: number[], jkiss?: JKISS32): number[] {
+  // Bag implementation prevents extreme droughts.
+  let result = [];
+  for (let j = 0; j < colorSelection.length; ++j) {
+    for (let i = 0; i < BAG_QUOTA_PER_COLOR; ++i) {
+      result.push(colorSelection[j]);
+    }
+  }
+
+  // Spice prevents cheesy "all clear" shenanigans.
+  if (jkiss === undefined) {
+    const spiceAmount =
+      BASE_BAG_SPICE + Math.floor(Math.random() * EXTRA_BAG_SPICE);
+    for (let i = 0; i < spiceAmount; ++i) {
+      result.push(
+        colorSelection[Math.floor(Math.random() * colorSelection.length)]
+      );
+    }
+  } else {
+    result = result.concat(
+      jkiss.sample(
+        colorSelection,
+        BASE_BAG_SPICE + (jkiss.step() % EXTRA_BAG_SPICE)
+      )
+    );
+  }
+
+  // Shake it!
+  if (jkiss === undefined) {
+    result.sort(() => Math.random() - 0.5);
+  } else {
+    jkiss.shuffle(result);
+  }
+  return result;
+}
+
 export class OnePlayerGame {
   age: number;
   score: number;
@@ -93,9 +129,10 @@ export class OnePlayerGame {
   consecutiveRerolls: number;
 
   constructor(
-    seed?: number | null,
-    screenSeed?: number,
-    colorSelection?: number[]
+    seed: number | null,
+    screenSeed: number,
+    colorSelection: number[],
+    initialBag: number[]
   ) {
     this.age = 0;
     this.score = 0;
@@ -104,35 +141,18 @@ export class OnePlayerGame {
     this.active = false;
     if (seed === null) {
       this.jkiss = null;
-      if (screenSeed === undefined) {
-        throw new Error(
-          'Screen seed must be explicitly provided when running as a mirror.'
-        );
-      }
     } else {
       this.jkiss = new JKISS32(seed);
-      if (screenSeed === undefined) {
-        screenSeed = this.jkiss.step();
-      }
     }
     this.screen = new PuyoScreen(screenSeed);
+    this.colorSelection = [...colorSelection];
 
-    if (colorSelection === undefined) {
-      if (this.jkiss === null) {
-        throw new Error(
-          'Color selection must be explicitly provided when running as a mirror.'
-        );
-      }
-      this.colorSelection = this.jkiss.subset(
-        [...Array(NUM_PUYO_COLORS).keys()],
-        COLOR_SELECTION_SIZE
-      );
-    } else {
-      this.colorSelection = [...colorSelection];
+    this.bag = [...initialBag];
+    if (this.bag.length < 6) {
+      this.bag.unshift(-1);
+      this.bag.unshift(-1);
+      this.advanceColors();
     }
-
-    this.bag = [];
-    this.advanceColors();
     this.lockedOut = false;
     this.hardDropLanded = false;
     this.consecutiveRerolls = 0;
@@ -167,19 +187,7 @@ export class OnePlayerGame {
     while (this.bag.length < 6) {
       // Bag implementation prevents extreme droughts.
       // Spice prevents cheesy "all clear" shenanigans.
-      let freshBag = [];
-      for (let j = 0; j < this.colorSelection.length; ++j) {
-        for (let i = 0; i < BAG_QUOTA_PER_COLOR; ++i) {
-          freshBag.push(this.colorSelection[j]);
-        }
-      }
-      freshBag = freshBag.concat(
-        this.jkiss.sample(
-          this.colorSelection,
-          BASE_BAG_SPICE + (this.jkiss.step() % EXTRA_BAG_SPICE)
-        )
-      );
-      this.jkiss.shuffle(freshBag);
+      const freshBag = randomBag(this.colorSelection, this.jkiss);
       this.bag = this.bag.concat(freshBag);
     }
   }
@@ -383,7 +391,8 @@ export class OnePlayerGame {
     const result = new (this.constructor as new (...args: any[]) => this)(
       undefined,
       undefined,
-      this.colorSelection
+      this.colorSelection,
+      []
     );
     if (preserveSeed) {
       if (this.jkiss === null) {
@@ -411,6 +420,44 @@ export class OnePlayerGame {
 }
 
 export class SinglePlayerGame extends OnePlayerGame {
+  constructor(
+    seed?: number | null,
+    screenSeed?: number,
+    colorSelection?: number[],
+    initialBag?: number[]
+  ) {
+    if (seed === undefined) {
+      seed = randomSeed();
+      if (screenSeed === undefined) {
+        screenSeed = randomSeed();
+      }
+      if (colorSelection === undefined) {
+        colorSelection = randomColorSelection();
+      }
+    } else if (seed === null) {
+      if (screenSeed === undefined || colorSelection === undefined) {
+        throw new Error(
+          'A mirror requires an explicit screen seed and color selection'
+        );
+      }
+    } else {
+      const jkiss = new JKISS32(seed);
+      if (screenSeed === undefined) {
+        screenSeed = jkiss.step();
+      }
+      if (colorSelection === undefined) {
+        colorSelection = jkiss.subset(
+          [...Array(NUM_PUYO_COLORS).keys()],
+          COLOR_SELECTION_SIZE
+        );
+      }
+    }
+    if (initialBag === undefined) {
+      initialBag = [];
+    }
+    super(seed, screenSeed, colorSelection, initialBag);
+  }
+
   tick(): TickResult {
     const tickResult = super.tick();
     this.score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
@@ -447,26 +494,92 @@ export class MultiplayerGame {
   mercyRemaining: number[];
 
   constructor(
-    seed?: number | null,
-    screenSeed?: number,
+    seeds?: number[] | null | null[],
+    screenSeeds?: number[],
     colorSelections?: number[][],
+    initialBags?: number[][],
     targetPoints?: number[],
     marginFrames = DEFAULT_MARGIN_FRAMES,
     mercyFrames = DEFAULT_MERCY_FRAMES
   ) {
-    if (seed === undefined) {
-      seed = randomSeed();
-    }
-    if (colorSelections === undefined) {
-      this.games = [
-        new OnePlayerGame(seed, screenSeed, undefined),
-        new OnePlayerGame(seed, screenSeed, undefined),
-      ];
+    if (seeds === undefined) {
+      // Bags will eventually diverge
+      seeds = [randomSeed(), randomSeed()];
+      if (screenSeeds === undefined) {
+        // Garbage will fall randomly and independently
+        screenSeeds = [randomSeed(), randomSeed()];
+      }
+      if (colorSelections === undefined) {
+        // Colors are the same for both players
+        const colorSelection = randomColorSelection();
+        colorSelections = [colorSelection, colorSelection];
+      }
+      if (initialBags === undefined) {
+        // The initial pieces are same for both players (if possible)
+        const initialBag = randomBag(colorSelections[0]);
+        initialBags = [initialBag, initialBag];
+        if (colorSelections[0].length !== colorSelections[1].length) {
+          initialBags[1] = randomBag(colorSelections[1]);
+        } else {
+          for (let i = 0; i < colorSelections[0].length; ++i) {
+            if (colorSelections[0][i] !== colorSelections[1][i]) {
+              initialBags[1] = randomBag(colorSelections[1]);
+              break;
+            }
+          }
+        }
+      }
+    } else if (seeds === null || seeds[0] === null) {
+      if (screenSeeds === undefined || colorSelections === undefined) {
+        throw new Error(
+          'Mirrors require explicit screen seeds and color selections'
+        );
+      }
+      seeds = [null, null];
     } else {
-      this.games = colorSelections.map(
-        selection => new OnePlayerGame(seed, screenSeed, selection)
-      );
+      const jkiss = new JKISS32(seeds[0]);
+      if (screenSeeds === undefined) {
+        screenSeeds = [jkiss.step(), jkiss.step()];
+      }
+      if (colorSelections === undefined) {
+        const colorSelection = jkiss.subset(
+          [...Array(NUM_PUYO_COLORS).keys()],
+          COLOR_SELECTION_SIZE
+        );
+        colorSelections = [colorSelection, colorSelection];
+      }
+      if (initialBags === undefined) {
+        const initialBag = randomBag(colorSelections[0], jkiss);
+        initialBags = [initialBag, initialBag];
+        if (colorSelections[0].length !== colorSelections[1].length) {
+          initialBags[1] = randomBag(colorSelections[1], jkiss);
+        } else {
+          for (let i = 0; i < colorSelections[0].length; ++i) {
+            if (colorSelections[0][i] !== colorSelections[1][i]) {
+              initialBags[1] = randomBag(colorSelections[1], jkiss);
+              break;
+            }
+          }
+        }
+      }
     }
+    if (initialBags === undefined) {
+      initialBags = [[], []];
+    }
+    this.games = [
+      new OnePlayerGame(
+        seeds[0],
+        screenSeeds[0],
+        colorSelections[0],
+        initialBags[0]
+      ),
+      new OnePlayerGame(
+        seeds[1],
+        screenSeeds[1],
+        colorSelections[1],
+        initialBags[1]
+      ),
+    ];
 
     if (targetPoints === undefined) {
       targetPoints = [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS];
@@ -737,7 +850,12 @@ export class MultiplayerGame {
 
   // Random seed. Don't leak original unless specified.
   clone(preserveSeed = false) {
-    const result = new (this.constructor as new () => this)();
+    const result = new (this.constructor as new (...args: any[]) => this)(
+      [0, 0],
+      [0, 0],
+      this.games.map(g => g.colorSelection),
+      this.games.map(g => g.bag)
+    );
     result.games = this.games.map(game => game.clone(preserveSeed));
     result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];

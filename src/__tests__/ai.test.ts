@@ -6,6 +6,7 @@ import {
   MultiplayerGame,
   PASS,
   SimpleGame,
+  randomBag,
   randomColorSelection,
 } from '../game';
 import {effectiveLockout, flexDropletStrategy1} from '../ai';
@@ -115,17 +116,29 @@ test('Ineffective lockout (no bag)', () => {
   expect(heuristic).toBe(0);
 });
 
-// Skipped due to simulating a whole game with non-trivial AI being a bit heavy
-test.skip('Server/client pausing game simulation', () => {
+test('Server/client pausing game simulation', () => {
   const maxConsecutiveRerolls = 10;
-  const gameSeed = randomSeed();
-  const screenSeed = randomSeed();
+  const gameSeeds = [randomSeed(), randomSeed()];
+  const screenSeeds = [randomSeed(), randomSeed()];
   const colorSelection = randomColorSelection();
   const colorSelections = [colorSelection, colorSelection];
-  const main = new MultiplayerGame(gameSeed, screenSeed, colorSelections);
+  const initialBag = randomBag(colorSelection);
+  const initialBags = [initialBag, initialBag];
+  const main = new MultiplayerGame(
+    gameSeeds,
+    screenSeeds,
+    colorSelections,
+    initialBags
+  );
 
   // In practice this would be two mirrors for each client
-  const mirror = new MultiplayerGame(null, screenSeed, colorSelections);
+  const knownBags = main.initialBags;
+  const mirror = new MultiplayerGame(
+    null,
+    screenSeeds,
+    colorSelections,
+    knownBags
+  );
   for (let i = 0; i < mirror.games.length; ++i) {
     // Send initial bag and prompt moves with next pieces
     mirror.games[i].bag = main.games[i].initialBag.concat(
@@ -209,25 +222,35 @@ test.skip('Server/client pausing game simulation', () => {
   }
 });
 
-// Skipped due to simulating a whole game with non-trivial AI being a bit heavy
-// At least it's not running in wall clock time...
-test.skip('Server/client realtime game simulation', () => {
+test('Server/client realtime game simulation', () => {
   const maxConsecutiveRerolls = 10;
-  const gameSeed = randomSeed();
-  const screenSeed = randomSeed();
+  const gameSeeds = [randomSeed(), randomSeed()];
+  const screenSeeds = [randomSeed(), randomSeed()];
   const colorSelection = randomColorSelection();
   const colorSelections = [colorSelection, colorSelection];
-  const origin = new MultiplayerGame(gameSeed, screenSeed, colorSelections);
+  const initialBag = randomBag(colorSelection);
+  const initialBags = [initialBag, initialBag];
+  const origin = new MultiplayerGame(
+    gameSeeds,
+    screenSeeds,
+    colorSelections,
+    initialBags
+  );
 
   // Server
   const main = new TimeWarpingGame(origin);
 
-  const mirrorOrigin = new MultiplayerGame(null, screenSeed, colorSelections);
-  const initialBags = origin.initialBags;
+  const knownBags = origin.initialBags;
+  const mirrorOrigin = new MultiplayerGame(
+    null,
+    screenSeeds,
+    colorSelections,
+    knownBags
+  );
   // Two dueling clients
   const mirrors = [
-    new TimeWarpingMirror(mirrorOrigin, initialBags),
-    new TimeWarpingMirror(mirrorOrigin, initialBags),
+    new TimeWarpingMirror(mirrorOrigin),
+    new TimeWarpingMirror(mirrorOrigin),
   ];
 
   // Client-side
@@ -263,7 +286,7 @@ test.skip('Server/client realtime game simulation', () => {
         } else {
           const {x1, y1, orientation} = MOVES[strategy.move];
           const move = game.play(0, x1, y1, orientation, true);
-          console.log('Adding', move);
+          // console.log('Adding', move);
           const rejectedMoves = main.addMove(move);
           mirrors[0].addMove(move);
           mirrors[1].addMove(move);
@@ -286,7 +309,7 @@ test.skip('Server/client realtime game simulation', () => {
         } else {
           const {x1, y1, orientation} = MOVES[strategy.move];
           const move = game.play(1, x1, y1, orientation, Math.random() > 0.2);
-          console.log('Adding', move);
+          // console.log('Adding', move);
           const rejectedMoves = main.addMove(move);
           mirrors[0].addMove(move);
           mirrors[1].addMove(move);
@@ -311,7 +334,7 @@ test.skip('Server/client realtime game simulation', () => {
     serverTime++;
     const pieces = main.revealPieces(serverTime);
     for (const piece of pieces) {
-      console.log('Revealing', piece);
+      // console.log('Revealing', piece);
       if (piece.player === 0) {
         botTime = piece.time;
       } else {
@@ -339,12 +362,12 @@ test.skip('Server/client realtime game simulation', () => {
   }
 
   const game = main.warp(serverTime);
-  game.log();
+  // game.log();
   const mirrorGames = mirrors.map(m => m.warp(serverTime)[0]);
 
   for (const mirrorGame of mirrorGames) {
     expect(mirrorGame).not.toBeNull();
-    mirrorGame!.log();
+    // mirrorGame!.log();
   }
 
   for (let i = 0; i < game.games.length; ++i) {

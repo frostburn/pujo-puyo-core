@@ -11,6 +11,28 @@ test('Fixed random game', () => {
   expect(track).toHaveLength(88);
 
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
+
+  const game = new MultiplayerGame(
+    replay.gameSeeds,
+    replay.screenSeeds,
+    replay.colorSelections,
+    replay.initialBags,
+    replay.targetPoints,
+    replay.marginFrames,
+    replay.mercyFrames
+  );
+  for (const move of replay.moves) {
+    while (game.age < move.time) {
+      game.tick();
+    }
+    expect(game.games[move.player].busy).toBeFalse();
+    game.play(move.player, move.x1, move.y1, move.orientation);
+  }
+  while (game.games.some(g => g.busy)) {
+    game.tick();
+  }
+  expect(game.games[0].score).toBe(3300);
+  expect(game.games[1].score).toBe(720);
 });
 
 test('Lumi vs. Flex2', () => {
@@ -25,9 +47,10 @@ test('Re-entrance', () => {
   const snapShots: MultiplayerGame[] = [];
 
   const game = new MultiplayerGame(
-    LUMI_VS_FLEX2.gameSeed,
-    LUMI_VS_FLEX2.screenSeed,
+    LUMI_VS_FLEX2.gameSeeds,
+    LUMI_VS_FLEX2.screenSeeds,
     LUMI_VS_FLEX2.colorSelections,
+    LUMI_VS_FLEX2.initialBags,
     LUMI_VS_FLEX2.targetPoints,
     LUMI_VS_FLEX2.marginFrames,
     LUMI_VS_FLEX2.mercyFrames

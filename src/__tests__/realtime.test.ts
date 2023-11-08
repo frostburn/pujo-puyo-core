@@ -1,6 +1,11 @@
 import {expect, test} from 'bun:test';
 import {fixedRandomGame} from './archive';
-import {DEFAULT_MARGIN_FRAMES, MultiplayerGame, PlayedMove} from '../game';
+import {
+  DEFAULT_MARGIN_FRAMES,
+  DEFAULT_MERCY_FRAMES,
+  MultiplayerGame,
+  PlayedMove,
+} from '../game';
 import {RevealedPiece, TimeWarpingGame, TimeWarpingMirror} from '../realtime';
 import {HEIGHT} from '../bitboard';
 
@@ -36,11 +41,13 @@ test('Fixed random game (time warp)', () => {
   const replay = fixedRandomGame();
 
   const origin = new MultiplayerGame(
-    replay.gameSeed,
-    replay.screenSeed,
+    replay.gameSeeds,
+    replay.screenSeeds,
     replay.colorSelections,
+    replay.initialBags,
     replay.targetPoints,
-    replay.marginFrames
+    replay.marginFrames,
+    replay.mercyFrames
   );
 
   const main = new TimeWarpingGame(origin);
@@ -76,22 +83,26 @@ test('Fixed random game (mirror time warp)', () => {
   const replay = fixedRandomGame();
 
   const origin = new MultiplayerGame(
-    replay.gameSeed,
-    replay.screenSeed,
+    replay.gameSeeds,
+    replay.screenSeeds,
     replay.colorSelections,
+    replay.initialBags,
     replay.targetPoints,
-    replay.marginFrames
+    replay.marginFrames,
+    replay.mercyFrames
   );
 
   const mirrorOrigin = new MultiplayerGame(
     null,
-    replay.screenSeed,
+    replay.screenSeeds,
     replay.colorSelections,
+    origin.initialBags,
     replay.targetPoints,
-    replay.marginFrames
+    replay.marginFrames,
+    replay.mercyFrames
   );
 
-  const mirror = new TimeWarpingMirror(mirrorOrigin, origin.initialBags);
+  const mirror = new TimeWarpingMirror(mirrorOrigin);
 
   const game = origin.clone(true);
 
@@ -137,7 +148,7 @@ test('Fixed random game (mirror time warp)', () => {
 
 test('Sounds of the past', () => {
   const origin = new MultiplayerGame();
-  const mirror = new TimeWarpingMirror(origin, origin.initialBags);
+  const mirror = new TimeWarpingMirror(origin);
 
   mirror.warp(10);
 
@@ -161,13 +172,23 @@ test('Multiplayer subclassability', () => {
     sound: string;
 
     constructor(
-      seed?: number | null,
-      screenSeed?: number,
+      seeds?: number[] | null | null[],
+      screenSeeds?: number[],
       colorSelections?: number[][],
+      initialBags?: number[][],
       targetPoints?: number[],
-      marginFrames = DEFAULT_MARGIN_FRAMES
+      marginFrames = DEFAULT_MARGIN_FRAMES,
+      mercyFrames = DEFAULT_MERCY_FRAMES
     ) {
-      super(seed, screenSeed, colorSelections, targetPoints, marginFrames);
+      super(
+        seeds,
+        screenSeeds,
+        colorSelections,
+        initialBags,
+        targetPoints,
+        marginFrames,
+        mercyFrames
+      );
       this.sound = 'tick';
     }
 
@@ -231,8 +252,8 @@ test('Has memory limits', () => {
 });
 
 test('Mirror has memory limits', () => {
-  const origin = new MultiplayerGame(null, 1, [[], []]);
-  const mirror = new TimeWarpingMirror(origin, [[], []], 5, 5);
+  const origin = new MultiplayerGame(null, [1, 1], [[], []]);
+  const mirror = new TimeWarpingMirror(origin, 5, 5);
   // Two scheduled checkpoints at 5 and 10
   mirror.warp(10);
   expect(mirror.checkpoints.size).toBe(2);

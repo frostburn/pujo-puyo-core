@@ -8,17 +8,19 @@ import {JKISS32} from '../jkiss';
 import {Replay} from '../replay';
 
 export function fixedRandomGame() {
-  const gameSeed = 7;
+  const gameSeeds = [7, 7];
   const colorSelection = [1, 2, 3, 4];
   const colorSelections = [colorSelection, colorSelection];
-  const screenSeed = 11;
+  const initialBags = [[], []];
+  const screenSeeds = [11, 11];
   const targetPoints = [70, 70];
   const marginFrames = DEFAULT_MARGIN_FRAMES;
   const mercyFrames = DEFAULT_MERCY_FRAMES;
   const game = new MultiplayerGame(
-    gameSeed,
-    screenSeed,
+    gameSeeds,
+    screenSeeds,
     colorSelections,
+    initialBags,
     targetPoints,
     marginFrames,
     mercyFrames
@@ -26,9 +28,10 @@ export function fixedRandomGame() {
   const rng = new JKISS32(8);
 
   const replay: Replay = {
-    gameSeed,
-    screenSeed,
+    gameSeeds,
+    screenSeeds,
     colorSelections,
+    initialBags,
     targetPoints,
     marginFrames,
     mercyFrames,
@@ -69,12 +72,13 @@ export function fixedRandomGame() {
 }
 
 export const LUMI_VS_FLEX2: Replay = {
-  gameSeed: 3864657304,
-  screenSeed: 2580717322,
+  gameSeeds: [3864657304, 3864657304],
+  screenSeeds: [2580717322, 2580717322],
   colorSelections: [
     [3, 1, 0, 2],
     [3, 1, 0, 2],
   ],
+  initialBags: [[], []],
   targetPoints: [70, 70],
   marginFrames: DEFAULT_MARGIN_FRAMES,
   mercyFrames: Infinity,
