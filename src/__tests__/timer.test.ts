@@ -37,3 +37,12 @@ test('Negative time zeroed', () => {
   expect(timer.display()).toBe('0:00');
   expect(timer.flagged()).toBeTrue();
 });
+
+test('No increment after flagging', () => {
+  const timer = new FischerTimer(10000, 20000, 1000);
+  timer.begin();
+  timer.remaining = 0;
+  expect(timer.end()).toBeTrue();
+  expect(timer.display()).toBe('0:00');
+  expect(timer.flagged()).toBeTrue();
+});

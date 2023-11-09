@@ -47,11 +47,15 @@ export class FischerTimer {
     }
     const delta = performance.now() - this.reference;
     this.reference = null;
-    const flagged = delta > this.remaining;
-    this.remaining = Math.min(
-      this.maximum,
-      this.remaining - delta + this.increment
-    );
+    const flagged = delta >= this.remaining;
+    if (flagged) {
+      this.remaining = 0;
+    } else {
+      this.remaining = Math.min(
+        this.maximum,
+        this.remaining - delta + this.increment
+      );
+    }
     return flagged;
   }
 
@@ -74,6 +78,6 @@ export class FischerTimer {
   }
 
   flagged(): boolean {
-    return this.timeRemaining() < 0;
+    return this.timeRemaining() <= 0;
   }
 }
