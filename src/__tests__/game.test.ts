@@ -3,10 +3,14 @@ import {
   DEFAULT_TARGET_POINTS,
   MOVES,
   MultiplayerGame,
+  MultiplayerParams,
+  ReplayParams,
   SimpleGame,
   SinglePlayerGame,
-  randomBag,
-  randomColorSelection,
+  defaultRules,
+  randomMultiplayer,
+  randomSinglePlayer,
+  seededMultiplayer,
 } from '../game';
 import {JKISS32, randomSeed} from '../jkiss';
 import {
@@ -14,19 +18,19 @@ import {
   GARBAGE,
   GREEN,
   HEIGHT,
-  PuyoScreen,
+  PURPLE,
   RED,
-  SimplePuyoScreen,
   WIDTH,
   YELLOW,
   puyoCount,
   puyosEqual,
 } from '..';
+import {screenFromLines, simpleFromLines} from './utils';
 
 test('Pending commit time', () => {
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   game.games[0].bag[0] = RED;
-  game.games[0].screen = PuyoScreen.fromLines([
+  game.games[0].screen = screenFromLines([
     'R     ',
     'RNNNNN',
     'RNNNNN',
@@ -57,7 +61,7 @@ test('Pending commit time', () => {
 });
 
 test('No pending flash', () => {
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   game.pendingGarbage[0] = 30;
   const tickResults = game.tick();
   expect(tickResults[0].busy).toBeFalse();
@@ -72,7 +76,8 @@ test('No pending flash', () => {
 
 test('Garbage schedule', () => {
   // Create a deterministic game.
-  const game = new MultiplayerGame([0, 0]);
+  const params = seededMultiplayer(0);
+  const game = new MultiplayerGame(params);
   // Create a deterministic player that is somewhat successful.
   const jkiss = new JKISS32(1);
   // Create a dummy opponent.
@@ -102,12 +107,15 @@ test('Garbage schedule', () => {
     game.tick();
   }
 
-  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(11);
+  expect(puyoCount(game.games[1].screen.grid[GARBAGE])).toBe(8);
 });
 
 test('Garbage offset in a fixed symmetric game', () => {
   // Create a random game.
-  const game = new MultiplayerGame([592624221, 592624221]);
+  const params = randomMultiplayer();
+  params.bagSeeds = [592624221, 592624221];
+  params.garbageSeeds = [592624221, 592624221];
+  const game = new MultiplayerGame(params);
   // Create players with identical strategies.
   const players = [new JKISS32(3848740175), new JKISS32(3848740175)];
 
@@ -125,8 +133,9 @@ test('Garbage offset in a fixed symmetric game', () => {
 
 test('Garbage offset in a random symmetric game', () => {
   // Create a random game.
-  const gameSeed = randomSeed();
-  const game = new MultiplayerGame([gameSeed, gameSeed]);
+  const params = randomMultiplayer();
+  params.bagSeeds[1] = params.bagSeeds[0];
+  const game = new MultiplayerGame(params);
   // Create players with identical strategies.
   const playerSeed = randomSeed();
   const players = [new JKISS32(playerSeed), new JKISS32(playerSeed)];
@@ -144,7 +153,7 @@ test('Garbage offset in a random symmetric game', () => {
 });
 
 test('Simple game late garbage offsetting', () => {
-  const screen = SimplePuyoScreen.fromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
+  const screen = simpleFromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
   screen.tick();
 
   const game = new SimpleGame(
@@ -156,7 +165,8 @@ test('Simple game late garbage offsetting', () => {
     1000,
     1000,
     [RED, GREEN, YELLOW, BLUE],
-    [YELLOW, YELLOW]
+    [YELLOW, YELLOW],
+    defaultRules()
   );
 
   game.playAndTick(0);
@@ -165,7 +175,7 @@ test('Simple game late garbage offsetting', () => {
 });
 
 test('Simple game pending garbage offsetting', () => {
-  const screen = SimplePuyoScreen.fromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
+  const screen = simpleFromLines(['YRGB  ', 'YYRG B', 'RRGGBB']);
   screen.tick();
 
   const game = new SimpleGame(
@@ -177,7 +187,8 @@ test('Simple game pending garbage offsetting', () => {
     0,
     0,
     [RED, GREEN, YELLOW, BLUE],
-    [YELLOW, YELLOW]
+    [YELLOW, YELLOW],
+    defaultRules()
   );
 
   game.playAndTick(0);
@@ -186,38 +197,23 @@ test('Simple game pending garbage offsetting', () => {
 });
 
 test('Roof play', () => {
-  const game = new SinglePlayerGame();
+  const game = new SinglePlayerGame(randomSinglePlayer());
   // Not recommended to play on the garbage insert line but kicks should still apply.
   game.play(0, 1, 0);
   expect(puyoCount(game.screen.mask)).toBe(2);
 });
 
 test('Mirror driving', () => {
-  const mainSeeds = [randomSeed(), randomSeed()];
-  const colorSelection = randomColorSelection();
-  const colorSelections = [colorSelection, colorSelection];
-  const screenSeeds = [randomSeed(), randomSeed()];
-  const initialBag = randomBag(colorSelection);
-  const initialBags = [initialBag, initialBag];
-  const targetPoints = [70, 70];
-  const marginTime = 5000;
-  const main = new MultiplayerGame(
-    mainSeeds,
-    screenSeeds,
-    colorSelections,
-    initialBags,
-    targetPoints,
-    marginTime
-  );
+  const params = randomMultiplayer();
+  params.rules.marginFrames = 5000;
+  const main = new MultiplayerGame(params);
 
-  const mirror = new MultiplayerGame(
-    null,
-    screenSeeds,
-    colorSelections,
-    [[], []],
-    targetPoints,
-    marginTime
-  );
+  const mirrorParams: MultiplayerParams = {
+    ...params,
+    bagSeeds: null,
+    initialBags: [[], []],
+  };
+  const mirror = new MultiplayerGame(mirrorParams);
 
   // No independent moves.
   expect(() => mirror.play(0, 0, 2, 0)).toThrow();
@@ -260,7 +256,7 @@ test('Mirror driving', () => {
 });
 
 test('No 1-frame cheese', () => {
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   game.pendingGarbage[1] = 44;
 
   game.play(1, 0, HEIGHT - 1, 0);
@@ -275,7 +271,7 @@ test('No 1-frame cheese', () => {
 });
 
 test('Permanent lockout', () => {
-  const game = new SinglePlayerGame();
+  const game = new SinglePlayerGame(randomSinglePlayer());
   while (!game.lockedOut) {
     game.play(Math.floor(Math.random() * WIDTH), 2, 0, Math.random() < 0.5);
     while (game.tick().busy);
@@ -291,7 +287,7 @@ test('Permanent lockout', () => {
 });
 
 test('To simple game JSON', () => {
-  const game = new MultiplayerGame([0, 0]);
+  const game = new MultiplayerGame(randomMultiplayer());
   game.play(0, 1, 2, 3, true);
   game.play(1, 2, 3, 0, true);
   while (game.tick()[0].busy);
@@ -303,7 +299,7 @@ test('To simple game JSON', () => {
 });
 
 test('Default move count', () => {
-  const screen = new SimplePuyoScreen();
+  const screen = simpleFromLines([]);
   const game = new SimpleGame(
     screen,
     DEFAULT_TARGET_POINTS,
@@ -313,13 +309,14 @@ test('Default move count', () => {
     0,
     0,
     [RED, GREEN, YELLOW, BLUE],
-    [RED, GREEN]
+    [RED, GREEN],
+    defaultRules()
   );
   expect(game.availableMoves.length).toBe(22);
 });
 
 test('Move count with pass', () => {
-  const screen = new SimplePuyoScreen();
+  const screen = simpleFromLines([]);
   const game = new SimpleGame(
     screen,
     DEFAULT_TARGET_POINTS,
@@ -329,13 +326,14 @@ test('Move count with pass', () => {
     1,
     1,
     [RED, GREEN, YELLOW, BLUE],
-    [RED, GREEN]
+    [RED, GREEN],
+    defaultRules()
   );
   expect(game.availableMoves.length).toBe(23);
 });
 
 test('Move count reduction (symmetry)', () => {
-  const screen = new SimplePuyoScreen();
+  const screen = simpleFromLines([]);
   const game = new SimpleGame(
     screen,
     DEFAULT_TARGET_POINTS,
@@ -345,13 +343,14 @@ test('Move count reduction (symmetry)', () => {
     0,
     0,
     [RED, GREEN, YELLOW, BLUE],
-    [RED, RED]
+    [RED, RED],
+    defaultRules()
   );
   expect(game.availableMoves.length).toBe(11);
 });
 
 test('Move count reduction (rerolls)', () => {
-  const screen = SimplePuyoScreen.fromLines([
+  const screen = simpleFromLines([
     'RR',
     'GG',
     'RR',
@@ -376,13 +375,14 @@ test('Move count reduction (rerolls)', () => {
     0,
     0,
     [RED, GREEN, YELLOW, BLUE],
-    [RED, GREEN]
+    [RED, GREEN],
+    defaultRules()
   );
   expect(game.availableMoves.length).toBe(22 - 4 - 2 + 1);
 });
 
 test('Null end', () => {
-  const game = new MultiplayerGame([0, 0]);
+  const game = new MultiplayerGame(seededMultiplayer(0));
 
   while (true) {
     if (!game.games[0].busy) {
@@ -401,7 +401,7 @@ test('Null end', () => {
 });
 
 test('AFK end', () => {
-  const game = new MultiplayerGame([1, 1]);
+  const game = new MultiplayerGame(seededMultiplayer(1));
 
   while (!game.tick()[0].lockedOut);
   expect(game.age).toBe(12502);
@@ -410,13 +410,12 @@ test('AFK end', () => {
 test('Handicap', () => {
   const colorSelection = [RED, GREEN, YELLOW, BLUE];
   const colorSelections = [colorSelection, colorSelection];
-  const game = new MultiplayerGame(
-    [11, 11],
-    [17, 17],
-    colorSelections,
-    [[], []],
-    [1, 70]
-  );
+  const params = randomMultiplayer();
+  params.colorSelections = colorSelections;
+  const initialBag = [GREEN, RED, RED, RED, RED, RED];
+  params.initialBags = [initialBag, initialBag];
+  params.rules.targetPoints = [1, 70];
+  const game = new MultiplayerGame(params);
   game.play(0, 0, 0, 0, true);
   while (game.tick()[0].busy);
   game.play(0, 1, 0, 0, true);
@@ -429,7 +428,7 @@ test('Handicap', () => {
 });
 
 test('Soft drops make sound', () => {
-  const game = new SinglePlayerGame();
+  const game = new SinglePlayerGame(randomSinglePlayer());
   game.play(0, 1, 0, false);
   let numLandings = 0;
   for (let i = 0; i < 100; ++i) {
@@ -441,7 +440,7 @@ test('Soft drops make sound', () => {
 });
 
 test('Hard drops make sound', () => {
-  const game = new SinglePlayerGame();
+  const game = new SinglePlayerGame(randomSinglePlayer());
   game.play(0, 1, 0, true);
   let numLandings = 0;
   for (let i = 0; i < 100; ++i) {
@@ -453,7 +452,7 @@ test('Hard drops make sound', () => {
 });
 
 test('Garbage forced on a passive opponent', () => {
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   game.pendingGarbage[0] = 9001;
   for (let i = 0; i < 2000; ++i) {
     game.tick();
@@ -462,7 +461,7 @@ test('Garbage forced on a passive opponent', () => {
 });
 
 test('No mercy flashes', () => {
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   for (let i = 0; i < 1000; ++i) {
     expect(game.games[0].busy).toBeFalse();
     expect(game.games[1].busy).toBeFalse();
@@ -472,7 +471,9 @@ test('No mercy flashes', () => {
 
 test('No mirror cheese', () => {
   // Create a deterministic game with anti-cheese seeds.
-  const game = new MultiplayerGame([0, 1]);
+  const params = seededMultiplayer(0);
+  params.bagSeeds = [0, 1];
+  const game = new MultiplayerGame(params);
   // Create a deterministic player that is somewhat successful.
   const jkiss = new JKISS32(7);
 
@@ -487,7 +488,7 @@ test('No mirror cheese', () => {
     }
     if (!game.games[0].busy) {
       // The cheese works but only up to a limit.
-      if (game.age < 426) {
+      if (game.age < 384) {
         for (let i = 0; i < game.games[0].screen.grid.length; ++i) {
           expect(
             puyosEqual(
@@ -504,4 +505,57 @@ test('No mirror cheese', () => {
   }
 
   expect(game.games[0].score).not.toBe(game.games[1].score);
+});
+
+test('Custom rules', () => {
+  const params: ReplayParams = {
+    bagSeeds: [1, 2],
+    garbageSeeds: [3, 4],
+    colorSelections: [
+      [RED, GREEN, BLUE],
+      [RED, GREEN, YELLOW, BLUE, PURPLE],
+    ],
+    initialBags: [
+      [RED, RED, RED, RED, GREEN, GREEN],
+      [RED, RED, RED, RED, RED, PURPLE],
+    ],
+    rules: {
+      clearThreshold: 5,
+      jiggleFrames: 20,
+      sparkFrames: 30,
+      targetPoints: [90, 50],
+      marginFrames: Infinity,
+      mercyFrames: Infinity,
+    },
+  };
+  const game = new MultiplayerGame(params);
+  game.play(0, 0, 0, 0, true);
+  game.play(1, 0, 0, 0, true);
+  while (game.games.some(g => g.busy)) game.tick();
+  expect(game.age).toBe(23);
+  game.play(0, 0, 0, 0, true);
+  game.play(1, 0, 0, 0, true);
+  while (game.games.some(g => g.busy)) game.tick();
+  expect(game.games[0].score).toBe(0);
+  expect(game.games[1].score).toBe(0);
+  game.play(0, 0, 0, 0, true);
+  game.play(1, 0, 0, 0, true);
+  while (game.games.some(g => g.busy)) game.tick();
+  expect(game.games[0].score).toBe(0);
+  expect(game.games[1].score).toBe(50);
+  expect(game.pendingGarbage[0]).toBe(1);
+
+  const clone = game.clone();
+  expect(clone.games[0].colorSelection).toHaveLength(3);
+  expect(clone.games[1].colorSelection).toHaveLength(5);
+  expect(clone.targetPoints[0]).toBe(90);
+  expect(clone.targetPoints[1]).toBe(50);
+
+  for (const g of clone.games) {
+    expect(g.rules.clearThreshold).toBe(5);
+    expect(g.rules.jiggleFrames).toBe(20);
+    expect(g.rules.sparkFrames).toBe(30);
+    expect(g.rules.marginFrames).toBe(Infinity);
+    expect(g.rules.mercyFrames).toBe(Infinity);
+  }
 });

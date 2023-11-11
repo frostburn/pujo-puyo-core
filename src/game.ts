@@ -5,12 +5,37 @@ import {
   GARBAGE,
   NUM_PUYO_COLORS,
   PuyoScreen,
+  ScreenRules,
   ScreenState,
   SimplePuyoScreen,
   TickResult,
   YELLOW,
   colorOf,
 } from './screen';
+
+export interface GameRules extends ScreenRules {
+  jiggleFrames: number; // How long puyos "jiggle" after landing
+  sparkFrames: number; // How long puyos "spark" when cleared
+  marginFrames: number; // How long until sent garbage starts getting multiplied
+  mercyFrames: number; // How long until garbage is forced on a passive opponent
+  targetPoints: number[]; // Conversion factor from scored points to nuisance puyos generated
+}
+
+export type OnePlayerParams = {
+  bagSeed: number | Uint32Array | null;
+  garbageSeed: number | Uint32Array;
+  colorSelection: number[];
+  initialBag: number[];
+  rules: GameRules;
+};
+
+export type MultiplayerParams = {
+  bagSeeds: (number | Uint32Array)[] | null;
+  garbageSeeds: (number | Uint32Array)[];
+  colorSelections: number[][];
+  initialBags: number[][];
+  rules: GameRules;
+};
 
 export type GameState = {
   screen: ScreenState;
@@ -40,10 +65,11 @@ export interface MultiplayerTickResult extends TickResult {
   time: number;
 }
 
-// Timings (gravity acts in units of one)
+// Timings and rules (gravity acts in units of one)
 export const NOMINAL_FRAME_RATE = 30;
-export const JIGGLE_TIME = 15;
-export const SPARK_TIME = 20;
+export const DEFAULT_JIGGLE_FRAMES = 15;
+export const DEFAULT_SPARK_FRAMES = 20;
+export const DEFAULT_CLEAR_THRESHOLD = 4;
 
 // Colors
 const COLOR_SELECTION_SIZE = 4;
@@ -64,6 +90,17 @@ export const DEFAULT_MERCY_FRAMES = 15 * NOMINAL_FRAME_RATE;
 const FORCE_RELEASE = -100;
 const ONE_ROCK = WIDTH * 5;
 const ALL_CLEAR_GARBAGE = 30;
+
+export function defaultRules(): GameRules {
+  return {
+    clearThreshold: DEFAULT_CLEAR_THRESHOLD,
+    jiggleFrames: DEFAULT_JIGGLE_FRAMES,
+    sparkFrames: DEFAULT_SPARK_FRAMES,
+    marginFrames: DEFAULT_MARGIN_FRAMES,
+    mercyFrames: DEFAULT_MERCY_FRAMES,
+    targetPoints: [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS],
+  };
+}
 
 export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
   if (size < 0) {
@@ -114,6 +151,49 @@ export function randomBag(colorSelection: number[], jkiss?: JKISS32): number[] {
   return result;
 }
 
+export interface ReplayParams extends MultiplayerParams {
+  bagSeeds: number[];
+  garbageSeeds: number[];
+}
+
+export function randomSinglePlayer(): OnePlayerParams {
+  return {
+    bagSeed: randomSeed(),
+    garbageSeed: randomSeed(),
+    colorSelection: randomColorSelection(),
+    initialBag: [],
+    rules: defaultRules(),
+  };
+}
+
+export function randomMultiplayer(): ReplayParams {
+  const colorSelection = randomColorSelection();
+  const initialBag = randomBag(colorSelection);
+  return {
+    bagSeeds: [randomSeed(), randomSeed()],
+    garbageSeeds: [randomSeed(), randomSeed()],
+    colorSelections: [colorSelection, colorSelection],
+    initialBags: [initialBag, initialBag],
+    rules: defaultRules(),
+  };
+}
+
+export function seededMultiplayer(seed: number): ReplayParams {
+  const jkiss = new JKISS32(seed);
+  const colorSelection = jkiss.subset(
+    [...Array(NUM_PUYO_COLORS).keys()],
+    COLOR_SELECTION_SIZE
+  );
+  const initialBag = randomBag(colorSelection, jkiss);
+  return {
+    bagSeeds: [jkiss.step(), jkiss.step()],
+    garbageSeeds: [jkiss.step(), jkiss.step()],
+    colorSelections: [colorSelection, colorSelection],
+    initialBags: [initialBag, initialBag],
+    rules: defaultRules(),
+  };
+}
+
 export class OnePlayerGame {
   age: number;
   score: number;
@@ -127,27 +207,23 @@ export class OnePlayerGame {
   lockedOut: boolean;
   hardDropLanded: boolean;
   consecutiveRerolls: number;
+  rules: GameRules;
 
-  constructor(
-    seed: number | null,
-    screenSeed: number,
-    colorSelection: number[],
-    initialBag: number[]
-  ) {
+  constructor(params: OnePlayerParams) {
     this.age = 0;
     this.score = 0;
     this.jiggleTime = 0;
     this.sparkTime = 0;
     this.active = false;
-    if (seed === null) {
+    if (params.bagSeed === null) {
       this.jkiss = null;
     } else {
-      this.jkiss = new JKISS32(seed);
+      this.jkiss = new JKISS32(params.bagSeed);
     }
-    this.screen = new PuyoScreen(screenSeed);
-    this.colorSelection = [...colorSelection];
+    this.screen = new PuyoScreen(params.garbageSeed, params.rules);
+    this.colorSelection = [...params.colorSelection];
 
-    this.bag = [...initialBag];
+    this.bag = [...params.initialBag];
     if (this.bag.length < 6) {
       this.bag.unshift(-1);
       this.bag.unshift(-1);
@@ -156,6 +232,7 @@ export class OnePlayerGame {
     this.lockedOut = false;
     this.hardDropLanded = false;
     this.consecutiveRerolls = 0;
+    this.rules = params.rules;
   }
 
   get busy(): boolean {
@@ -310,9 +387,9 @@ export class OnePlayerGame {
       this.score += tickResult.score;
       this.active = tickResult.busy;
       if (tickResult.didJiggle) {
-        this.jiggleTime = JIGGLE_TIME;
+        this.jiggleTime = this.rules.jiggleFrames;
       } else if (isNonEmpty(this.screen.sparks)) {
-        this.sparkTime = SPARK_TIME;
+        this.sparkTime = this.rules.sparkFrames;
       }
       if (tickResult.lockedOut) {
         this.lockedOut = true;
@@ -386,32 +463,22 @@ export class OnePlayerGame {
     console.log(this.displayLines().join('\n'));
   }
 
-  // Random seed, don't leak original unless specified.
-  clone(preserveSeed = false) {
-    const result = new (this.constructor as new (...args: any[]) => this)(
-      undefined,
-      undefined,
-      this.colorSelection,
-      []
-    );
-    if (preserveSeed) {
-      if (this.jkiss === null) {
-        result.jkiss = null;
-      } else {
-        result.jkiss = this.jkiss.clone();
-      }
-    }
+  clone() {
+    const result = new (this.constructor as new (
+      params: OnePlayerParams
+    ) => this)({
+      bagSeed: this.jkiss === null ? null : this.jkiss?.state,
+      garbageSeed: this.screen.jkiss.state,
+      colorSelection: this.colorSelection,
+      initialBag: this.bag,
+      rules: this.rules,
+    });
     result.age = this.age;
     result.score = this.score;
     result.jiggleTime = this.jiggleTime;
     result.sparkTime = this.sparkTime;
     result.active = this.active;
-    result.screen = this.screen.clone(preserveSeed);
-    if (preserveSeed) {
-      result.bag = [...this.bag];
-    } else {
-      result.bag = this.visibleBag;
-    }
+    result.screen = this.screen.clone();
     result.lockedOut = this.lockedOut;
     result.hardDropLanded = this.hardDropLanded;
     result.consecutiveRerolls = this.consecutiveRerolls;
@@ -420,44 +487,6 @@ export class OnePlayerGame {
 }
 
 export class SinglePlayerGame extends OnePlayerGame {
-  constructor(
-    seed?: number | null,
-    screenSeed?: number,
-    colorSelection?: number[],
-    initialBag?: number[]
-  ) {
-    if (seed === undefined) {
-      seed = randomSeed();
-      if (screenSeed === undefined) {
-        screenSeed = randomSeed();
-      }
-      if (colorSelection === undefined) {
-        colorSelection = randomColorSelection();
-      }
-    } else if (seed === null) {
-      if (screenSeed === undefined || colorSelection === undefined) {
-        throw new Error(
-          'A mirror requires an explicit screen seed and color selection'
-        );
-      }
-    } else {
-      const jkiss = new JKISS32(seed);
-      if (screenSeed === undefined) {
-        screenSeed = jkiss.step();
-      }
-      if (colorSelection === undefined) {
-        colorSelection = jkiss.subset(
-          [...Array(NUM_PUYO_COLORS).keys()],
-          COLOR_SELECTION_SIZE
-        );
-      }
-    }
-    if (initialBag === undefined) {
-      initialBag = [];
-    }
-    super(seed, screenSeed, colorSelection, initialBag);
-  }
-
   tick(): TickResult {
     const tickResult = super.tick();
     this.score += tickResult.allClear ? ALL_CLEAR_BONUS : 0;
@@ -469,10 +498,9 @@ const PADDING = [1, 1, 1, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
 
 export class MultiplayerGame {
   games: OnePlayerGame[];
-  // Conversion factor from scored points to nuisance puyos generated.
-  targetPoints: number[];
   // Buffered gargabe is sent on the next tick.
   // Stored on games[i].screen.bufferedGarbage.
+
   // Pending garbage is received after the next move. At most one rock at a time.
   pendingGarbage: number[];
   // These labels are sort of swapped.
@@ -485,116 +513,37 @@ export class MultiplayerGame {
   allClearBonus: boolean[];
   // Outgoing garbage lock is needed so that all clear bonus can be commited even if the chain is too small to send other garbage.
   canSend: boolean[];
-  // Number of frames before nuisance conversion factor starts increasing.
-  marginFrames: number;
-  // Number of frames before pending garbage is forced onto the screen.
-  mercyFrames: number;
   // Countdown until pending garbage is forced onto the screen.
-  // Doubles as incoming garbage lock which is needed so that chains have time time to resolve and make room for the nuisance puyos.
+  // A special value doubles as incoming garbage lock which is needed so that chains have time time to resolve and make room for the nuisance puyos.
   mercyRemaining: number[];
+  // Copy of target points from the rules that may be modified after margin time has elapsed
+  targetPoints: number[];
+  // Most of the rules / mechanics are customizable
+  rules: GameRules;
 
-  constructor(
-    seeds?: number[] | null | null[],
-    screenSeeds?: number[],
-    colorSelections?: number[][],
-    initialBags?: number[][],
-    targetPoints?: number[],
-    marginFrames = DEFAULT_MARGIN_FRAMES,
-    mercyFrames = DEFAULT_MERCY_FRAMES
-  ) {
-    if (seeds === undefined) {
-      // Bags will eventually diverge
-      seeds = [randomSeed(), randomSeed()];
-      if (screenSeeds === undefined) {
-        // Garbage will fall randomly and independently
-        screenSeeds = [randomSeed(), randomSeed()];
-      }
-      if (colorSelections === undefined) {
-        // Colors are the same for both players
-        const colorSelection = randomColorSelection();
-        colorSelections = [colorSelection, colorSelection];
-      }
-      if (initialBags === undefined) {
-        // The initial pieces are same for both players (if possible)
-        const initialBag = randomBag(colorSelections[0]);
-        initialBags = [initialBag, initialBag];
-        if (colorSelections[0].length !== colorSelections[1].length) {
-          initialBags[1] = randomBag(colorSelections[1]);
-        } else {
-          for (let i = 0; i < colorSelections[0].length; ++i) {
-            if (colorSelections[0][i] !== colorSelections[1][i]) {
-              initialBags[1] = randomBag(colorSelections[1]);
-              break;
-            }
-          }
-        }
-      }
-    } else if (seeds === null || seeds[0] === null) {
-      if (screenSeeds === undefined || colorSelections === undefined) {
-        throw new Error(
-          'Mirrors require explicit screen seeds and color selections'
-        );
-      }
-      seeds = [null, null];
-    } else {
-      const jkiss = new JKISS32(seeds[0]);
-      if (screenSeeds === undefined) {
-        screenSeeds = [jkiss.step(), jkiss.step()];
-      }
-      if (colorSelections === undefined) {
-        const colorSelection = jkiss.subset(
-          [...Array(NUM_PUYO_COLORS).keys()],
-          COLOR_SELECTION_SIZE
-        );
-        colorSelections = [colorSelection, colorSelection];
-      }
-      if (initialBags === undefined) {
-        const initialBag = randomBag(colorSelections[0], jkiss);
-        initialBags = [initialBag, initialBag];
-        if (colorSelections[0].length !== colorSelections[1].length) {
-          initialBags[1] = randomBag(colorSelections[1], jkiss);
-        } else {
-          for (let i = 0; i < colorSelections[0].length; ++i) {
-            if (colorSelections[0][i] !== colorSelections[1][i]) {
-              initialBags[1] = randomBag(colorSelections[1], jkiss);
-              break;
-            }
-          }
-        }
-      }
+  constructor(params: MultiplayerParams) {
+    const numPlayers = params.garbageSeeds.length;
+    this.games = [];
+    for (let i = 0; i < numPlayers; ++i) {
+      const playerParams: OnePlayerParams = {
+        bagSeed: params.bagSeeds === null ? null : params.bagSeeds[i],
+        garbageSeed: params.garbageSeeds[i],
+        colorSelection: params.colorSelections[i],
+        initialBag: params.initialBags[i],
+        rules: params.rules,
+      };
+      this.games.push(new OnePlayerGame(playerParams));
     }
-    if (initialBags === undefined) {
-      initialBags = [[], []];
-    }
-    this.games = [
-      new OnePlayerGame(
-        seeds[0],
-        screenSeeds[0],
-        colorSelections[0],
-        initialBags[0]
-      ),
-      new OnePlayerGame(
-        seeds[1],
-        screenSeeds[1],
-        colorSelections[1],
-        initialBags[1]
-      ),
-    ];
+    this.rules = params.rules;
 
-    if (targetPoints === undefined) {
-      targetPoints = [DEFAULT_TARGET_POINTS, DEFAULT_TARGET_POINTS];
-    }
-    this.targetPoints = [...targetPoints];
-    this.marginFrames = marginFrames;
-    this.mercyFrames = mercyFrames;
-
-    this.pendingGarbage = [0, 0];
-    this.accumulatedGarbage = [0, 0];
-    this.pointResidues = [0, 0];
-    this.allClearQueued = [false, false];
-    this.allClearBonus = [false, false];
-    this.canSend = [false, false];
-    this.mercyRemaining = [mercyFrames, mercyFrames];
+    this.pendingGarbage = Array(numPlayers).fill(0);
+    this.accumulatedGarbage = Array(numPlayers).fill(0);
+    this.pointResidues = Array(numPlayers).fill(0);
+    this.allClearQueued = Array(numPlayers).fill(false);
+    this.allClearBonus = Array(numPlayers).fill(false);
+    this.canSend = Array(numPlayers).fill(false);
+    this.mercyRemaining = Array(numPlayers).fill(this.rules.mercyFrames);
+    this.targetPoints = [...this.rules.targetPoints];
   }
 
   get age(): number {
@@ -605,6 +554,7 @@ export class MultiplayerGame {
     return result;
   }
 
+  // TODO: True multiplayer
   get state(): GameState[] {
     const states = this.games.map(game => game.state);
     for (let i = 0; i < this.games.length; ++i) {
@@ -730,8 +680,8 @@ export class MultiplayerGame {
 
   tick(): MultiplayerTickResult[] {
     const age = this.age;
-    if (age >= this.marginFrames) {
-      if (!((age - this.marginFrames) % MARGIN_INTERVAL)) {
+    if (age >= this.rules.marginFrames) {
+      if (!((age - this.rules.marginFrames) % MARGIN_INTERVAL)) {
         for (let i = 0; i < this.targetPoints.length; ++i) {
           this.targetPoints[i] = Math.floor(
             this.targetPoints[i] * MARGIN_MULTIPLIER
@@ -803,7 +753,7 @@ export class MultiplayerGame {
             tickResults[i].busy = true;
             this.games[i].active = true;
           }
-          this.mercyRemaining[i] = this.mercyFrames;
+          this.mercyRemaining[i] = this.rules.mercyFrames;
         } else {
           this.mercyRemaining[i]--;
         }
@@ -820,7 +770,7 @@ export class MultiplayerGame {
     }
     let lateTimeRemaining = 0;
     if (this.games[opponent].busy) {
-      const opponentScreen = this.games[opponent].screen.clone(true);
+      const opponentScreen = this.games[opponent].screen.clone();
       let score = 0;
       while (true) {
         const tickResult = opponentScreen.tick();
@@ -844,19 +794,25 @@ export class MultiplayerGame {
       lateGarbage,
       lateTimeRemaining,
       this.games[player].colorSelection,
-      this.games[player].visibleBag
+      this.games[player].visibleBag,
+      this.rules
     );
   }
 
-  // Random seed. Don't leak original unless specified.
-  clone(preserveSeed = false) {
-    const result = new (this.constructor as new (...args: any[]) => this)(
-      [0, 0],
-      [0, 0],
-      this.games.map(g => g.colorSelection),
-      this.games.map(g => g.bag)
-    );
-    result.games = this.games.map(game => game.clone(preserveSeed));
+  clone() {
+    const result = new (this.constructor as new (
+      params: MultiplayerParams
+    ) => this)({
+      bagSeeds: null,
+      garbageSeeds: [0, 0],
+      colorSelections: [[0], [0]],
+      initialBags: [
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+      ],
+      rules: this.rules,
+    });
+    result.games = this.games.map(game => game.clone());
     result.targetPoints = [...this.targetPoints];
     result.pendingGarbage = [...this.pendingGarbage];
     result.accumulatedGarbage = [...this.accumulatedGarbage];
@@ -864,7 +820,6 @@ export class MultiplayerGame {
     result.allClearQueued = [...this.allClearQueued];
     result.allClearBonus = [...this.allClearBonus];
     result.canSend = [...this.canSend];
-    result.marginFrames = this.marginFrames;
     result.mercyRemaining = [...this.mercyRemaining];
     return result;
   }
@@ -903,7 +858,7 @@ export const MOVES = [
 
 // How long a single move takes on average.
 // +1 added for occasional splits even when hard dropping.
-const DEFAULT_MOVE_TIME = JIGGLE_TIME + 1;
+const DEFAULT_MOVE_TIME = DEFAULT_JIGGLE_FRAMES + 1;
 
 // Value all-clears based on the amount of garbage they send.
 const SIMPLE_ALL_CLEAR_BONUS = 2100;
@@ -929,6 +884,8 @@ export class SimpleGame {
   // The next four or six puyos to be played.
   bag: number[];
 
+  rules: GameRules;
+
   constructor(
     screen: SimplePuyoScreen,
     targetPoints: number,
@@ -939,6 +896,7 @@ export class SimpleGame {
     lateTimeRemaining: number,
     colorSelection: number[],
     bag: number[],
+    rules: GameRules,
     moveTime = DEFAULT_MOVE_TIME
   ) {
     this.screen = screen;
@@ -950,6 +908,7 @@ export class SimpleGame {
     this.lateTimeRemaining = lateTimeRemaining;
     this.colorSelection = [...colorSelection];
     this.bag = [...bag];
+    this.rules = rules;
     this.moveTime = moveTime;
 
     // Normalize
@@ -1026,7 +985,7 @@ export class SimpleGame {
   resolve() {
     const tickResult = this.screen.tick();
     this.lateTimeRemaining -=
-      tickResult.chainNumber * (JIGGLE_TIME + 2) + this.moveTime;
+      tickResult.chainNumber * (this.rules.jiggleFrames + 2) + this.moveTime;
     if (this.lateTimeRemaining <= 0) {
       this.pendingGarbage += this.lateGarbage;
       this.lateGarbage = 0;
@@ -1076,7 +1035,9 @@ export class SimpleGame {
       this.lateGarbage,
       this.lateTimeRemaining,
       this.colorSelection,
-      this.bag
+      this.bag,
+      this.rules,
+      this.moveTime
     );
   }
 

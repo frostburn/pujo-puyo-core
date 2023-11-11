@@ -1,21 +1,22 @@
 import {expect, test} from 'bun:test';
-import {RED, SimplePuyoScreen} from '../screen';
+import {RED} from '../screen';
 import {
   DEFAULT_TARGET_POINTS,
   MOVES,
   MultiplayerGame,
+  MultiplayerParams,
   PASS,
   SimpleGame,
-  randomBag,
-  randomColorSelection,
+  defaultRules,
+  randomMultiplayer,
 } from '../game';
 import {effectiveLockout, flexDropletStrategy1} from '../ai';
-import {randomSeed} from '../jkiss';
 import {puyosEqual} from '../bitboard';
 import {TimeWarpingGame, TimeWarpingMirror} from '../realtime';
+import {simpleFromLines} from './utils';
 
 test('Effective lockout', () => {
-  const screen = SimplePuyoScreen.fromLines([
+  const screen = simpleFromLines([
     '',
     '',
     '',
@@ -42,14 +43,15 @@ test('Effective lockout', () => {
     0,
     0,
     [0, 1, 2, 3],
-    [RED, RED]
+    [RED, RED],
+    defaultRules()
   );
   const heuristic = effectiveLockout(game);
   expect(heuristic).toBeLessThan(0);
 });
 
 test('Ineffective lockout', () => {
-  const screen = SimplePuyoScreen.fromLines([
+  const screen = simpleFromLines([
     '',
     '',
     '',
@@ -76,14 +78,15 @@ test('Ineffective lockout', () => {
     0,
     0,
     [0, 1, 2, 3],
-    [RED, RED]
+    [RED, RED],
+    defaultRules()
   );
   const heuristic = effectiveLockout(game);
   expect(heuristic).toBe(0);
 });
 
 test('Ineffective lockout (no bag)', () => {
-  const screen = SimplePuyoScreen.fromLines([
+  const screen = simpleFromLines([
     '',
     '',
     '',
@@ -110,7 +113,8 @@ test('Ineffective lockout (no bag)', () => {
     0,
     0,
     [0, 1, 2, 3],
-    []
+    [],
+    defaultRules()
   );
   const heuristic = effectiveLockout(game);
   expect(heuristic).toBe(0);
@@ -118,27 +122,17 @@ test('Ineffective lockout (no bag)', () => {
 
 test('Server/client pausing game simulation', () => {
   const maxConsecutiveRerolls = 10;
-  const gameSeeds = [randomSeed(), randomSeed()];
-  const screenSeeds = [randomSeed(), randomSeed()];
-  const colorSelection = randomColorSelection();
-  const colorSelections = [colorSelection, colorSelection];
-  const initialBag = randomBag(colorSelection);
-  const initialBags = [initialBag, initialBag];
-  const main = new MultiplayerGame(
-    gameSeeds,
-    screenSeeds,
-    colorSelections,
-    initialBags
-  );
+  const params = randomMultiplayer();
+  const main = new MultiplayerGame(params);
 
   // In practice this would be two mirrors for each client
   const knownBags = main.initialBags;
-  const mirror = new MultiplayerGame(
-    null,
-    screenSeeds,
-    colorSelections,
-    knownBags
-  );
+  const mirrorParams: MultiplayerParams = {
+    ...params,
+    bagSeeds: null,
+    initialBags: knownBags,
+  };
+  const mirror = new MultiplayerGame(mirrorParams);
   for (let i = 0; i < mirror.games.length; ++i) {
     // Send initial bag and prompt moves with next pieces
     mirror.games[i].bag = main.games[i].initialBag.concat(
@@ -224,29 +218,18 @@ test('Server/client pausing game simulation', () => {
 
 test('Server/client realtime game simulation', () => {
   const maxConsecutiveRerolls = 10;
-  const gameSeeds = [randomSeed(), randomSeed()];
-  const screenSeeds = [randomSeed(), randomSeed()];
-  const colorSelection = randomColorSelection();
-  const colorSelections = [colorSelection, colorSelection];
-  const initialBag = randomBag(colorSelection);
-  const initialBags = [initialBag, initialBag];
-  const origin = new MultiplayerGame(
-    gameSeeds,
-    screenSeeds,
-    colorSelections,
-    initialBags
-  );
-
+  const params = randomMultiplayer();
+  const origin = new MultiplayerGame(params);
   // Server
   const main = new TimeWarpingGame(origin);
 
   const knownBags = origin.initialBags;
-  const mirrorOrigin = new MultiplayerGame(
-    null,
-    screenSeeds,
-    colorSelections,
-    knownBags
-  );
+  const mirrorParams: MultiplayerParams = {
+    ...params,
+    bagSeeds: null,
+    initialBags: knownBags,
+  };
+  const mirrorOrigin = new MultiplayerGame(mirrorParams);
   // Two dueling clients
   const mirrors = [
     new TimeWarpingMirror(mirrorOrigin),

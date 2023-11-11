@@ -1,16 +1,16 @@
 import {expect, test} from 'bun:test';
 import {fixedRandomGame} from './archive';
 import {
-  DEFAULT_MARGIN_FRAMES,
-  DEFAULT_MERCY_FRAMES,
   MultiplayerGame,
+  MultiplayerParams,
   PlayedMove,
+  randomMultiplayer,
 } from '../game';
 import {RevealedPiece, TimeWarpingGame, TimeWarpingMirror} from '../realtime';
 import {HEIGHT} from '../bitboard';
 
 test('Rejects duplicate moves', () => {
-  const origin = new MultiplayerGame();
+  const origin = new MultiplayerGame(randomMultiplayer());
   const move: PlayedMove = {
     x1: 0,
     y1: 1,
@@ -29,7 +29,7 @@ test('Rejects duplicate moves', () => {
 });
 
 test('Reveals pieces only once', () => {
-  const origin = new MultiplayerGame();
+  const origin = new MultiplayerGame(randomMultiplayer());
   const main = new TimeWarpingGame(origin);
 
   expect(main.revealPieces(0)).toHaveLength(2);
@@ -40,15 +40,7 @@ test('Reveals pieces only once', () => {
 test('Fixed random game (time warp)', () => {
   const replay = fixedRandomGame();
 
-  const origin = new MultiplayerGame(
-    replay.gameSeeds,
-    replay.screenSeeds,
-    replay.colorSelections,
-    replay.initialBags,
-    replay.targetPoints,
-    replay.marginFrames,
-    replay.mercyFrames
-  );
+  const origin = new MultiplayerGame(replay.params);
 
   const main = new TimeWarpingGame(origin);
 
@@ -82,29 +74,18 @@ test('Fixed random game (time warp)', () => {
 test('Fixed random game (mirror time warp)', () => {
   const replay = fixedRandomGame();
 
-  const origin = new MultiplayerGame(
-    replay.gameSeeds,
-    replay.screenSeeds,
-    replay.colorSelections,
-    replay.initialBags,
-    replay.targetPoints,
-    replay.marginFrames,
-    replay.mercyFrames
-  );
+  const origin = new MultiplayerGame(replay.params);
 
-  const mirrorOrigin = new MultiplayerGame(
-    null,
-    replay.screenSeeds,
-    replay.colorSelections,
-    origin.initialBags,
-    replay.targetPoints,
-    replay.marginFrames,
-    replay.mercyFrames
-  );
+  const mirrorParams = {
+    ...replay.params,
+    bagSeeds: null,
+    initialBags: origin.initialBags,
+  };
+  const mirrorOrigin = new MultiplayerGame(mirrorParams);
 
   const mirror = new TimeWarpingMirror(mirrorOrigin);
 
-  const game = origin.clone(true);
+  const game = origin.clone();
 
   for (let i = 0; i < 2; ++i) {
     const piece: RevealedPiece = {
@@ -147,12 +128,12 @@ test('Fixed random game (mirror time warp)', () => {
 });
 
 test('Sounds of the past', () => {
-  const origin = new MultiplayerGame();
+  const origin = new MultiplayerGame(randomMultiplayer());
   const mirror = new TimeWarpingMirror(origin);
 
   mirror.warp(10);
 
-  const move = origin.clone(true).play(1, 0, HEIGHT - 3, 0);
+  const move = origin.clone().play(1, 0, HEIGHT - 3, 0);
 
   mirror.addMove(move);
 
@@ -171,24 +152,8 @@ test('Multiplayer subclassability', () => {
   class TestClass extends MultiplayerGame {
     sound: string;
 
-    constructor(
-      seeds?: number[] | null | null[],
-      screenSeeds?: number[],
-      colorSelections?: number[][],
-      initialBags?: number[][],
-      targetPoints?: number[],
-      marginFrames = DEFAULT_MARGIN_FRAMES,
-      mercyFrames = DEFAULT_MERCY_FRAMES
-    ) {
-      super(
-        seeds,
-        screenSeeds,
-        colorSelections,
-        initialBags,
-        targetPoints,
-        marginFrames,
-        mercyFrames
-      );
+    constructor(params: MultiplayerParams) {
+      super(params);
       this.sound = 'tick';
     }
 
@@ -202,21 +167,21 @@ test('Multiplayer subclassability', () => {
       return results;
     }
 
-    clone(preserveSeed = false) {
-      const instance = super.clone(preserveSeed);
+    clone() {
+      const instance = super.clone();
       instance.sound = this.sound;
       return instance;
     }
   }
 
-  const instance = new TestClass();
+  const instance = new TestClass(randomMultiplayer());
 
   expect(instance.sound).toBe('tick');
   instance.tick();
   expect(instance.sound).toBe('tock');
   expect(instance.age).toBe(1);
 
-  const clone = instance.clone(true);
+  const clone = instance.clone();
   expect(clone.sound).toBe('tock');
   expect(clone.age).toBe(1);
   expect(clone.games[0].jkiss!.state).toEqual(instance.games[0].jkiss!.state);
@@ -230,7 +195,7 @@ test('Multiplayer subclassability', () => {
 });
 
 test('Has memory limits', () => {
-  const origin = new MultiplayerGame();
+  const origin = new MultiplayerGame(randomMultiplayer());
   const main = new TimeWarpingGame(origin, 5, 5);
   // Two scheduled checkpoints at 5 and 10
   main.warp(10);
@@ -252,7 +217,10 @@ test('Has memory limits', () => {
 });
 
 test('Mirror has memory limits', () => {
-  const origin = new MultiplayerGame(null, [1, 1], [[], []]);
+  const params: MultiplayerParams = randomMultiplayer();
+  params.bagSeeds = null;
+  params.initialBags = [[], []];
+  const origin = new MultiplayerGame(params);
   const mirror = new TimeWarpingMirror(origin, 5, 5);
   // Two scheduled checkpoints at 5 and 10
   mirror.warp(10);

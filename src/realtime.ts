@@ -41,7 +41,7 @@ class TimeWarpBase<T extends MultiplayerGame> {
       // Use up temporary checkpoint.
       this.checkpoints.delete(game.age);
     } else {
-      game = game.clone(true);
+      game = game.clone();
     }
     return game;
   }
@@ -49,14 +49,14 @@ class TimeWarpBase<T extends MultiplayerGame> {
   // Scheduled checkpoint
   postTick(game: T) {
     if (!(game.age % this.checkpointInterval)) {
-      this.checkpoints.set(game.age, game.clone(true));
+      this.checkpoints.set(game.age, game.clone());
     }
   }
 
   // Temporary checkpoint and clean-up
   postWarp(game: T) {
     if (game.age % this.checkpointInterval) {
-      this.checkpoints.set(game.age, game.clone(true));
+      this.checkpoints.set(game.age, game.clone());
     }
     if (this.checkpoints.size > this.maxCheckpoints) {
       const times = [...this.checkpoints.keys()];
@@ -175,7 +175,7 @@ export class TimeWarpingGame<
 
   _warp(time: number) {
     if (this.checkpoints.has(time)) {
-      return this.checkpoints.get(time)!.clone(true);
+      return this.checkpoints.get(time)!.clone();
     }
 
     const game = this.closestCheckpoint(time);
@@ -260,7 +260,7 @@ export class TimeWarpingMirror<
 
   warp(time: number): [T | null, MultiplayerTickResult[]] {
     if (this.checkpoints.has(time)) {
-      const game = this.checkpoints.get(time)!.clone(true);
+      const game = this.checkpoints.get(time)!.clone();
       return [this.reconstruct(game), []];
     }
     const game = this.closestCheckpoint(time);

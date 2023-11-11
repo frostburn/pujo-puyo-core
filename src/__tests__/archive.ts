@@ -1,40 +1,24 @@
 import {WIDTH} from '../bitboard';
-import {
-  DEFAULT_MARGIN_FRAMES,
-  DEFAULT_MERCY_FRAMES,
-  MultiplayerGame,
-} from '../game';
+import {MultiplayerGame, ReplayParams, defaultRules} from '../game';
 import {JKISS32} from '../jkiss';
 import {Replay} from '../replay';
 
 export function fixedRandomGame() {
-  const gameSeeds = [7, 7];
   const colorSelection = [1, 2, 3, 4];
   const colorSelections = [colorSelection, colorSelection];
   const initialBags = [[], []];
-  const screenSeeds = [11, 11];
-  const targetPoints = [70, 70];
-  const marginFrames = DEFAULT_MARGIN_FRAMES;
-  const mercyFrames = DEFAULT_MERCY_FRAMES;
-  const game = new MultiplayerGame(
-    gameSeeds,
-    screenSeeds,
+  const params: ReplayParams = {
+    bagSeeds: [7, 7],
+    garbageSeeds: [11, 11],
     colorSelections,
     initialBags,
-    targetPoints,
-    marginFrames,
-    mercyFrames
-  );
+    rules: defaultRules(),
+  };
+  const game = new MultiplayerGame(params);
   const rng = new JKISS32(8);
 
   const replay: Replay = {
-    gameSeeds,
-    screenSeeds,
-    colorSelections,
-    initialBags,
-    targetPoints,
-    marginFrames,
-    mercyFrames,
+    params,
     moves: [],
     metadata: {
       event: 'Fixed Random Match',
@@ -72,16 +56,16 @@ export function fixedRandomGame() {
 }
 
 export const LUMI_VS_FLEX2: Replay = {
-  gameSeeds: [3864657304, 3864657304],
-  screenSeeds: [2580717322, 2580717322],
-  colorSelections: [
-    [3, 1, 0, 2],
-    [3, 1, 0, 2],
-  ],
-  initialBags: [[], []],
-  targetPoints: [70, 70],
-  marginFrames: DEFAULT_MARGIN_FRAMES,
-  mercyFrames: Infinity,
+  params: {
+    bagSeeds: [3864657304, 3864657304],
+    garbageSeeds: [2580717322, 2580717322],
+    colorSelections: [
+      [3, 1, 0, 2],
+      [3, 1, 0, 2],
+    ],
+    initialBags: [[], []],
+    rules: defaultRules(),
+  },
   metadata: {
     event:
       'First human vs. machine game to be captured in algebraic notation for Puyo',

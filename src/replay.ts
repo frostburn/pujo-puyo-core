@@ -1,6 +1,11 @@
 /* eslint-disable no-case-declarations */
 import {WIDTH, columnCounts, semiVisible} from './bitboard';
-import {MultiplayerGame, MultiplayerTickResult, PlayedMove} from './game';
+import {
+  MultiplayerGame,
+  MultiplayerTickResult,
+  PlayedMove,
+  ReplayParams,
+} from './game';
 import {AIR, GARBAGE, colorOf} from './screen';
 
 export type ApplicationInfo = {
@@ -66,13 +71,7 @@ export type ReplayResult = {
 
 /** Seed data for re-creating a game. */
 export type Replay = {
-  gameSeeds: number[];
-  screenSeeds: number[];
-  colorSelections: number[][];
-  initialBags: number[][];
-  targetPoints: number[];
-  marginFrames: number;
-  mercyFrames: number;
+  params: ReplayParams;
   moves: PlayedMove[];
   metadata: ReplayMetadata;
   result: ReplayResult;
@@ -158,14 +157,7 @@ export function cmpMoves(a: PlayedMove, b: PlayedMove) {
 }
 
 export function logReplay(replay: Replay) {
-  const game = new MultiplayerGame(
-    replay.gameSeeds,
-    replay.screenSeeds,
-    replay.colorSelections,
-    replay.initialBags,
-    replay.targetPoints,
-    replay.mercyFrames
-  );
+  const game = new MultiplayerGame(replay.params);
   replay.moves.sort(cmpMoves);
   game.log();
   replay.moves.forEach(move => {
@@ -186,14 +178,7 @@ export function* replayToTrack<T extends typeof MultiplayerGame>(
   callback?: TickCallback,
   baseClass: T = MultiplayerGame as T
 ): ReplayTrack {
-  const game = new baseClass(
-    replay.gameSeeds,
-    replay.screenSeeds,
-    replay.colorSelections,
-    replay.initialBags,
-    replay.targetPoints,
-    replay.marginFrames
-  );
+  const game = new baseClass(replay.params);
   if (Array.isArray(replay.moves)) {
     replay.moves.sort(cmpMoves);
   }
@@ -455,11 +440,11 @@ export function repairReplay(unserialized: Replay): Replay {
     unserialized.result.winner = undefined;
   }
   // Only positive infinity makes sense here if JSON serialization failed.
-  if (unserialized.marginFrames === null) {
-    unserialized.marginFrames = Infinity;
+  if (unserialized.params.rules.marginFrames === null) {
+    unserialized.params.rules.marginFrames = Infinity;
   }
-  if (unserialized.mercyFrames === null) {
-    unserialized.mercyFrames = Infinity;
+  if (unserialized.params.rules.mercyFrames === null) {
+    unserialized.params.rules.mercyFrames = Infinity;
   }
   return unserialized;
 }

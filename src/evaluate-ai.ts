@@ -5,7 +5,7 @@ import {
   flexDropletStrategy3,
   flexDropletStrategy2,
 } from '.';
-import {MOVES, MultiplayerGame, PASS} from './game';
+import {MOVES, MultiplayerGame, PASS, randomMultiplayer} from './game';
 
 const MAX_CONSECUTIVE_REROLLS = 10;
 
@@ -18,7 +18,7 @@ function duel(
   const strategies = [strategyA, strategyB];
   const hardDrops = [hardDropA, hardDropB];
   const passing = [false, false];
-  const game = new MultiplayerGame();
+  const game = new MultiplayerGame(randomMultiplayer());
   while (true) {
     for (let i = 0; i < 2; ++i) {
       if (passing[i]) {

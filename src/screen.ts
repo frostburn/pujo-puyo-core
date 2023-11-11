@@ -32,11 +32,14 @@ import {
   toppedUp,
   flood,
   puyoCount,
-  CLEAR_THRESHOLD,
   visible,
   GHOST_Y,
 } from './bitboard';
 import {JKISS32} from './jkiss';
+
+export type ScreenRules = {
+  clearThreshold: number;
+};
 
 /**
  * Result of advancing the screen one step.
@@ -142,17 +145,20 @@ export class SimplePuyoScreen {
   // Replays and netcode benefit from deterministic randomness.
   // Knowing the correct garbage seed can be considered cheating on the AIs part, but that's minor enough.
   jkiss: JKISS32;
+  // Game rules
+  rules: ScreenRules;
 
   /**
    * Construct a new 6x16 screen of puyos.
    */
-  constructor(seed?: number | Uint32Array) {
+  constructor(garbageSeed: number | Uint32Array, rules: ScreenRules) {
     this.grid = [];
     for (let i = 0; i < NUM_PUYO_TYPES; ++i) {
       this.grid.push(emptyPuyos());
     }
     this.bufferedGarbage = 0;
-    this.jkiss = new JKISS32(seed);
+    this.jkiss = new JKISS32(garbageSeed);
+    this.rules = rules;
   }
 
   toJSON() {
@@ -160,11 +166,12 @@ export class SimplePuyoScreen {
       grid: this.grid.map(puyos => [...puyos]),
       bufferedGarbage: this.bufferedGarbage,
       jkiss: this.jkiss,
+      rules: this.rules,
     };
   }
 
   static fromJSON(obj: any) {
-    const result = new SimplePuyoScreen();
+    const result = new SimplePuyoScreen(0, obj.rules);
     for (let j = 0; j < obj.grid.length; ++j) {
       // TODO: Hide slicing details inside bitboard.ts
       for (let i = 0; i < WIDTH; ++i) {
@@ -181,8 +188,12 @@ export class SimplePuyoScreen {
    * @param lines Array of strings consisting of characters "RGYBPN", "N" stands for nuisance i.e. garbage.
    * @returns A 6x16 screen of puyos filled from top to bottom.
    */
-  static fromLines(lines: string[]) {
-    const result = new SimplePuyoScreen();
+  static fromLines(
+    lines: string[],
+    garbageSeed: number | Uint32Array,
+    rules: ScreenRules
+  ) {
+    const result = new SimplePuyoScreen(garbageSeed, rules);
     result.grid = gridFromLines(lines);
     return result;
   }
@@ -215,7 +226,7 @@ export class SimplePuyoScreen {
         merge(connetivityGrid[i], connectivity)
       );
 
-      const {sparks} = sparkGroups(supported);
+      const {sparks} = sparkGroups(supported, this.rules.clearThreshold);
       merge(ignitionMask, sparks);
     });
 
@@ -378,7 +389,10 @@ export class SimplePuyoScreen {
       const totalCleared = emptyPuyos();
 
       for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
-        const {numCleared, groupBonus, sparks} = sparkGroups(this.grid[i]);
+        const {numCleared, groupBonus, sparks} = sparkGroups(
+          this.grid[i],
+          this.rules.clearThreshold
+        );
         if (numCleared) {
           totalNumCleared += numCleared;
           totalGroupBonus += groupBonus;
@@ -460,7 +474,7 @@ export class SimplePuyoScreen {
    * @returns Copy of the screen with simplified mechanics.
    */
   toSimpleScreen() {
-    const result = new SimplePuyoScreen(this.jkiss.state);
+    const result = new SimplePuyoScreen(this.jkiss.state, this.rules);
     result.bufferedGarbage = this.bufferedGarbage;
     result.grid = this.grid.map(clone);
     return result;
@@ -513,13 +527,14 @@ export class SimplePuyoScreen {
     if (y2 <= GHOST_Y) {
       y2 = 0;
     }
+    const clearThreshold = this.rules.clearThreshold;
     if (color1 === color2 && (x1 === x2 || y1 === y2)) {
       const puyos = clone(this.grid[color1]);
       const group = singlePuyo(x1, y1);
       merge(group, singlePuyo(x2, y2));
       merge(puyos, group);
       flood(group, visible(puyos));
-      if (puyoCount(group) >= CLEAR_THRESHOLD) {
+      if (puyoCount(group) >= clearThreshold) {
         return toArray(group);
       }
     } else {
@@ -529,7 +544,7 @@ export class SimplePuyoScreen {
       const group1 = singlePuyo(x1, y1);
       merge(puyos1, group1);
       flood(group1, visible(puyos1));
-      if (puyoCount(group1) >= CLEAR_THRESHOLD) {
+      if (puyoCount(group1) >= clearThreshold) {
         merge(result, group1);
       }
 
@@ -537,7 +552,7 @@ export class SimplePuyoScreen {
       const group2 = singlePuyo(x2, y2);
       merge(puyos2, group2);
       flood(group2, visible(puyos2));
-      if (puyoCount(group2) >= CLEAR_THRESHOLD) {
+      if (puyoCount(group2) >= clearThreshold) {
         merge(result, group2);
       }
       return toArray(result);
@@ -561,10 +576,10 @@ export class PuyoScreen extends SimplePuyoScreen {
 
   /**
    * Construct a new 6x16 screen of puyos.
-   * @param seed Seed for the pseudo random number generator.
+   * @param garbageSeed Seed for the pseudo random number generator.
    */
-  constructor(seed?: number | Uint32Array) {
-    super(seed);
+  constructor(garbageSeed: number | Uint32Array, rules: ScreenRules) {
+    super(garbageSeed, rules);
     this.chainNumber = 0;
     this.doJiggles = false;
     this.jiggles = emptyPuyos();
@@ -576,8 +591,12 @@ export class PuyoScreen extends SimplePuyoScreen {
    * @param lines Array of strings consisting of characters "RGYBPN", "N" stands for nuisance i.e. garbage.
    * @returns A 6x16 screen of puyos filled from top to bottom.
    */
-  static fromLines(lines: string[]) {
-    const result = new PuyoScreen();
+  static fromLines(
+    lines: string[],
+    garbageSeed: number | Uint32Array,
+    rules: ScreenRules
+  ) {
+    const result = new PuyoScreen(garbageSeed, rules);
     result.grid = gridFromLines(lines);
     return result;
   }
@@ -729,7 +748,10 @@ export class PuyoScreen extends SimplePuyoScreen {
     clear(this.sparks);
 
     for (let i = 0; i < NUM_PUYO_COLORS; ++i) {
-      const {numCleared, groupBonus, sparks} = sparkGroups(this.grid[i]);
+      const {numCleared, groupBonus, sparks} = sparkGroups(
+        this.grid[i],
+        this.rules.clearThreshold
+      );
       if (numCleared) {
         totalNumCleared += numCleared;
         totalGroupBonus += groupBonus;
@@ -789,9 +811,10 @@ export class PuyoScreen extends SimplePuyoScreen {
     return true;
   }
 
-  clone(preserveSeed = false) {
+  clone() {
     const result = new (this.constructor as new (...args: any[]) => this)(
-      preserveSeed ? this.jkiss.state : undefined
+      this.jkiss.state,
+      this.rules
     );
     result.grid = this.grid.map(clone);
     result.bufferedGarbage = this.bufferedGarbage;
