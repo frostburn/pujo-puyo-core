@@ -20,6 +20,10 @@
     "Puyo Puyo",
     "Mean Bean Machine"
   ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/frostburn"
+  },
   "files": [
     "dist"
   ],
