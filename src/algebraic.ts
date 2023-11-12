@@ -405,6 +405,7 @@ export function applyAlgebraic(screens: SimplePuyoScreen[], token: string) {
   }
 }
 
+/*
 export function algebraicToGameStates(tokens: string[]): GameState[][] {
   const bags: number[][] = [[], []];
   for (let token of tokens) {
@@ -509,7 +510,7 @@ export function algebraicToGameStates(tokens: string[]): GameState[][] {
         while (screens[index].tick().busy);
         busy = false;
       } else {
-        token = token.replace(/\*/g, '');
+        token = token.replace(/\*¤¤¤/g, '');
         const index = /\d/.test(token[1]) ? 0 : 1;
 
         // eslint-disable-next-line no-inner-declarations
@@ -569,6 +570,7 @@ export function algebraicToGameStates(tokens: string[]): GameState[][] {
   }
   return result;
 }
+*/
 
 const COLOR_NAMES: Record<string, string> = {
   R: 'red',

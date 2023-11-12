@@ -1,18 +1,10 @@
 import {expect, test} from 'bun:test';
-import {
-  BLUE,
-  GARBAGE,
-  GREEN,
-  PURPLE,
-  PuyoScreen,
-  RED,
-  SimplePuyoScreen,
-  YELLOW,
-} from '../screen';
+import {BLUE, GARBAGE, GREEN, PURPLE, RED, YELLOW} from '../screen';
 import {HEIGHT, isEmpty, isNonEmpty, puyoAt, puyoCount} from '../bitboard';
+import {screenFromLines, simpleFromLines} from './utils';
 
 test('Gravity', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   screen.insertPuyo(0, 0, PURPLE);
   while (screen.tick().busy);
   expect(isEmpty(screen.grid[RED])).toBeTruthy();
@@ -25,7 +17,7 @@ test('Gravity', () => {
 });
 
 test('Landing signal', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   screen.insertPuyo(3, HEIGHT - 3, YELLOW);
   screen.insertPuyo(4, HEIGHT - 4, GARBAGE);
   const firstTick = screen.tick();
@@ -40,7 +32,7 @@ test('Landing signal', () => {
 });
 
 test('Garbage clearing', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   screen.insertPuyo(0, HEIGHT - 1, GARBAGE);
   screen.insertPuyo(0, HEIGHT - 2, GARBAGE);
   screen.insertPuyo(1, HEIGHT - 2, GARBAGE);
@@ -57,7 +49,7 @@ test('Garbage clearing', () => {
 });
 
 test('Garbage clearing across the old seam 1', () => {
-  const screen = PuyoScreen.fromLines([
+  const screen = screenFromLines([
     ' PPPP ',
     'NNNNNN',
     'NNNNNN',
@@ -70,7 +62,7 @@ test('Garbage clearing across the old seam 1', () => {
 });
 
 test('Garbage clearing across the old seam 2', () => {
-  const screen = PuyoScreen.fromLines([
+  const screen = screenFromLines([
     'NNNNNN',
     'NRRRRN',
     'NNNNNN',
@@ -83,7 +75,7 @@ test('Garbage clearing across the old seam 2', () => {
 });
 
 test('Garbage clearing across the old seam 3', () => {
-  const screen = PuyoScreen.fromLines([
+  const screen = screenFromLines([
     ' GGGG',
     'NNNNNN',
     'NNNNNN',
@@ -101,7 +93,7 @@ test('Garbage clearing across the old seam 3', () => {
 });
 
 test('Garbage clearing across the old seam 4', () => {
-  const screen = PuyoScreen.fromLines([
+  const screen = screenFromLines([
     'NNNNNN',
     'NBBBBN',
     'NNNNNN',
@@ -119,7 +111,7 @@ test('Garbage clearing across the old seam 4', () => {
 });
 
 test('Ghost garbage preservation', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   for (let j = 0; j < 4; ++j) {
     for (let i = 0; i < 3; ++i) {
       screen.insertPuyo(5, 3 + i + 3 * j, j);
@@ -150,14 +142,14 @@ test('Ghost garbage elimination', () => {
     'B',
   ];
 
-  const screen = PuyoScreen.fromLines(lines);
+  const screen = screenFromLines(lines);
   expect(isNonEmpty(screen.grid[GARBAGE])).toBeTruthy();
   while (screen.tick().busy);
   expect(isEmpty(screen.grid[GARBAGE])).toBeTruthy();
 });
 
 test('Rocks of garbage', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   screen.insertPuyo(0, 1, RED);
   screen.insertPuyo(1, 1, GREEN);
   screen.bufferedGarbage = 30;
@@ -182,7 +174,7 @@ test('Rocks of garbage', () => {
 });
 
 test('Simple screen gravity resolution', () => {
-  const screen = new SimplePuyoScreen();
+  const screen = simpleFromLines([]);
   screen.insertPuyo(0, 0, RED);
   screen.tick();
   expect(puyoAt(screen.grid[RED], 0, HEIGHT - 1)).toBeTruthy();
@@ -199,7 +191,7 @@ test('Simple screen chain resolution', () => {
     'BBRGYR',
     'RRGGYR',
   ];
-  const screen = SimplePuyoScreen.fromLines(lines);
+  const screen = simpleFromLines(lines);
   const zero = screen.tick().score;
   expect(zero).toBe(0);
 
@@ -229,7 +221,7 @@ test('Ghost group preservation', () => {
     'NNNN',
     'NNNN',
   ];
-  const screen = SimplePuyoScreen.fromLines(lines);
+  const screen = simpleFromLines(lines);
   const zero = screen.tick().score;
   expect(zero).toBe(0);
 });
@@ -252,20 +244,20 @@ test('Top group elimination', () => {
     'NNNN',
     'NNNN',
   ];
-  const screen = SimplePuyoScreen.fromLines(lines);
+  const screen = simpleFromLines(lines);
   const score = screen.tick().score;
   expect(score).toBe(40);
 });
 
 test('Simple screen partial garbage line', () => {
-  const screen = new SimplePuyoScreen();
+  const screen = simpleFromLines([]);
   screen.bufferedGarbage = 2;
   screen.tick();
   expect(puyoCount(screen.grid[GARBAGE])).toBe(2);
 });
 
 test('Screen partial garbage line', () => {
-  const screen = new PuyoScreen();
+  const screen = screenFromLines([]);
   screen.bufferedGarbage = 2;
   screen.tick();
   expect(puyoCount(screen.grid[GARBAGE])).toBe(2);

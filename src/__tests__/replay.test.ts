@@ -12,15 +12,7 @@ test('Fixed random game', () => {
 
   expect(track.filter(i => i.type === 'lockout')[0].player).toBe(1);
 
-  const game = new MultiplayerGame(
-    replay.gameSeeds,
-    replay.screenSeeds,
-    replay.colorSelections,
-    replay.initialBags,
-    replay.targetPoints,
-    replay.marginFrames,
-    replay.mercyFrames
-  );
+  const game = new MultiplayerGame(replay.params);
   for (const move of replay.moves) {
     while (game.age < move.time) {
       game.tick();
@@ -46,18 +38,10 @@ test('Lumi vs. Flex2', () => {
 test('Re-entrance', () => {
   const snapShots: MultiplayerGame[] = [];
 
-  const game = new MultiplayerGame(
-    LUMI_VS_FLEX2.gameSeeds,
-    LUMI_VS_FLEX2.screenSeeds,
-    LUMI_VS_FLEX2.colorSelections,
-    LUMI_VS_FLEX2.initialBags,
-    LUMI_VS_FLEX2.targetPoints,
-    LUMI_VS_FLEX2.marginFrames,
-    LUMI_VS_FLEX2.mercyFrames
-  );
+  const game = new MultiplayerGame(LUMI_VS_FLEX2.params);
   let index = 0;
   for (let j = 0; j < 11; ++j) {
-    const snapShot = game.clone(true);
+    const snapShot = game.clone();
     snapShots.push(snapShot);
     for (let i = 0; i < 2; ++i) {
       expect(game.games[i].jkiss!.state).toEqual(

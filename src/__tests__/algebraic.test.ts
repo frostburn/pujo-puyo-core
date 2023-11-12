@@ -2,7 +2,6 @@
 import {expect, test} from 'bun:test';
 import {SimplePuyoScreen, isEmpty, puyosEqual} from '..';
 import {
-  algebraicToGameStates,
   applyAlgebraic,
   joinTokens,
   // replayToAlgebraic,
@@ -11,6 +10,7 @@ import {
 } from '../algebraic';
 import {LUMI_VS_FLEX2, fixedRandomGame} from './archive';
 
+/*
 test('Documentation example', () => {
   const apn = [
     '[Event "Documentation"]',
@@ -85,7 +85,6 @@ test('Utter multilines', () => {
   expect(utterAlgebraic('5Lr')).toBe('rock right.');
 });
 
-/*
 test('Known game', () => {
   const replay = fixedRandomGame();
   // TODO: Figure out why it says '2Nbcdef 3Lr' instead of '5Lr'

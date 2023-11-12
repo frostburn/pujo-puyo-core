@@ -1,6 +1,5 @@
 import {JKISS32} from '.';
 import {
-  CLEAR_THRESHOLD,
   VISIBLE_HEIGHT,
   WIDTH,
   clone,
@@ -34,6 +33,9 @@ function materialCount(game: SimpleGame) {
  * Determine if the game is effectively locked out.
  */
 export function effectiveLockout(game: SimpleGame) {
+  if (game.rules.clearThreshold !== 4) {
+    throw new Error('Can only evaluate lockout for clear threshold of 4');
+  }
   let mask = game.screen.mask;
   const count = puyoCount(visible(mask));
   if (count < WIDTH * VISIBLE_HEIGHT - 2) {
@@ -52,7 +54,7 @@ export function effectiveLockout(game: SimpleGame) {
       const puyos = visible(game.screen.grid[game.bag[0]]);
       merge(puyos, mask);
       flood(mask, puyos);
-      if (puyoCount(mask) >= CLEAR_THRESHOLD) {
+      if (puyoCount(mask) >= 4) {
         return 0;
       }
     } else {
@@ -61,14 +63,14 @@ export function effectiveLockout(game: SimpleGame) {
         let puyos = visible(game.screen.grid[game.bag[0]]);
         merge(puyos, spot);
         flood(spot, puyos);
-        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+        if (puyoCount(spot) >= 4) {
           return 0;
         }
         spot = clone(pieces[i]);
         puyos = visible(game.screen.grid[game.bag[1]]);
         merge(puyos, spot);
         flood(spot, puyos);
-        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+        if (puyoCount(spot) >= 4) {
           return 0;
         }
       }
@@ -83,7 +85,7 @@ export function effectiveLockout(game: SimpleGame) {
         const target = clone(puyos);
         merge(target, spot);
         flood(spot, target);
-        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+        if (puyoCount(spot) >= 4) {
           return 0;
         }
       }
@@ -92,7 +94,7 @@ export function effectiveLockout(game: SimpleGame) {
         const target = clone(puyos);
         merge(spot, target);
         flood(spot, puyos);
-        if (puyoCount(spot) >= CLEAR_THRESHOLD) {
+        if (puyoCount(spot) >= 4) {
           return 0;
         }
       }

@@ -17,8 +17,6 @@ export const VISIBLE_HEIGHT = 12;
 export const GHOST_Y = 3;
 export const BOTTOM_Y = 15;
 
-// Rules
-export const CLEAR_THRESHOLD = 4;
 // Scoring
 const GROUP_BONUS = [0, 2, 3, 4, 5, 6, 7, 10];
 
@@ -447,15 +445,15 @@ export function puyoCount(puyos: Puyos): number {
   );
 }
 
-function getGroupBonus(group_size: number) {
-  group_size -= CLEAR_THRESHOLD;
-  if (group_size >= GROUP_BONUS.length) {
-    group_size = GROUP_BONUS.length - 1;
+function getGroupBonus(groupSize: number, clearThreshold: number) {
+  groupSize -= clearThreshold;
+  if (groupSize >= GROUP_BONUS.length) {
+    groupSize = GROUP_BONUS.length - 1;
   }
-  return GROUP_BONUS[group_size];
+  return GROUP_BONUS[groupSize];
 }
 
-export function sparkGroups(puyos: Puyos): ClearResult {
+export function sparkGroups(puyos: Puyos, clearThreshold: number): ClearResult {
   let numCleared = 0;
   let groupBonus = 0;
   const sparks = emptyPuyos();
@@ -475,9 +473,9 @@ export function sparkGroups(puyos: Puyos): ClearResult {
       flood(group, temp);
       applyXor(temp, group);
       const groupSize = puyoCount(group);
-      if (groupSize >= CLEAR_THRESHOLD) {
+      if (groupSize >= clearThreshold) {
         merge(sparks, group);
-        groupBonus += getGroupBonus(groupSize);
+        groupBonus += getGroupBonus(groupSize, clearThreshold);
         numCleared += groupSize;
       }
       if (isEmpty(temp)) {
