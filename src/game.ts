@@ -72,7 +72,7 @@ export const DEFAULT_SPARK_FRAMES = 20;
 export const DEFAULT_CLEAR_THRESHOLD = 4;
 
 // Colors
-const COLOR_SELECTION_SIZE = 4;
+export const DEFAULT_NUM_COLORS = 4;
 // Color distribution
 const BAG_QUOTA_PER_COLOR = 4;
 const BASE_BAG_SPICE = 3;
@@ -102,7 +102,7 @@ export function defaultRules(): GameRules {
   };
 }
 
-export function randomColorSelection(size = COLOR_SELECTION_SIZE): number[] {
+export function randomColorSelection(size = DEFAULT_NUM_COLORS): number[] {
   if (size < 0) {
     throw new Error('Negative size');
   } else if (size > NUM_PUYO_COLORS) {
@@ -182,7 +182,7 @@ export function seededMultiplayer(seed: number): ReplayParams {
   const jkiss = new JKISS32(seed);
   const colorSelection = jkiss.subset(
     [...Array(NUM_PUYO_COLORS).keys()],
-    COLOR_SELECTION_SIZE
+    DEFAULT_NUM_COLORS
   );
   const initialBag = randomBag(colorSelection, jkiss);
   return {
